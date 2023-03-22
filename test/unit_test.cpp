@@ -89,8 +89,11 @@ TEST(lua_wrapper, print_type_conversions_by_myostream) {
   lua_pushstring(l.L(), "-7213265539493896576");
   full_watch("pushstring '-7213265539493896576'");
 
-  lua_pushstring(l.L(), "12345678901234567890");
+  lua_pushstring(l.L(), "12345678901234567890");  // > 2^63-1, <2^64-1
   full_watch("pushstring '12345678901234567890'");
+
+  lua_pushstring(l.L(), "123456789012345678901234567890");  // > 2^64-1
+  full_watch("pushstring '123456789012345678901234567890'");
 
   lua_pushstring(l.L(), "abc");
   full_watch("pushstring 'abc'");
