@@ -308,6 +308,9 @@ TEST(lua_wrapper, long_number_like_string) {
 
   l.reset();
   l.set_string("bignum", s);
+  EXPECT_NE(l.get_llong("bignum"), 0);
+  EXPECT_NE(l.get_ullong("bignum"), 0);
+  watch(s, l.get_llong("bignum"), l.get_ullong("bignum"));
   EXPECT_EQ(l.get_ullong("bignum"), ULLONG_MAX);
   EXPECT_EQ(l.get_double("bignum"), d);
   EXPECT_EQ(l.gettop(), 0);
