@@ -25,6 +25,7 @@ jobs:
         tar zxf lua-5.4.4.tar.gz
         cd lua-5.4.4
         make all test
+        sudo make install
   
     - name: Install gtest manually
       run: |
