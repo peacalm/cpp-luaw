@@ -19,6 +19,13 @@ jobs:
     runs-on: ${{matrix.os}}
 
     steps:
+    - name: Install Lua
+      run: |
+        curl -R -O http://www.lua.org/ftp/lua-5.4.4.tar.gz
+        tar zxf lua-5.4.4.tar.gz
+        cd lua-5.4.4
+        make all test
+  
     - name: Install gtest manually
       run: |
         git clone --depth 1 https://github.com/google/googletest.git

@@ -1,5 +1,7 @@
 # Lua Wrapper for C++
 
+[![Build](https://github.com/peacalm/cpp-lua_wrapper/actions/workflows/cmake.yml/badge.svg)](https://github.com/peacalm/cpp-lua_wrapper/actions)
+
 * Lua version >= 5.4
 * C++ version >= C++14
 
