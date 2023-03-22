@@ -313,6 +313,7 @@ TEST(lua_wrapper, long_number_like_string) {
 
   l.reset();
   l.set_string("bignum", s);
+
   // The result may be different by different Compiler or Platform
   EXPECT_EQ(l.get_llong("bignum"),
             static_cast<long long>(d));  // value LLONG_MAX or LLONG_MIN
