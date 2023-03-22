@@ -89,8 +89,11 @@ TEST(lua_wrapper, print_type_conversions_by_myostream) {
   lua_pushstring(l.L(), "-7213265539493896576");
   full_watch("pushstring '-7213265539493896576'");
 
-  lua_pushstring(l.L(), "12345678901234567890");
+  lua_pushstring(l.L(), "12345678901234567890");  // > 2^63-1, <2^64-1
   full_watch("pushstring '12345678901234567890'");
+
+  lua_pushstring(l.L(), "123456789012345678901234567890");  // > 2^64-1
+  full_watch("pushstring '123456789012345678901234567890'");
 
   lua_pushstring(l.L(), "abc");
   full_watch("pushstring 'abc'");
@@ -301,14 +304,22 @@ TEST(lua_wrapper, long_number_like_string) {
   EXPECT_EQ(l.to_double(-1), d);
   // Lua can't convert integer if oversize, got 0
   EXPECT_EQ(lua_tointeger(l.L(), -1), 0);
-  // We use C++ style static_cast, got LLONG_MAX
+
+  // We use C++ style static_cast, the result may be different by different
+  // Compiler or Platform
   EXPECT_EQ(l.to_llong(-1), static_cast<long long>(d));
 
   EXPECT_EQ(l.gettop(), 1);
 
   l.reset();
   l.set_string("bignum", s);
-  EXPECT_EQ(l.get_ullong("bignum"), ULLONG_MAX);
+
+  // The result may be different by different Compiler or Platform
+  EXPECT_EQ(l.get_llong("bignum"),
+            static_cast<long long>(d));  // value LLONG_MAX or LLONG_MIN
+  EXPECT_EQ(l.get_ullong("bignum"),
+            static_cast<unsigned long long>(d));  // value 0 or ULLONG_MAX
+
   EXPECT_EQ(l.get_double("bignum"), d);
   EXPECT_EQ(l.gettop(), 0);
 
