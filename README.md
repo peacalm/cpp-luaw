@@ -5,3 +5,5 @@
 
 Features:
 * set or get variables from Lua
+* eval string Lua expression in C++ to get values
+
