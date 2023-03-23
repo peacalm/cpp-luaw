@@ -324,17 +324,21 @@ TEST(lua_wrapper, long_number_like_string) {
   EXPECT_EQ(l.gettop(), 0);
 
   l.set_integer("bignum", LLONG_MAX);
+  EXPECT_EQ(l.get_llong("bignum"), LLONG_MAX);
   EXPECT_EQ(l.get_ullong("bignum"), LLONG_MAX);
   EXPECT_EQ(l.get_double("bignum"), static_cast<double>(LLONG_MAX));
-  EXPECT_EQ(l.get_llong("bignum"), LLONG_MAX);
-  EXPECT_EQ(l.gettop(), 0);
+
+  l.set_integer("bignum", LLONG_MIN);
+  EXPECT_EQ(l.get_llong("bignum"), LLONG_MIN);
+  EXPECT_EQ(l.get_ullong("bignum"), 1ull << 63);
 
   // No ullong in Lua, this is equal to set -1 to 'bignum'
   l.set_integer("bignum", ULLONG_MAX);
   EXPECT_EQ(l.get_ullong("bignum"),
             ULLONG_MAX);  // we convert -1 to ull_max in C++
-  EXPECT_EQ(l.get_double("bignum"), -1);
   EXPECT_EQ(l.get_llong("bignum"), -1);
+  EXPECT_EQ(l.get_double("bignum"), -1);
+
   EXPECT_EQ(l.gettop(), 0);
 }
 
