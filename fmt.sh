@@ -15,7 +15,7 @@
 
 cd $(dirname "$0") || exit
 
-readonly SUBDIRS="include include/* include/*/* test test/* test/*/*"
+readonly SUBDIRS="include include/* include/*/* test test/* test/*/* examples examples/* examples/*/*"
 readonly FILE_TYPES="*.h *.hpp *.c *.cc *.cpp"
 readonly FILE_FILTER_RE="\.(h|hpp|c|cc|cpp)$"
 

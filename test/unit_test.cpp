@@ -574,32 +574,30 @@ struct vprovider {
   }
 };
 
-TEST(custom_lua_wrapper_is_provider, auto_eval) {
-  custom_lua_wrapper_is_provider<vprovider> l(luaL_newstate());
+TEST(lua_wrapper_is_provider, auto_eval) {
+  lua_wrapper_is_provider<vprovider> l(luaL_newstate());
   EXPECT_EQ(l.auto_eval_int("return a + b + c"), 3);
 }
 
-TEST(custom_lua_wrapper_has_provider, auto_eval) {
+TEST(lua_wrapper_has_provider, auto_eval) {
   {
-    custom_lua_wrapper_has_provider<vprovider> l(luaL_newstate());
+    lua_wrapper_has_provider<vprovider> l;
     EXPECT_EQ(l.auto_eval_int("return a"), 1);
   }
 
   {
-    custom_lua_wrapper_has_provider<vprovider *> l(luaL_newstate());
+    lua_wrapper_has_provider<vprovider *> l(luaL_newstate());
     l.provider(new vprovider);
     EXPECT_EQ(l.auto_eval_int("return a + b"), 2);
     delete l.provider();
   }
   {
-    custom_lua_wrapper_has_provider<std::shared_ptr<vprovider> > l(
-        luaL_newstate());
+    lua_wrapper_has_provider<std::shared_ptr<vprovider> > l{};
     l.provider(std::make_shared<vprovider>());
     EXPECT_EQ(l.auto_eval_int("return a + b + c"), 3);
   }
   {
-    custom_lua_wrapper_has_provider<std::unique_ptr<vprovider> > l(
-        luaL_newstate());
+    lua_wrapper_has_provider<std::unique_ptr<vprovider> > l;
     l.provider(std::make_unique<vprovider>());
     EXPECT_EQ(l.auto_eval_int("return a + b + c"), 3);
   }

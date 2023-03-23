@@ -488,13 +488,12 @@ const std::unordered_set<std::string> lua_wrapper::lua_key_words{
 // Derived class needs to implement:
 //     void provide_variables(const std::vector<std::string>& vars)
 template <typename Derived>
-class custom_lua_wrapper_crtp : public lua_wrapper {
+class lua_wrapper_crtp : public lua_wrapper {
   using base_t = lua_wrapper;
 
 public:
   template <typename... Args>
-  custom_lua_wrapper_crtp(Args&&... args)
-      : base_t(std::forward<Args>(args)...) {}
+  lua_wrapper_crtp(Args&&... args) : base_t(std::forward<Args>(args)...) {}
 
   // Set global variables to Lua
   void prepare(const char* expr) {
@@ -543,7 +542,7 @@ public:
   }
 };
 
-// Usage examples of custom_lua_wrapper_crtp
+// Usage examples of lua_wrapper_crtp
 // VariableProviderType should implement member function:
 //     void provide_variables(const std::vector<std::string> &vars,
 //                            lua_wrapper* l);
@@ -551,17 +550,16 @@ public:
 // Usage template 1
 // Inherited raw variable provider type
 template <typename VariableProviderType>
-class custom_lua_wrapper_is_provider
+class lua_wrapper_is_provider
     : public VariableProviderType,
-      public custom_lua_wrapper_crtp<
-          custom_lua_wrapper_is_provider<VariableProviderType>> {
-  using base_t = custom_lua_wrapper_crtp<
-      custom_lua_wrapper_is_provider<VariableProviderType>>;
+      public lua_wrapper_crtp<lua_wrapper_is_provider<VariableProviderType>> {
+  using base_t =
+      lua_wrapper_crtp<lua_wrapper_is_provider<VariableProviderType>>;
   using provider_t = VariableProviderType;
 
 public:
   template <typename... Args>
-  custom_lua_wrapper_is_provider(Args&&... args)
+  lua_wrapper_is_provider(Args&&... args)
       : base_t(std::forward<Args>(args)...) {}
 
   const provider_t& provider() const {
@@ -592,18 +590,17 @@ struct is_ptr : __is_ptr<typename std::decay<T>::type> {};
 // or T*, or std::shared_ptr<T> or std::unique_ptr<T>.
 // Should install provider before use.
 template <typename VariableProviderType>
-class custom_lua_wrapper_has_provider
-    : public custom_lua_wrapper_crtp<
-          custom_lua_wrapper_has_provider<VariableProviderType>> {
-  using base_t = custom_lua_wrapper_crtp<
-      custom_lua_wrapper_has_provider<VariableProviderType>>;
+class lua_wrapper_has_provider
+    : public lua_wrapper_crtp<lua_wrapper_has_provider<VariableProviderType>> {
+  using base_t =
+      lua_wrapper_crtp<lua_wrapper_has_provider<VariableProviderType>>;
   using provider_t = VariableProviderType;
 
   provider_t provider_;
 
 public:
   template <typename... Args>
-  custom_lua_wrapper_has_provider(Args&&... args)
+  lua_wrapper_has_provider(Args&&... args)
       : base_t(std::forward<Args>(args)...) {}
 
   void              provider(const provider_t& p) { provider_ = p; }
