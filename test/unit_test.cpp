@@ -597,6 +597,12 @@ TEST(custom_lua_wrapper_has_provider, auto_eval) {
     l.provider(std::make_shared<vprovider>());
     EXPECT_EQ(l.auto_eval_int("return a + b + c"), 3);
   }
+  {
+    custom_lua_wrapper_has_provider<std::unique_ptr<vprovider> > l(
+        luaL_newstate());
+    l.provider(std::make_unique<vprovider>());
+    EXPECT_EQ(l.auto_eval_int("return a + b + c"), 3);
+  }
 }
 
 int main(int argc, char **argv) {
