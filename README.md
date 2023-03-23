@@ -66,6 +66,7 @@ int main() {
     std::cout << "b = " << b << std::endl;
     std::cout << "c = " << c << std::endl;
     std::cout << "d = " << d << std::endl;
+    std::cout << "nx = " << l.get_int("nx", -1) << std::endl;
 }
 ```
 Output:
@@ -74,6 +75,7 @@ a = 1
 b = 3.14159
 c = 1000000000123
 d = good
+nx = -1
 ```
 
 ### As a dynamic expression evaluator

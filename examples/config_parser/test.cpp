@@ -16,4 +16,5 @@ int main() {
   std::cout << "b = " << b << std::endl;
   std::cout << "c = " << c << std::endl;
   std::cout << "d = " << d << std::endl;
+  std::cout << "nx = " << l.get_int("nx", -1) << std::endl;
 }
