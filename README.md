@@ -30,6 +30,7 @@ Details:
 6. Integer's precision won't lost if it's value is representable by 64bit
    signed integer type, i.e. between [-2^63, 2^63 -1], which is
    [-9223372036854775808, 9223372036854775807]
+
 Examples:
 - number 2.5 -> string "2.5" (By Lua)
 - string "2.5" -> double 2.5 (By Lua)
