@@ -1,6 +1,6 @@
 # Lua Wrapper for C++
 
-[![Build](https://github.com/peacalm/cpp-lua_wrapper/actions/workflows/cmake.yml/badge.svg)](https://github.com/peacalm/cpp-lua_wrapper/actions)
+[![Build](https://github.com/peacalm/cpp-lua_wrapper/actions/workflows/ci.yml/badge.svg)](https://github.com/peacalm/cpp-lua_wrapper/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 This library is a simple wrapper of Lua which makes interaction between Lua and 
