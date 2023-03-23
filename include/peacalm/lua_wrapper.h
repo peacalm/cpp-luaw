@@ -16,8 +16,10 @@
 #ifndef LUA_WRAPPER_H_
 #define LUA_WRAPPER_H_
 
+#include <cassert>
 #include <cstring>
 #include <iostream>
+#include <memory>
 #include <string>
 #include <unordered_set>
 #include <vector>
