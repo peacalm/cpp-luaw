@@ -66,7 +66,7 @@ mkdir -p build
 cd build
 cmake .. -DBUILD_TEST=TRUE -DENABLE_MYOSTREAM_WATCH=${MYOSTREAM}
 make
-make test
+ctest --output-on-failure
 
 if [ ${RUN_UNIT_TEST} -eq 1 ]; then
   ./test/unit_test

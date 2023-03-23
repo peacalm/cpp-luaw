@@ -484,12 +484,16 @@ const std::unordered_set<std::string> lua_wrapper::lua_key_words{
 
 // CRTP: curious recurring template pattern
 // Derived class needs to implement:
-//     void provide_variables(const std::vector<std::string>& expr)
+//     void provide_variables(const std::vector<std::string>& vars)
 template <typename Derived>
 class custom_lua_wrapper_crtp : public lua_wrapper {
   using base_t = lua_wrapper;
 
 public:
+  template <typename... Args>
+  custom_lua_wrapper_crtp(Args&&... args)
+      : base_t(std::forward<Args>(args)...) {}
+
   // Set global variables to Lua
   void prepare(const char* expr) {
     std::vector<std::string> vars = base_t::detect_variable_names(expr);
@@ -534,6 +538,89 @@ public:
                               bool               enable_log = true,
                               bool*              failed     = nullptr) {
     return this->auto_eval_c_str(expr.c_str(), def, enable_log, failed);
+  }
+};
+
+// Usage examples of custom_lua_wrapper_crtp
+// VariableProviderType should implement member function:
+//     void provide_variables(const std::vector<std::string> &vars,
+//                            lua_wrapper* l);
+
+// Usage template 1
+// Inherited raw variable provider type
+template <typename VariableProviderType>
+class custom_lua_wrapper_is_provider
+    : public VariableProviderType,
+      public custom_lua_wrapper_crtp<
+          custom_lua_wrapper_is_provider<VariableProviderType>> {
+  using base_t = custom_lua_wrapper_crtp<
+      custom_lua_wrapper_is_provider<VariableProviderType>>;
+  using provider_t = VariableProviderType;
+
+public:
+  template <typename... Args>
+  custom_lua_wrapper_is_provider(Args&&... args)
+      : base_t(std::forward<Args>(args)...) {}
+
+  const provider_t& provider() const {
+    return static_cast<const provider_t&>(*this);
+  }
+  provider_t& provider() { return static_cast<provider_t&>(*this); }
+
+  void provide_variables(const std::vector<std::string>& vars) {
+    provider().provide_variables(vars, this);
+  }
+};
+
+namespace internal {
+template <typename T>
+struct __is_ptr : std::false_type {};
+template <typename T>
+struct __is_ptr<T*> : std::true_type {};
+template <typename T>
+struct __is_ptr<std::shared_ptr<T>> : std::true_type {};
+template <typename T>
+struct __is_ptr<std::unique_ptr<T>> : std::true_type {};
+template <typename T>
+struct is_ptr : __is_ptr<typename std::decay<T>::type> {};
+}  // namespace internal
+
+// Usage template 2
+// Has a member provider_, which could be raw variable provider type T,
+// or T*, or std::shared_ptr<T> or std::unique_ptr<T>.
+// Should install provider before use.
+template <typename VariableProviderType>
+class custom_lua_wrapper_has_provider
+    : public custom_lua_wrapper_crtp<
+          custom_lua_wrapper_has_provider<VariableProviderType>> {
+  using base_t = custom_lua_wrapper_crtp<
+      custom_lua_wrapper_has_provider<VariableProviderType>>;
+  using provider_t = VariableProviderType;
+
+  provider_t provider_;
+
+public:
+  template <typename... Args>
+  custom_lua_wrapper_has_provider(Args&&... args)
+      : base_t(std::forward<Args>(args)...) {}
+
+  void              provider(const provider_t& p) { provider_ = p; }
+  void              provider(provider_t&& p) { provider_ = std::move(p); }
+  const provider_t& provider() const { return provider_; }
+  provider_t&       provider() { return provider_; }
+
+  void provide_variables(const std::vector<std::string>& vars) {
+    __provide_variables(vars, internal::is_ptr<provider_t>{});
+  }
+
+private:
+  void __provide_variables(const std::vector<std::string>& vars,
+                           std::true_type) {
+    provider()->provide_variables(vars, this);
+  }
+  void __provide_variables(const std::vector<std::string>& vars,
+                           std::false_type) {
+    provider().provide_variables(vars, this);
   }
 };
 
