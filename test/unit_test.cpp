@@ -564,10 +564,13 @@ TEST(lua_wrapper, eval) {
 }
 
 struct vprovider {
-  // vprovider() { puts("vprovider()"); }
+  int def = 1;
+  vprovider(int i = 1) : def(i) {
+    // printf("vprovider(%d)\n", def);
+  }
   // ~vprovider() { puts("~vprovider()"); }
   void provide_one(const std::string &v, lua_wrapper *l) {
-    l->set_integer(v, 1);
+    l->set_integer(v, def);
   }
   void provide_variables(const std::vector<std::string> &vars, lua_wrapper *l) {
     for (const auto &v : vars) provide_one(v, l);
@@ -575,8 +578,18 @@ struct vprovider {
 };
 
 TEST(lua_wrapper_is_provider, auto_eval) {
-  lua_wrapper_is_provider<vprovider> l(luaL_newstate());
-  EXPECT_EQ(l.auto_eval_int("return a + b + c"), 3);
+  {
+    lua_wrapper_is_provider<vprovider> l;
+    EXPECT_EQ(l.auto_eval_int("return x"), 1);
+  }
+  {
+    lua_wrapper_is_provider<vprovider> l(luaL_newstate());
+    EXPECT_EQ(l.auto_eval_int("return a + b + c"), 3);
+  }
+  {
+    lua_wrapper_is_provider<vprovider> l(luaL_newstate(), 2);
+    EXPECT_EQ(l.auto_eval_int("return a + b + c"), 6);
+  }
 }
 
 TEST(lua_wrapper_has_provider, auto_eval) {
@@ -598,8 +611,8 @@ TEST(lua_wrapper_has_provider, auto_eval) {
   }
   {
     lua_wrapper_has_provider<std::unique_ptr<vprovider> > l;
-    l.provider(std::make_unique<vprovider>());
-    EXPECT_EQ(l.auto_eval_int("return a + b + c"), 3);
+    l.provider(std::make_unique<vprovider>(3));
+    EXPECT_EQ(l.auto_eval_int("return a + b + c"), 9);
   }
 }
 

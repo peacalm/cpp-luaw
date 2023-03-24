@@ -615,9 +615,11 @@ class lua_wrapper_is_provider
   using provider_t = VariableProviderType;
 
 public:
+  lua_wrapper_is_provider() {}
+
   template <typename... Args>
-  lua_wrapper_is_provider(Args&&... args)
-      : base_t(std::forward<Args>(args)...) {}
+  lua_wrapper_is_provider(lua_State* L, Args&&... args)
+      : base_t(L), provider_t(std::forward<Args>(args)...) {}
 
   const provider_t& provider() const {
     return static_cast<const provider_t&>(*this);
