@@ -700,6 +700,9 @@ TEST(lua_wrapper, IF) {
   lua_wrapper l;
   EXPECT_EQ(l.eval_int("return IF(true, 1, 2)"), 1);
   EXPECT_EQ(l.eval_int("return IF(false, 1, 2)"), 2);
+  EXPECT_EQ(l.eval_int("return IF(false, 1, '2')"), 2);
+  EXPECT_EQ(l.eval_int("return IF(false, 1, '2.5')"), 2);
+  EXPECT_EQ(l.eval_int("return IF(false, 1, 2.5)"), 2);
   EXPECT_EQ(l.eval_int("return IF(nil, 1, 2)"), 2);
   EXPECT_EQ(l.eval_int("return IF(1<0, 1, true, 3, 4)"), 3);
   EXPECT_EQ(l.eval_int("return IF(true and false, 1, nil, 3, 4)"), 4);
