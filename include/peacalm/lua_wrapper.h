@@ -33,8 +33,8 @@ namespace peacalm {
 namespace luafunc {
 // Useful Lua functions extended for Lua
 
-// Short writting for if-elseif-else statement. The number of arguments should
-// be odd and at least 3.
+// Short writting for if-elseif-else statement.
+// The number of arguments should be odd and at least 3.
 // Usage: IF(expr1, result_if_expr1_is_true,
 //           expr2, result_if_expr2_is_true,
 //           ...,
