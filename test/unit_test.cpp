@@ -514,6 +514,85 @@ TEST(lua_wrapper, enable_log) {
   EXPECT_EQ(l.gettop(), 0);
 }
 
+std::set<std::string> toset(const std::vector<std::string> &v) {
+  return std::set<std::string>(v.begin(), v.end());
+}
+
+TEST(lua_wrapper, edetect_variable_namesval) {
+  lua_wrapper l;
+
+  EXPECT_EQ(toset(l.detect_variable_names("return a + b")), toset({"a", "b"}));
+  EXPECT_EQ(toset(l.detect_variable_names("return a + 50")), toset({"a"}));
+  EXPECT_EQ(toset(l.detect_variable_names("return 20 + 50")), toset({}));
+  EXPECT_EQ(toset(l.detect_variable_names("return _a * b_")),
+            toset({"_a", "b_"}));
+  EXPECT_EQ(toset(l.detect_variable_names(
+                "if x then return _a * b_ else return y end")),
+            toset({"_a", "b_", "x", "y"}));
+  EXPECT_EQ(toset(l.detect_variable_names("a = 1; b = 2; return a + b")),
+            toset({}));
+  EXPECT_EQ(
+      toset(l.detect_variable_names("a = 'str'; b = '2'; return a .. b .. c")),
+      toset({"c"}));
+  EXPECT_EQ(toset(l.detect_variable_names(
+                "a = [[str 'str' \"haha\"]]; b = '2'; return a .. b .. c")),
+            toset({"c"}));
+  EXPECT_EQ(toset(l.detect_variable_names(
+                "[[str 'str' \"haha\"]]; b = '2'; return a .. b .. c")),
+            toset({"a", "c"}));
+  EXPECT_EQ(toset(l.detect_variable_names("return a..b .. c")),
+            toset({"a", "b", "c"}));
+  EXPECT_EQ(toset(l.detect_variable_names("return a .. b .. c")),
+            toset({"a", "b", "c"}));
+  EXPECT_EQ(toset(l.detect_variable_names("return a .. \"b\" .. c")),
+            toset({"a", "c"}));
+  EXPECT_EQ(toset(l.detect_variable_names("return a .. \"b\" .. c .. 12")),
+            toset({"a", "c"}));
+  EXPECT_EQ(toset(l.detect_variable_names("return a .. \"bb'sbb's\" .. c")),
+            toset({"a", "c"}));
+  EXPECT_EQ(toset(l.detect_variable_names("return a .. \"bb's b b's\" .. c")),
+            toset({"a", "c"}));
+  EXPECT_EQ(
+      toset(l.detect_variable_names("return a .. \"bb's b b's \\\"d e\" .. c")),
+      toset({"a", "c"}));
+  EXPECT_EQ(toset(l.detect_variable_names(
+                "return a .. \"bb's b b's \\\"d - e\" .. c")),
+            toset({"a", "c"}));
+  EXPECT_EQ(
+      toset(l.detect_variable_names("return a .. 'bb\\'s b  \\\"d - e' .. c")),
+      toset({"a", "c"}));
+  EXPECT_EQ(toset(l.detect_variable_names(
+                "return a .. [['bb's b  \\\"d - e']] .. c")),
+            toset({"a", "c"}));
+
+  //
+  EXPECT_EQ(toset(l.detect_variable_names(
+                "--[[ a + b ; 'aa' .. 2 --]] return a + b")),
+            toset({"a", "b"}));
+  EXPECT_EQ(toset(l.detect_variable_names(
+                "--[=[ a + b ; 'aa' .. 2 c * d]] --]=] return a + b")),
+            toset({"a", "b"}));
+  EXPECT_EQ(toset(l.detect_variable_names("return a--[[name of var]] + b")),
+            toset({"a", "b"}));
+  EXPECT_EQ(toset(l.detect_variable_names(
+                "--[--[ x + y ; 'aa' .. 2 c * d ]]\n return a + b")),
+            toset({"a", "b"}));
+  EXPECT_EQ(toset(l.detect_variable_names("return a --[-[name of var]]\n + b")),
+            toset({"a", "b"}));
+  EXPECT_EQ(toset(l.detect_variable_names("return a--[-[name of var]]\n + b")),
+            toset({"a", "b"}));
+  EXPECT_EQ(toset(l.detect_variable_names("return a-b")), toset({"a", "b"}));
+  EXPECT_EQ(toset(l.detect_variable_names("return a- -b")), toset({"a", "b"}));
+
+  //
+  EXPECT_EQ(toset(l.detect_variable_names("return a + (b * c)")),
+            toset({"a", "b", "c"}));
+  EXPECT_EQ(toset(l.detect_variable_names("return a + f(b * c)")),
+            toset({"a", "b", "c"}));
+  EXPECT_EQ(toset(l.detect_variable_names("return a + math.pi")), toset({"a"}));
+  EXPECT_EQ(toset(l.detect_variable_names("return a + b.c.d")), toset({"a"}));
+}
+
 TEST(lua_wrapper, eval) {
   lua_wrapper l;
 

@@ -420,7 +420,11 @@ public:
             const char* t = s;
             while (std::isspace(*t)) ++t;
             if (*t == '.') {
-              // package or table
+              if (t[1] == '.') {
+                ret.insert(name);
+              } else {
+                // package or table
+              }
             } else if (*t == '=' && t[1] != '=') {
               // user defined var
               ud.insert(name);
@@ -431,7 +435,13 @@ public:
           name.clear();
           found = false;
           if (*s == '.') {
-            while (isalnum(*s) || *s == '_' || *s == '.') ++s;
+            if (s[1] == '.') {
+              s += 2;
+            } else {
+              while (isalnum(*s) || *s == '_' || *s == '.') ++s;
+            }
+          } else if (*s == '-' && s[1] == '-') {
+            // code comment
           } else {
             ++s;
           }
