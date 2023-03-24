@@ -568,7 +568,9 @@ struct vprovider {
   vprovider(int i = 1) : def(i) {
     // printf("vprovider(%d)\n", def);
   }
-  // ~vprovider() { puts("~vprovider()"); }
+  ~vprovider() {
+    // printf("~vprovider(%d)\n", def);
+  }
   void provide_one(const std::string &v, lua_wrapper *l) {
     l->set_integer(v, def);
   }
