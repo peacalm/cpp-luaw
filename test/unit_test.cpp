@@ -711,6 +711,8 @@ TEST(lua_wrapper, IF) {
   EXPECT_EQ(l.eval_string("return IF(not 0, 'one', 2^3 >= 8, 'three', 4)"),
             "three");
   EXPECT_EQ(l.eval_string("return IF(0>0, 'one', 2.5)"), "2.5");
+
+  EXPECT_EQ(l.gettop(), 0);
 }
 
 int main(int argc, char **argv) {
