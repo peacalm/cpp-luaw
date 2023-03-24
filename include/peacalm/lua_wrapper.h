@@ -36,7 +36,8 @@ namespace luafunc {
 // Short writting for if-elseif-else statement. The number of arguments should
 // be odd and at least 3.
 // Usage: IF(expr1, result_if_expr1_is_true,
-//           expr2, result_if_expr2_is_true, ...,
+//           expr2, result_if_expr2_is_true,
+//           ...,
 //           result_if_all_exprs_are_false)
 // Example: return IF(a > b, 'good', 'bad')
 int IF(lua_State* L) {
