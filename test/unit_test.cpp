@@ -696,6 +696,20 @@ TEST(lua_wrapper_has_provider, auto_eval) {
   }
 }
 
+TEST(lua_wrapper, IF) {
+  lua_wrapper l;
+  EXPECT_EQ(l.eval_int("return IF(true, 1, 2)"), 1);
+  EXPECT_EQ(l.eval_int("return IF(false, 1, 2)"), 2);
+  EXPECT_EQ(l.eval_int("return IF(nil, 1, 2)"), 2);
+  EXPECT_EQ(l.eval_int("return IF(1<0, 1, true, 3, 4)"), 3);
+  EXPECT_EQ(l.eval_int("return IF(true and false, 1, nil, 3, 4)"), 4);
+  EXPECT_EQ(l.eval_string("return IF(false, 1, nil, 3, 4)"), "4");
+  EXPECT_EQ(l.eval_string("return IF(0, 'one', nil, 3, 4)"), "one");
+  EXPECT_EQ(l.eval_string("return IF(not 0, 'one', 2^3 >= 8, 'three', 4)"),
+            "three");
+  EXPECT_EQ(l.eval_string("return IF(0>0, 'one', 2.5)"), "2.5");
+}
+
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
 

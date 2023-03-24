@@ -30,6 +30,37 @@ static_assert(LUA_VERSION_NUM >= 504, "Lua version at least 5.4");
 
 namespace peacalm {
 
+namespace luafunc {
+// Useful Lua functions extended for Lua
+
+// Short writting for if-elseif-else statement. The number of arguments should
+// be odd and at least 3.
+// Usage: IF(expr1, result_if_expr1_is_true,
+//           expr2, result_if_expr2_is_true, ...,
+//           result_if_all_exprs_are_false)
+// Example: return IF(a > b, 'good', 'bad')
+int IF(lua_State* L) {
+  int n = lua_gettop(L);
+  if (n < 3 || (~n & 1)) {
+    const char* s = n < 3 ? "IF: At least 3 arguments"
+                          : "IF: The number of arguments should be odd";
+    lua_pushstring(L, s);
+    lua_error(L);
+    return 0;
+  }
+  int ret = n;
+  for (int i = 1; i < n; i += 2) {
+    if (lua_toboolean(L, i)) {
+      ret = i + 1;
+      break;
+    }
+  }
+  lua_pushvalue(L, ret);
+  return 1;
+}
+
+}  // namespace luafunc
+
 class lua_wrapper {
   static const std::unordered_set<std::string> lua_key_words;
   lua_State*                                   L_;
@@ -44,6 +75,7 @@ public:
   void init() {
     L_ = luaL_newstate();
     luaL_openlibs(L_);
+    register_functions();
   }
   void close() {
     lua_close(L_);
@@ -53,6 +85,8 @@ public:
     close();
     init();
   }
+
+  void register_functions() { lua_register(L_, "IF", luafunc::IF); }
 
   lua_State* L() const { return L_; }
   void       L(lua_State* L) { L_ = L; }
