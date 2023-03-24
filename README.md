@@ -53,20 +53,20 @@ suppose config file is "conf.lua":
 #include <iostream>
 #include <peacalm/lua_wrapper.h>
 int main() {
-    peacalm::lua_wrapper l;
+  peacalm::lua_wrapper l;
 
-    // equals to: l.dostring("a = 1 b = math.pi c = 10^12 + 123 d = 'good'");
-    l.dofile("conf.lua"); 
+  // equals to: l.dostring("a = 1 b = math.pi c = 10^12 + 123 d = 'good'");
+  l.dofile("conf.lua"); 
 
-    int a = l.get_int("a");
-    double b = l.get_double("b");
-    long c = l.get_llong("c");
-    std::string d = l.get_string("d");
-    std::cout << "a = " << a << std::endl;
-    std::cout << "b = " << b << std::endl;
-    std::cout << "c = " << c << std::endl;
-    std::cout << "d = " << d << std::endl;
-    std::cout << "nx = " << l.get_int("nx", -1) << std::endl;
+  int a = l.get_int("a");
+  double b = l.get_double("b");
+  long c = l.get_llong("c");
+  std::string d = l.get_string("d");
+  std::cout << "a = " << a << std::endl;
+  std::cout << "b = " << b << std::endl;
+  std::cout << "c = " << c << std::endl;
+  std::cout << "d = " << d << std::endl;
+  std::cout << "nx = " << l.get_int("nx", -1) << std::endl;
 }
 ```
 Output:
@@ -107,10 +107,10 @@ struct provider {
 using provider_type = std::unique_ptr<provider>;
 
 int main() {
-    peacalm::lua_wrapper_has_provider<provider_type> l;
-    l.provider(std::make_unique<provider>());
-    double ret = l.auto_eval_double("return a*10 + b^c");
-    std::cout << ret << std::endl; // 18
+  peacalm::lua_wrapper_has_provider<provider_type> l;
+  l.provider(std::make_unique<provider>());
+  double ret = l.auto_eval_double("return a*10 + b^c");
+  std::cout << ret << std::endl; // 18
 }
 ```
 
