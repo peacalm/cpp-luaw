@@ -286,7 +286,7 @@ public:
     return get_c_str(name.c_str(), def, enable_log, failed);
   }
 
-  /////////////////// evaluate expression ///////////////////
+  //////////////////////// evaluate expression /////////////////////////////////
 
 #define DEFINE_EVAL(typename, type, default)                       \
   type eval_##typename(const char* expr,                           \
@@ -572,7 +572,7 @@ public:
   }
 };
 
-namespace internal {
+namespace lua_wrapper_internal {
 template <typename T>
 struct __is_ptr : std::false_type {};
 template <typename T>
@@ -583,7 +583,7 @@ template <typename T>
 struct __is_ptr<std::unique_ptr<T>> : std::true_type {};
 template <typename T>
 struct is_ptr : __is_ptr<typename std::decay<T>::type> {};
-}  // namespace internal
+}  // namespace lua_wrapper_internal
 
 // Usage template 2
 // Has a member provider_, which could be raw variable provider type T,
@@ -609,7 +609,7 @@ public:
   provider_t&       provider() { return provider_; }
 
   void provide_variables(const std::vector<std::string>& vars) {
-    __provide_variables(vars, internal::is_ptr<provider_t>{});
+    __provide_variables(vars, lua_wrapper_internal::is_ptr<provider_t>{});
   }
 
 private:
