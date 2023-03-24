@@ -131,6 +131,18 @@ public:
   //   string "2.5" -> bool true ("2.5"->2.5 by Lua, then 2.5->true by C++)
   //
 
+  /**
+   * @brief Convert a value in Lua stack to C++ type value
+   *
+   * @param [in] i Index of Lua stack where the in
+   * @param [in] default The default value returned if convert failed
+   * @param [in] enable_log Whether print a log when exception occurs
+   * @param [out] failed Will be set whether the convertion is failed if this
+   * pointer is not nullptr
+   *
+   * @{
+   */
+
 #define DEFINE_TYPE_CONVERSION(typename, type, default)        \
   type to_##typename(int   i,                                  \
                      type  def        = default,               \
@@ -195,6 +207,8 @@ public:
     return std::string{to_c_str(i, def.c_str(), enable_log, failed)};
   }
 
+  /** @}*/
+
   ///////////////////////// set global variables ///////////////////////////////
 
   void set_integer(const char* name, long long value) {
@@ -244,6 +258,18 @@ public:
 
   ///////////////////////// get global variables ///////////////////////////////
 
+  /**
+   * @brief Get a variable in Lua and Convert it to C++ type
+   *
+   * @param [in] name The variable's name
+   * @param [in] default The default value returned if failed
+   * @param [in] enable_log Whether print a log when exception occurs
+   * @param [out] failed Will be set whether the operation is failed if this
+   * pointer is not nullptr
+   *
+   * @{
+   */
+
 #define DEFINE_GLOBAL_GET(typename, type, default)                \
   type get_##typename(const char* name,                           \
                       const type& def        = default,           \
@@ -286,7 +312,21 @@ public:
     return get_c_str(name.c_str(), def, enable_log, failed);
   }
 
+  /** @}*/
+
   //////////////////////// evaluate expression /////////////////////////////////
+
+  /**
+   * @brief Evaluate a Lua expression and get the result in C++ type
+   *
+   * @param [in] expr Lua expression, which must have a return value
+   * @param [in] default The default value returned if failed
+   * @param [in] enable_log Whether print a log when exception occurs
+   * @param [out] failed Will be set whether the operation is failed if this
+   * pointer is not nullptr
+   *
+   * @{
+   */
 
 #define DEFINE_EVAL(typename, type, default)                       \
   type eval_##typename(const char* expr,                           \
@@ -352,6 +392,8 @@ public:
                          bool*              failed     = nullptr) {
     return eval_c_str(expr.c_str(), def, enable_log, failed);
   }
+
+  /** @}*/
 
   //////////////////////////////////////////////////////////////////////////////
 
@@ -502,6 +544,19 @@ public:
   }
   void prepare(const std::string& expr) { prepare(expr.c_str()); }
 
+  /**
+   * @brief Evaluate a Lua expression meanwhile can retrieve variables needed
+   * from variable provider automatically, then get the result in C++ type
+   *
+   * @param [in] expr Lua expression, which must have a return value
+   * @param [in] default The default value returned if failed
+   * @param [in] enable_log Whether print a log when exception occurs
+   * @param [out] failed Will be set whether the operation is failed if this
+   * pointer is not nullptr
+   *
+   * @{
+   */
+
   // auto eval: prepare variables automatically
 #define DEFINE_EVAL(typename, type, default)                                  \
   type auto_eval_##typename(const char* expr,                                 \
@@ -540,6 +595,8 @@ public:
                               bool*              failed     = nullptr) {
     return this->auto_eval_c_str(expr.c_str(), def, enable_log, failed);
   }
+
+  /** @}*/
 };
 
 // Usage examples of lua_wrapper_crtp
