@@ -599,7 +599,6 @@ TEST(lua_wrapper_has_provider, auto_eval) {
     lua_wrapper_has_provider<vprovider> l;
     EXPECT_EQ(l.auto_eval_int("return a"), 1);
   }
-
   {
     lua_wrapper_has_provider<vprovider *> l(luaL_newstate());
     l.provider(new vprovider);
