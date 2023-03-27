@@ -525,12 +525,19 @@ template <typename T>
 struct is_ptr : __is_ptr<typename std::decay<T>::type> {};
 }  // namespace lua_wrapper_internal
 
-template <typename VariableProviderType>
+// VariableProviderPointerType should be a raw pointer type or std::shared_ptr
+// or std::unique_ptr. The underlying provider type should implement a member
+// function:
+//     bool provide(lua_State* L, const char* vname);
+// In that function, pushes a value whose name is vname on the top stack of L
+// and return true. Otherwise return false if vname is illegal or vname doesn't
+// have a correct value.
+template <typename VariableProviderPointerType>
 class custom_lua_wrapper : public lua_wrapper {
   using base_t     = lua_wrapper;
-  using provider_t = VariableProviderType;
+  using provider_t = VariableProviderPointerType;
   static_assert(lua_wrapper_internal::is_ptr<provider_t>::value,
-                "VariableProviderType should be pointer type");
+                "VariableProviderPointerType should be pointer type");
   using pointer_t = custom_lua_wrapper*;
   provider_t provider_;
 
