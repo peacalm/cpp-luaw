@@ -529,9 +529,9 @@ struct is_ptr : __is_ptr<typename std::decay<T>::type> {};
 // or std::unique_ptr. The underlying provider type should implement a member
 // function:
 //     bool provide(lua_State* L, const char* vname);
-// In that function, pushes a value whose name is vname on the top stack of L
-// and return true. Otherwise return false if vname is illegal or vname doesn't
-// have a correct value.
+// and in this function, should push a value whose name is vname on the stack of
+// L then return true. Otherwise return false if vname is illegal or vname
+// doesn't have a correct value.
 template <typename VariableProviderPointerType>
 class custom_lua_wrapper : public lua_wrapper {
   using base_t     = lua_wrapper;
