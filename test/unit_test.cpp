@@ -650,11 +650,9 @@ struct vprovider {
   ~vprovider() {
     // printf("~vprovider(%d)\n", def);
   }
-  void provide_one(const std::string &v, lua_wrapper *l) {
-    l->set_integer(v, def);
-  }
-  void provide_variables(const std::vector<std::string> &vars, lua_wrapper *l) {
-    for (const auto &v : vars) provide_one(v, l);
+  void provide(const std::string &v, lua_wrapper *l) { l->set_integer(v, def); }
+  void provide(const std::vector<std::string> &vars, lua_wrapper *l) {
+    for (const auto &v : vars) provide(v, l);
   }
 };
 

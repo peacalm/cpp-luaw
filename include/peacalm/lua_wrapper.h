@@ -716,7 +716,7 @@ private:
 
 // CRTP: curious recurring template pattern
 // Derived class needs to implement:
-//     void provide_variables(const std::vector<std::string>& vars)
+//     void provide(const std::vector<std::string>& vars)
 template <typename Derived>
 class lua_wrapper_crtp : public lua_wrapper {
   using base_t = lua_wrapper;
@@ -728,7 +728,7 @@ public:
   // Set global variables to Lua
   void prepare(const char* expr) {
     std::vector<std::string> vars = base_t::detect_variable_names(expr);
-    static_cast<Derived*>(this)->provide_variables(vars);
+    static_cast<Derived*>(this)->provide(vars);
   }
   void prepare(const std::string& expr) { prepare(expr.c_str()); }
 
@@ -789,8 +789,7 @@ public:
 
 // Usage examples of lua_wrapper_crtp
 // VariableProviderType should implement member function:
-//     void provide_variables(const std::vector<std::string> &vars,
-//                            lua_wrapper* l);
+//     void provide(const std::vector<std::string> &vars, lua_wrapper* l);
 
 // Usage template 1
 // Inherited raw variable provider type
@@ -814,8 +813,8 @@ public:
   }
   provider_t& provider() { return static_cast<provider_t&>(*this); }
 
-  void provide_variables(const std::vector<std::string>& vars) {
-    provider().provide_variables(vars, this);
+  void provide(const std::vector<std::string>& vars) {
+    provider().provide(vars, this);
   }
 };
 
@@ -842,18 +841,16 @@ public:
   const provider_t& provider() const { return provider_; }
   provider_t&       provider() { return provider_; }
 
-  void provide_variables(const std::vector<std::string>& vars) {
-    __provide_variables(vars, lua_wrapper_internal::is_ptr<provider_t>{});
+  void provide(const std::vector<std::string>& vars) {
+    __provide(vars, lua_wrapper_internal::is_ptr<provider_t>{});
   }
 
 private:
-  void __provide_variables(const std::vector<std::string>& vars,
-                           std::true_type) {
-    provider()->provide_variables(vars, this);
+  void __provide(const std::vector<std::string>& vars, std::true_type) {
+    provider()->provide(vars, this);
   }
-  void __provide_variables(const std::vector<std::string>& vars,
-                           std::false_type) {
-    provider().provide_variables(vars, this);
+  void __provide(const std::vector<std::string>& vars, std::false_type) {
+    provider().provide(vars, this);
   }
 };
 
