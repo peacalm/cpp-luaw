@@ -60,6 +60,82 @@ int IF(lua_State* L) {
   return 1;
 }
 
+// Convert multiple arguments or a list to a set, where key's value is boolean
+// true.
+int SET(lua_State* L) {
+  int n = lua_gettop(L);
+  if (n <= 0) {
+    lua_newtable(L);
+    return 1;
+  }
+  // list to SET
+  if (n == 1 && lua_istable(L, 1)) {
+    lua_newtable(L);
+    int sz = luaL_len(L, 1);
+    for (int i = 1; i <= sz; ++i) {
+      lua_rawgeti(L, 1, i);
+      if (lua_isnil(L, -1)) {
+        lua_pop(L, 1);
+        continue;
+      }
+      lua_pushboolean(L, true);
+      lua_settable(L, 2);
+    }
+    return 1;
+  }
+  // multi input arguments to SET
+  lua_newtable(L);
+  for (int i = 1; i <= n; ++i) {
+    if (lua_isnil(L, i)) continue;
+    lua_pushvalue(L, i);
+    lua_pushboolean(L, true);
+    lua_settable(L, -3);
+  }
+  return 1;
+}
+
+// Convert multiple arguments or a list to a dict, where key's value is the
+// key's appearance count.
+int COUNTER(lua_State* L) {
+  int n = lua_gettop(L);
+  if (n <= 0) {
+    lua_newtable(L);
+    return 1;
+  }
+  // list to COUNTER
+  if (n == 1 && lua_istable(L, 1)) {
+    lua_newtable(L);
+    int sz = luaL_len(L, 1);
+    for (int i = 1; i <= sz; ++i) {
+      lua_rawgeti(L, 1, i);
+      if (lua_isnil(L, -1)) {
+        lua_pop(L, 1);
+        continue;
+      }
+      lua_pushvalue(L, -1);
+      lua_gettable(L, 2);
+      int cnt = lua_tointeger(L, -1);
+      lua_pop(L, 1);
+      lua_pushinteger(L, cnt + 1);
+      lua_settable(L, 2);
+    }
+    return 1;
+  }
+  // multi input arguments to COUNTER
+  lua_newtable(L);
+  for (int i = 1; i <= n; ++i) {
+    if (lua_isnil(L, i)) continue;
+    lua_pushvalue(L, i);
+    lua_pushvalue(L, i);
+    lua_gettable(L, -3);
+    int cnt = lua_tointeger(L, -1);
+    lua_pop(L, 1);
+    lua_pushinteger(L, cnt + 1);
+    lua_settable(L, -3);
+  }
+  return 1;
+}
+
 }  // namespace luafunc
 
 class lua_wrapper {
@@ -87,7 +163,11 @@ public:
     init();
   }
 
-  void register_functions() { lua_register(L_, "IF", luafunc::IF); }
+  void register_functions() {
+    lua_register(L_, "IF", luafunc::IF);
+    lua_register(L_, "SET", luafunc::SET);
+    lua_register(L_, "COUNTER", luafunc::COUNTER);
+  }
 
   lua_State* L() const { return L_; }
   void       L(lua_State* L) { L_ = L; }
@@ -571,6 +651,69 @@ const std::unordered_set<std::string> lua_wrapper::lua_key_words{
 
 ////////////////////////////////////////////////////////////////////////////////
 
+namespace lua_wrapper_internal {
+template <typename T>
+struct __is_ptr : std::false_type {};
+template <typename T>
+struct __is_ptr<T*> : std::true_type {};
+template <typename T>
+struct __is_ptr<std::shared_ptr<T>> : std::true_type {};
+template <typename T>
+struct __is_ptr<std::unique_ptr<T>> : std::true_type {};
+template <typename T>
+struct is_ptr : __is_ptr<typename std::decay<T>::type> {};
+}  // namespace lua_wrapper_internal
+
+template <typename VariableProviderType>
+class custom_lua_wrapper : public lua_wrapper {
+  using base_t     = lua_wrapper;
+  using provider_t = VariableProviderType;
+  static_assert(lua_wrapper_internal::is_ptr<provider_t>::value,
+                "VariableProviderType should be pointer type");
+  using pointer_t = custom_lua_wrapper*;
+  provider_t provider_;
+
+public:
+  template <typename... Args>
+  custom_lua_wrapper(Args&&... args) : base_t(std::forward<Args>(args)...) {
+    _G_setmetateble();
+  }
+
+  void              provider(const provider_t& p) { provider_ = p; }
+  void              provider(provider_t&& p) { provider_ = std::move(p); }
+  const provider_t& provider() const { return provider_; }
+  provider_t&       provider() { return provider_; }
+
+  bool provide(lua_State* L, const char* var_name) {
+    return provider()->provide(L, var_name);
+  }
+
+private:
+  void _G_setmetateble() {
+    lua_getglobal(L(), "_G");
+    if (lua_getmetatable(L(), -1) == 0) { luaL_newmetatable(L(), "_G_mt"); }
+    lua_pushcfunction(L(), _G__index);
+    lua_setfield(L(), -2, "__index");
+    lua_setmetatable(L(), -2);
+    lua_pop(L(), 1);
+    lua_pushlightuserdata(L(), (void*)this);
+    lua_setfield(L(), LUA_REGISTRYINDEX, "this");
+  }
+
+  static int _G__index(lua_State* L) {
+    const char* name = lua_tostring(L, 2);
+    lua_getfield(L, LUA_REGISTRYINDEX, "this");
+    pointer_t p = (pointer_t)lua_touserdata(L, -1);
+    if (!p || !p->provide(L, name)) {
+      lua_pushfstring(L, "Not found: %s", name);
+      lua_error(L);
+    }
+    return 1;
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+
 // CRTP: curious recurring template pattern
 // Derived class needs to implement:
 //     void provide_variables(const std::vector<std::string>& vars)
@@ -675,19 +818,6 @@ public:
     provider().provide_variables(vars, this);
   }
 };
-
-namespace lua_wrapper_internal {
-template <typename T>
-struct __is_ptr : std::false_type {};
-template <typename T>
-struct __is_ptr<T*> : std::true_type {};
-template <typename T>
-struct __is_ptr<std::shared_ptr<T>> : std::true_type {};
-template <typename T>
-struct __is_ptr<std::unique_ptr<T>> : std::true_type {};
-template <typename T>
-struct is_ptr : __is_ptr<typename std::decay<T>::type> {};
-}  // namespace lua_wrapper_internal
 
 // Usage template 2
 // Has a member provider_, which could be raw variable provider type T,

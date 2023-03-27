@@ -685,12 +685,12 @@ TEST(lua_wrapper_has_provider, auto_eval) {
     delete l.provider();
   }
   {
-    lua_wrapper_has_provider<std::shared_ptr<vprovider> > l{};
+    lua_wrapper_has_provider<std::shared_ptr<vprovider>> l{};
     l.provider(std::make_shared<vprovider>());
     EXPECT_EQ(l.auto_eval_int("return a + b + c"), 3);
   }
   {
-    lua_wrapper_has_provider<std::unique_ptr<vprovider> > l;
+    lua_wrapper_has_provider<std::unique_ptr<vprovider>> l;
     l.provider(std::make_unique<vprovider>(3));
     EXPECT_EQ(l.auto_eval_int("return a + b + c"), 9);
   }
@@ -713,6 +713,50 @@ TEST(lua_wrapper, IF) {
   EXPECT_EQ(l.eval_string("return IF(0>0, 'one', 2.5)"), "2.5");
 
   EXPECT_EQ(l.gettop(), 0);
+}
+
+TEST(lua_wrapper, SET) {
+  lua_wrapper l;
+  EXPECT_EQ(l.eval_bool("return SET(1,2,4)[1]"), true);
+  EXPECT_EQ(l.eval_bool("return SET(1,2,4)[3]"), false);
+  EXPECT_EQ(l.eval_bool("return SET{1,2,4}[4]"), true);
+  EXPECT_EQ(l.eval_bool("return SET{1.1,2.2}[2.2]"), true);
+  EXPECT_EQ(l.eval_bool("return SET(1,2,4)[1] == true"), true);
+  EXPECT_EQ(l.eval_bool("return SET(1,2,4)[3] == nil"), true);
+  EXPECT_EQ(l.eval_bool("return SET(1,2,4)[3] ~= true"), true);
+  EXPECT_EQ(l.eval_bool("return SET{1,2,4}[4] == true"), true);
+  EXPECT_EQ(l.eval_bool("return SET{1.1 ,2.2}[2.2] == true"), true);
+  EXPECT_EQ(l.eval_bool("return SET(1,2,'x','y',4)['x'] == true"), true);
+  EXPECT_EQ(l.eval_bool("return SET(1,2,'x','y',4)['z'] == nil"), true);
+  EXPECT_EQ(l.eval_bool("return SET(1,nil,'x','y',4)['x'] == true"), true);
+  EXPECT_EQ(l.eval_bool("return SET(1,nil,'x','y',4)['z'] == nil"), true);
+  EXPECT_EQ(l.eval_bool("return SET{1,nil,'x','y',4}['x'] == true"), true);
+  EXPECT_EQ(l.eval_bool("return SET{1,nil,'x','y',4}['z'] == nil"), true);
+
+  EXPECT_EQ(l.eval_bool("s={1,2,4} return SET(s)[4] == true"), true);
+  EXPECT_EQ(l.eval_bool("s={1,nil,'x','y',4} return SET(s)['x'] == true"),
+            true);
+}
+
+TEST(lua_wrapper, COUNTER) {
+  lua_wrapper l;
+  EXPECT_EQ(l.eval_int("return COUNTER(1,2,4)[1]"), 1);
+  EXPECT_EQ(l.eval_int("return COUNTER(1,2,4,1,2,1)[1]"), 3);
+  EXPECT_EQ(l.eval_int("return COUNTER(1,2,4,1,2,1)[3]"), 0);
+  EXPECT_EQ(l.eval_int("return COUNTER(1,2,4,1,2,1)[2]"), 2);
+  EXPECT_EQ(l.eval_int("return COUNTER(1,2,4,nil,1,2,1)[1]"), 3);
+  EXPECT_EQ(l.eval_int("return COUNTER(1,2,4,nil,1,2,1)[3]"), 0);
+  EXPECT_EQ(l.eval_int("return COUNTER(1,2,4,nil,1,2,1)[2]"), 2);
+
+  EXPECT_EQ(l.eval_int("return COUNTER{1,2,4,1,2,1}[1]"), 3);
+  EXPECT_EQ(l.eval_int("return COUNTER{1,2,4,1,2,1}[3]"), 0);
+  EXPECT_EQ(l.eval_int("return COUNTER{1,2,4,1,2,1}[2]"), 2);
+  EXPECT_EQ(l.eval_int("return COUNTER{1,2,4,nil,1,2,1}[1]"), 3);
+  EXPECT_EQ(l.eval_int("return COUNTER{1,2,4,nil,1,2,1}[3]"), 0);
+  EXPECT_EQ(l.eval_int("return COUNTER{1,2,4,nil,1,2,1}[2]"), 2);
+
+  EXPECT_EQ(l.eval_int("c={1,2,4,1,2,1} return COUNTER(c)[2]"), 2);
+  EXPECT_EQ(l.eval_int("c={1,2,4,nil,1,2,1} return COUNTER(c)[1]"), 3);
 }
 
 int main(int argc, char **argv) {
