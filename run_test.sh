@@ -13,7 +13,7 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-cd $(dirname $0)
+cd $(dirname "$0") || exit
 
 RUN_UNIT_TEST=0
 RUN_PERFORMANCE_TEST=0
