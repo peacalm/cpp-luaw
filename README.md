@@ -103,6 +103,9 @@ struct provider {
       lua_pushinteger(L, 3);
     else
       return false;
+    // If variables won't change, could set them to global:
+    // lua_pushvalue(L, -1);
+    // lua_setglobal(L, vname);
     return true;
   }
 };
