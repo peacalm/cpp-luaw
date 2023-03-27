@@ -759,6 +759,24 @@ TEST(lua_wrapper, COUNTER) {
   EXPECT_EQ(l.eval_int("c={1,2,4,nil,1,2,1} return COUNTER(c)[1]"), 3);
 }
 
+struct dummy_provider {
+  int def = 0;
+  dummy_provider(int i = 1) : def(i) {}
+  bool provide(lua_State *L, const char *vname) {
+    lua_pushnumber(L, def);
+    return true;
+  }
+};
+
+TEST(custom_lua_wrapper, eval) {
+  custom_lua_wrapper<std::unique_ptr<dummy_provider>> l;
+  l.provider(std::make_unique<dummy_provider>());
+  EXPECT_EQ(l.eval_int("return a + b"), 2);
+  l.provider(std::make_unique<dummy_provider>(2));
+  EXPECT_EQ(l.eval_int("return x"), 2);
+  EXPECT_EQ(l.eval_int("return a + b"), 4);
+}
+
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
 
