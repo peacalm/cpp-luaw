@@ -191,30 +191,6 @@ public:
   int         type(int i) const { return lua_type(L_, i); }
   const char* type_name(int i) const { return lua_typename(L_, type(i)); }
 
-  ///////////////////////// error log //////////////////////////////////////////
-
-  void log_error(const char* s) const {
-    std::cerr << "Lua: " << s << std::endl;
-  }
-
-  void log_error_in_stack(int i = -1) const {
-    std::cerr << "Lua: " << lua_tostring(L_, i) << std::endl;
-  }
-
-  void log_type_convert_error(int i, const char* to) {
-    std::cerr << "Lua: Can't convert to " << to << " by ";
-    if (lua_isnumber(L_, i) || lua_isstring(L_, i) || lua_isboolean(L_, i) ||
-        lua_isnil(L_, i) || lua_isinteger(L_, i)) {
-      std::cerr << type_name(i) << ": ";
-    }
-    if (lua_isstring(L_, i)) {
-      std::cerr << lua_tostring(L_, i) << std::endl;
-    } else {
-      std::cerr << luaL_tolstring(L_, i, NULL) << std::endl;
-      pop();
-    }
-  }
-
   ///////////////////////// type conversions ///////////////////////////////////
 
   // NOTICE: Type conversions may different to Lua!
@@ -508,6 +484,31 @@ public:
   }
 
   /** @}*/
+
+  ///////////////////////// error log //////////////////////////////////////////
+
+  void log_error(const char* s) const {
+    std::cerr << "Lua: " << s << std::endl;
+  }
+
+  void log_error_in_stack(int i = -1) const {
+    std::cerr << "Lua: " << lua_tostring(L_, i) << std::endl;
+  }
+
+  void log_type_convert_error(int i, const char* to) {
+    std::cerr << "Lua: Can't convert to " << to << " by ";
+    if (lua_isnumber(L_, i) || lua_isstring(L_, i) || lua_isboolean(L_, i) ||
+        lua_isnil(L_, i) || lua_isinteger(L_, i)) {
+      std::cerr << type_name(i) << ": ";
+    }
+    if (lua_isstring(L_, i)) {
+      std::cerr << lua_tostring(L_, i) << std::endl;
+    } else {
+      std::cerr << luaL_tolstring(L_, i, NULL) << std::endl;
+      pop();
+    }
+  }
+
 };  // namespace peacalm
 
 ////////////////////////////////////////////////////////////////////////////////
