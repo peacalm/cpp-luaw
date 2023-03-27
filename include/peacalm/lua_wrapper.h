@@ -139,8 +139,7 @@ int COUNTER(lua_State* L) {
 }  // namespace luafunc
 
 class lua_wrapper {
-  static const std::unordered_set<std::string> lua_key_words;
-  lua_State*                                   L_;
+  lua_State* L_;
 
 public:
   lua_wrapper() { init(); }
@@ -509,6 +508,145 @@ public:
   }
 
   /** @}*/
+};  // namespace peacalm
+
+////////////////////////////////////////////////////////////////////////////////
+
+namespace lua_wrapper_internal {
+template <typename T>
+struct __is_ptr : std::false_type {};
+template <typename T>
+struct __is_ptr<T*> : std::true_type {};
+template <typename T>
+struct __is_ptr<std::shared_ptr<T>> : std::true_type {};
+template <typename T>
+struct __is_ptr<std::unique_ptr<T>> : std::true_type {};
+template <typename T>
+struct is_ptr : __is_ptr<typename std::decay<T>::type> {};
+}  // namespace lua_wrapper_internal
+
+template <typename VariableProviderType>
+class custom_lua_wrapper : public lua_wrapper {
+  using base_t     = lua_wrapper;
+  using provider_t = VariableProviderType;
+  static_assert(lua_wrapper_internal::is_ptr<provider_t>::value,
+                "VariableProviderType should be pointer type");
+  using pointer_t = custom_lua_wrapper*;
+  provider_t provider_;
+
+public:
+  template <typename... Args>
+  custom_lua_wrapper(Args&&... args) : base_t(std::forward<Args>(args)...) {
+    _G_setmetateble();
+  }
+
+  void              provider(const provider_t& p) { provider_ = p; }
+  void              provider(provider_t&& p) { provider_ = std::move(p); }
+  const provider_t& provider() const { return provider_; }
+  provider_t&       provider() { return provider_; }
+
+  bool provide(lua_State* L, const char* var_name) {
+    return provider()->provide(L, var_name);
+  }
+
+private:
+  void _G_setmetateble() {
+    lua_getglobal(L(), "_G");
+    if (lua_getmetatable(L(), -1) == 0) { luaL_newmetatable(L(), "_G_mt"); }
+    lua_pushcfunction(L(), _G__index);
+    lua_setfield(L(), -2, "__index");
+    lua_setmetatable(L(), -2);
+    lua_pop(L(), 1);
+    lua_pushlightuserdata(L(), (void*)this);
+    lua_setfield(L(), LUA_REGISTRYINDEX, "this");
+  }
+
+  static int _G__index(lua_State* L) {
+    const char* name = lua_tostring(L, 2);
+    lua_getfield(L, LUA_REGISTRYINDEX, "this");
+    pointer_t p = (pointer_t)lua_touserdata(L, -1);
+    if (!p || !p->provide(L, name)) {
+      lua_pushfstring(L, "Not found: %s", name);
+      lua_error(L);
+    }
+    return 1;
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+
+// CRTP: curious recurring template pattern
+// Derived class needs to implement:
+//     void provide(const std::vector<std::string>& vars)
+template <typename Derived>
+class lua_wrapper_crtp : public lua_wrapper {
+  static const std::unordered_set<std::string> lua_key_words;
+  using base_t = lua_wrapper;
+
+public:
+  template <typename... Args>
+  lua_wrapper_crtp(Args&&... args) : base_t(std::forward<Args>(args)...) {}
+
+  // Set global variables to Lua
+  void prepare(const char* expr) {
+    std::vector<std::string> vars = detect_variable_names(expr);
+    static_cast<Derived*>(this)->provide(vars);
+  }
+  void prepare(const std::string& expr) { prepare(expr.c_str()); }
+
+  /**
+   * @brief Evaluate a Lua expression meanwhile can retrieve variables needed
+   * from variable provider automatically, then get the result in C++ type
+   *
+   * @param [in] expr Lua expression, which must have a return value
+   * @param [in] default The default value returned if failed
+   * @param [in] enable_log Whether print a log when exception occurs
+   * @param [out] failed Will be set whether the operation is failed if this
+   * pointer is not nullptr
+   *
+   * @{
+   */
+
+  // auto eval: prepare variables automatically
+#define DEFINE_EVAL(typename, type, default)                                  \
+  type auto_eval_##typename(const char* expr,                                 \
+                            const type& def        = default,                 \
+                            bool        enable_log = true,                    \
+                            bool*       failed     = nullptr) {                         \
+    prepare(expr);                                                            \
+    return base_t::eval_##typename(expr, def, enable_log, failed);            \
+  }                                                                           \
+  type auto_eval_##typename(const std::string& expr,                          \
+                            const type&        def        = default,          \
+                            bool               enable_log = true,             \
+                            bool*              failed     = nullptr) {                         \
+    return this->auto_eval_##typename(expr.c_str(), def, enable_log, failed); \
+  }
+
+  DEFINE_EVAL(int, int, 0)
+  DEFINE_EVAL(uint, unsigned int, 0)
+  DEFINE_EVAL(llong, long long, 0)
+  DEFINE_EVAL(ullong, unsigned long long, 0)
+  DEFINE_EVAL(bool, bool, false)
+  DEFINE_EVAL(double, double, 0)
+  DEFINE_EVAL(string, std::string, "")
+#undef DEFINE_EVAL
+
+  const char* auto_eval_c_str(const char* expr,
+                              const char* def        = "",
+                              bool        enable_log = true,
+                              bool*       failed     = nullptr) {
+    prepare(expr);
+    return base_t::eval_c_str(expr, def, enable_log, failed);
+  }
+  const char* auto_eval_c_str(const std::string& expr,
+                              const char*        def        = "",
+                              bool               enable_log = true,
+                              bool*              failed     = nullptr) {
+    return this->auto_eval_c_str(expr.c_str(), def, enable_log, failed);
+  }
+
+  /** @}*/
 
   //////////////////////////////////////////////////////////////////////////////
 
@@ -641,151 +779,14 @@ public:
     }
     return std::vector<std::string>(ret.begin(), ret.end());
   }
-};  // namespace peacalm
+};
 
-const std::unordered_set<std::string> lua_wrapper::lua_key_words{
+template <typename Derived>
+const std::unordered_set<std::string> lua_wrapper_crtp<Derived>::lua_key_words{
     "nil",      "true",  "false",    "and",   "or",     "not",
     "if",       "then",  "elseif",   "else",  "end",    "for",
     "do",       "while", "repeat",   "until", "return", "break",
     "continue", "goto",  "function", "in",    "local"};
-
-////////////////////////////////////////////////////////////////////////////////
-
-namespace lua_wrapper_internal {
-template <typename T>
-struct __is_ptr : std::false_type {};
-template <typename T>
-struct __is_ptr<T*> : std::true_type {};
-template <typename T>
-struct __is_ptr<std::shared_ptr<T>> : std::true_type {};
-template <typename T>
-struct __is_ptr<std::unique_ptr<T>> : std::true_type {};
-template <typename T>
-struct is_ptr : __is_ptr<typename std::decay<T>::type> {};
-}  // namespace lua_wrapper_internal
-
-template <typename VariableProviderType>
-class custom_lua_wrapper : public lua_wrapper {
-  using base_t     = lua_wrapper;
-  using provider_t = VariableProviderType;
-  static_assert(lua_wrapper_internal::is_ptr<provider_t>::value,
-                "VariableProviderType should be pointer type");
-  using pointer_t = custom_lua_wrapper*;
-  provider_t provider_;
-
-public:
-  template <typename... Args>
-  custom_lua_wrapper(Args&&... args) : base_t(std::forward<Args>(args)...) {
-    _G_setmetateble();
-  }
-
-  void              provider(const provider_t& p) { provider_ = p; }
-  void              provider(provider_t&& p) { provider_ = std::move(p); }
-  const provider_t& provider() const { return provider_; }
-  provider_t&       provider() { return provider_; }
-
-  bool provide(lua_State* L, const char* var_name) {
-    return provider()->provide(L, var_name);
-  }
-
-private:
-  void _G_setmetateble() {
-    lua_getglobal(L(), "_G");
-    if (lua_getmetatable(L(), -1) == 0) { luaL_newmetatable(L(), "_G_mt"); }
-    lua_pushcfunction(L(), _G__index);
-    lua_setfield(L(), -2, "__index");
-    lua_setmetatable(L(), -2);
-    lua_pop(L(), 1);
-    lua_pushlightuserdata(L(), (void*)this);
-    lua_setfield(L(), LUA_REGISTRYINDEX, "this");
-  }
-
-  static int _G__index(lua_State* L) {
-    const char* name = lua_tostring(L, 2);
-    lua_getfield(L, LUA_REGISTRYINDEX, "this");
-    pointer_t p = (pointer_t)lua_touserdata(L, -1);
-    if (!p || !p->provide(L, name)) {
-      lua_pushfstring(L, "Not found: %s", name);
-      lua_error(L);
-    }
-    return 1;
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-
-// CRTP: curious recurring template pattern
-// Derived class needs to implement:
-//     void provide(const std::vector<std::string>& vars)
-template <typename Derived>
-class lua_wrapper_crtp : public lua_wrapper {
-  using base_t = lua_wrapper;
-
-public:
-  template <typename... Args>
-  lua_wrapper_crtp(Args&&... args) : base_t(std::forward<Args>(args)...) {}
-
-  // Set global variables to Lua
-  void prepare(const char* expr) {
-    std::vector<std::string> vars = base_t::detect_variable_names(expr);
-    static_cast<Derived*>(this)->provide(vars);
-  }
-  void prepare(const std::string& expr) { prepare(expr.c_str()); }
-
-  /**
-   * @brief Evaluate a Lua expression meanwhile can retrieve variables needed
-   * from variable provider automatically, then get the result in C++ type
-   *
-   * @param [in] expr Lua expression, which must have a return value
-   * @param [in] default The default value returned if failed
-   * @param [in] enable_log Whether print a log when exception occurs
-   * @param [out] failed Will be set whether the operation is failed if this
-   * pointer is not nullptr
-   *
-   * @{
-   */
-
-  // auto eval: prepare variables automatically
-#define DEFINE_EVAL(typename, type, default)                                  \
-  type auto_eval_##typename(const char* expr,                                 \
-                            const type& def        = default,                 \
-                            bool        enable_log = true,                    \
-                            bool*       failed     = nullptr) {                         \
-    prepare(expr);                                                            \
-    return base_t::eval_##typename(expr, def, enable_log, failed);            \
-  }                                                                           \
-  type auto_eval_##typename(const std::string& expr,                          \
-                            const type&        def        = default,          \
-                            bool               enable_log = true,             \
-                            bool*              failed     = nullptr) {                         \
-    return this->auto_eval_##typename(expr.c_str(), def, enable_log, failed); \
-  }
-
-  DEFINE_EVAL(int, int, 0)
-  DEFINE_EVAL(uint, unsigned int, 0)
-  DEFINE_EVAL(llong, long long, 0)
-  DEFINE_EVAL(ullong, unsigned long long, 0)
-  DEFINE_EVAL(bool, bool, false)
-  DEFINE_EVAL(double, double, 0)
-  DEFINE_EVAL(string, std::string, "")
-#undef DEFINE_EVAL
-
-  const char* auto_eval_c_str(const char* expr,
-                              const char* def        = "",
-                              bool        enable_log = true,
-                              bool*       failed     = nullptr) {
-    prepare(expr);
-    return base_t::eval_c_str(expr, def, enable_log, failed);
-  }
-  const char* auto_eval_c_str(const std::string& expr,
-                              const char*        def        = "",
-                              bool               enable_log = true,
-                              bool*              failed     = nullptr) {
-    return this->auto_eval_c_str(expr.c_str(), def, enable_log, failed);
-  }
-
-  /** @}*/
-};
 
 // Usage examples of lua_wrapper_crtp
 // VariableProviderType should implement member function:

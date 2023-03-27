@@ -514,12 +514,75 @@ TEST(lua_wrapper, enable_log) {
   EXPECT_EQ(l.gettop(), 0);
 }
 
+TEST(lua_wrapper, eval) {
+  lua_wrapper l;
+
+  // Error! Lua returns '', C++ returns default and prints an error log
+  EXPECT_EQ(l.eval_bool("return ''"), false);
+  // OK! Lua converts '' to true
+  EXPECT_EQ(l.eval_bool("return not not ''"), true);
+
+  EXPECT_EQ(l.eval_bool("return 0"), false);
+  EXPECT_EQ(l.eval_bool("return 1"), true);
+  EXPECT_EQ(l.eval_bool("return -1"), true);
+  EXPECT_EQ(l.eval_bool("return 123"), true);
+
+  EXPECT_EQ(l.eval_int("return 2^3"), 8);
+  EXPECT_EQ(l.eval_int("return 2^3 - 9"), -1);
+
+  EXPECT_EQ(l.eval_double("return 3/2"), 1.5);
+  EXPECT_EQ(l.eval_double("return 3//2"), 1);
+
+  EXPECT_EQ(l.eval_string("return 'Hello'"), "Hello");
+  EXPECT_EQ(l.eval_string("if 0 then return 'A' else return 'B' end"), "A");
+  EXPECT_EQ(l.eval_string("if false then return 'A' else return 'B' end"), "B");
+
+  EXPECT_EQ(l.gettop(), 0);
+
+  l.set_integer("a", 1);
+  l.set_integer("b", 2);
+  l.set_integer("c", 3);
+  l.set_integer("d", 4);
+  EXPECT_EQ(l.eval_int("return a + b + c + d"), 10);
+  l.dostring("e = a + b + c + d");
+  EXPECT_EQ(l.get_int("e"), 10);
+  EXPECT_EQ(l.eval_int("return e"), 10);
+
+  EXPECT_EQ(l.eval_double("return a + b * c / d"), 1 + 2 * 3 / 4.0);
+
+  EXPECT_EQ(l.gettop(), 0);
+
+  l.eval_string("s = 'a' .. '0' ");
+  l.eval_int("return 1,2,3");
+  l.get_string("s");
+
+  watch(l.eval_string("s = 'a' .. '0' "),
+        l.eval_int("return 1,2,3"),
+        l.get_string("s"));
+
+  EXPECT_EQ(l.gettop(), 0);
+}
+
+struct vprovider {
+  int def = 1;
+  vprovider(int i = 1) : def(i) {
+    // printf("vprovider(%d)\n", def);
+  }
+  ~vprovider() {
+    // printf("~vprovider(%d)\n", def);
+  }
+  void provide(const std::string &v, lua_wrapper *l) { l->set_integer(v, def); }
+  void provide(const std::vector<std::string> &vars, lua_wrapper *l) {
+    for (const auto &v : vars) provide(v, l);
+  }
+};
+
 std::set<std::string> toset(const std::vector<std::string> &v) {
   return std::set<std::string>(v.begin(), v.end());
 }
 
-TEST(lua_wrapper, edetect_variable_namesval) {
-  lua_wrapper l;
+TEST(lua_wrapper_crtp, edetect_variable_namesval) {
+  lua_wrapper_is_provider<vprovider> l;
 
   EXPECT_EQ(toset(l.detect_variable_names("return a + b")), toset({"a", "b"}));
   EXPECT_EQ(toset(l.detect_variable_names("return a + 50")), toset({"a"}));
@@ -592,69 +655,6 @@ TEST(lua_wrapper, edetect_variable_namesval) {
   EXPECT_EQ(toset(l.detect_variable_names("return a + math.pi")), toset({"a"}));
   EXPECT_EQ(toset(l.detect_variable_names("return a + b.c.d")), toset({"a"}));
 }
-
-TEST(lua_wrapper, eval) {
-  lua_wrapper l;
-
-  // Error! Lua returns '', C++ returns default and prints an error log
-  EXPECT_EQ(l.eval_bool("return ''"), false);
-  // OK! Lua converts '' to true
-  EXPECT_EQ(l.eval_bool("return not not ''"), true);
-
-  EXPECT_EQ(l.eval_bool("return 0"), false);
-  EXPECT_EQ(l.eval_bool("return 1"), true);
-  EXPECT_EQ(l.eval_bool("return -1"), true);
-  EXPECT_EQ(l.eval_bool("return 123"), true);
-
-  EXPECT_EQ(l.eval_int("return 2^3"), 8);
-  EXPECT_EQ(l.eval_int("return 2^3 - 9"), -1);
-
-  EXPECT_EQ(l.eval_double("return 3/2"), 1.5);
-  EXPECT_EQ(l.eval_double("return 3//2"), 1);
-
-  EXPECT_EQ(l.eval_string("return 'Hello'"), "Hello");
-  EXPECT_EQ(l.eval_string("if 0 then return 'A' else return 'B' end"), "A");
-  EXPECT_EQ(l.eval_string("if false then return 'A' else return 'B' end"), "B");
-
-  EXPECT_EQ(l.gettop(), 0);
-
-  l.set_integer("a", 1);
-  l.set_integer("b", 2);
-  l.set_integer("c", 3);
-  l.set_integer("d", 4);
-  EXPECT_EQ(l.eval_int("return a + b + c + d"), 10);
-  l.dostring("e = a + b + c + d");
-  EXPECT_EQ(l.get_int("e"), 10);
-  EXPECT_EQ(l.eval_int("return e"), 10);
-
-  EXPECT_EQ(l.eval_double("return a + b * c / d"), 1 + 2 * 3 / 4.0);
-
-  EXPECT_EQ(l.gettop(), 0);
-
-  l.eval_string("s = 'a' .. '0' ");
-  l.eval_int("return 1,2,3");
-  l.get_string("s");
-
-  watch(l.eval_string("s = 'a' .. '0' "),
-        l.eval_int("return 1,2,3"),
-        l.get_string("s"));
-
-  EXPECT_EQ(l.gettop(), 0);
-}
-
-struct vprovider {
-  int def = 1;
-  vprovider(int i = 1) : def(i) {
-    // printf("vprovider(%d)\n", def);
-  }
-  ~vprovider() {
-    // printf("~vprovider(%d)\n", def);
-  }
-  void provide(const std::string &v, lua_wrapper *l) { l->set_integer(v, def); }
-  void provide(const std::vector<std::string> &vars, lua_wrapper *l) {
-    for (const auto &v : vars) provide(v, l);
-  }
-};
 
 TEST(lua_wrapper_is_provider, auto_eval) {
   {
