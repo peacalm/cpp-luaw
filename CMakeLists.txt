@@ -30,7 +30,8 @@ target_link_libraries(${PROJECT_NAME} INTERFACE ${LUA_LIBRARIES})
 
 if (BUILD_TEST)
     enable_testing()
-    add_subdirectory(test)
+    add_subdirectory(test/unit_test)
+    add_subdirectory(test/perf_test)
 endif()
 
 configure_file("${PROJECT_NAME}Config.cmake.in" "${PROJECT_NAME}Config.cmake"

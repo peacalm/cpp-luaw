@@ -69,12 +69,12 @@ make
 ctest --output-on-failure
 
 if [ ${RUN_UNIT_TEST} -eq 1 ]; then
-  ./test/unit_test
+  ./test/unit_test/unit_test
 fi
 
-# if [ ${RUN_PERFORMANCE_TEST} -eq 1 ]; then
-#   ./test/performance_test
-# fi
+if [ ${RUN_PERFORMANCE_TEST} -eq 1 ]; then
+  ./test/perf_test/perf_test
+fi
 
 if [ ${CLEAR} -eq 1 ]; then
   cd ..
