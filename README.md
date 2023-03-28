@@ -11,10 +11,9 @@ C++ easier.
 
 Features:
 * Set or get values from Lua
-* Eval string Lua expression in C++ to get values
-* Detect variabls needed in expression
-* If a variable provider is provided, it can automatically seek variabls while
-evalurate expressions.
+* Evaluate string Lua expression in C++ to get values
+* If a variable provider is provided, it can automatically seek variabls from 
+provider while evaluate expressions.
 
 **Notice**: Type conversions may different to Lua!
 
