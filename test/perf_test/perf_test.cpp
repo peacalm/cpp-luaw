@@ -71,6 +71,28 @@ const char* expr =
     "return a + b - c * d + e / f * g ^ h - x * p - q * n / s + v - m + c ^ k";
 const int rep = 100000;
 
+TEST(custom_lua_wrapper, re_init_smart_provider_ptr_eval_no_cache) {
+  double ret;
+  for (int i = 0; i < rep; ++i) {
+    custom_lua_wrapper<std::unique_ptr<provider>> l;
+    l.provider(std::make_unique<provider>(false));
+    ret = l.eval_double(expr);
+  }
+  watch(ret);
+}
+
+TEST(custom_lua_wrapper, re_init_raw_provider_ptr_eval_no_cache) {
+  double    ret;
+  provider* p = new provider;
+  for (int i = 0; i < rep; ++i) {
+    custom_lua_wrapper<provider*> l;
+    l.provider(p);
+    ret = l.eval_double(expr);
+  }
+  watch(ret);
+  delete p;
+}
+
 TEST(custom_lua_wrapper, eval_no_cache) {
   custom_lua_wrapper<std::unique_ptr<provider>> l;
   l.provider(std::make_unique<provider>(false));
