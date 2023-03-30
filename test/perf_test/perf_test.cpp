@@ -14,7 +14,9 @@
 
 #include <gtest/gtest.h>
 
+#include <initializer_list>
 #include <iostream>
+#include <string>
 
 #if defined(ENABLE_MYOSTREAM_WATCH)
 #include <myostream.h>
@@ -81,13 +83,51 @@ TEST(custom_lua_wrapper, re_init_eval) {
   watch(ret);
 }
 
+TEST(custom_lua_wrapper, re_init_no_exfunc_eval) {
+  double ret;
+  for (int i = 0; i < rep; ++i) {
+    custom_lua_wrapper<std::unique_ptr<provider>> l(
+        lua_wrapper::opt{}.register_exfunc(false));
+    l.provider(std::make_unique<provider>(false));
+    ret = l.eval_double(expr);
+  }
+  watch(ret);
+}
+
 TEST(custom_lua_wrapper, re_init_nolib_eval) {
   double ret;
   for (int i = 0; i < rep; ++i) {
-    custom_lua_wrapper<std::unique_ptr<provider>> l(luaL_newstate());
+    custom_lua_wrapper<std::unique_ptr<provider>> l(
+        lua_wrapper::opt{}.ignore_libs().register_exfunc(false));
     l.provider(std::make_unique<provider>(false));
-    for (int i = 0; i < 26; ++i)
+    for (int i = 0; i < 26; ++i) {
       l.set_number(std::string{char('a' + i)}, i + 1);
+    }
+    ret = l.eval_double(expr);
+  }
+  watch(ret);
+}
+
+TEST(custom_lua_wrapper, re_init_preload_eval) {
+  double ret;
+  for (int i = 0; i < rep; ++i) {
+    custom_lua_wrapper<std::unique_ptr<provider>> l(
+        lua_wrapper::opt{}.preload_libs());
+    l.provider(std::make_unique<provider>(false));
+    ret = l.eval_double(expr);
+  }
+  watch(ret);
+}
+
+TEST(custom_lua_wrapper, re_init_custom_load_eval) {
+  double ret;
+  for (int i = 0; i < rep; ++i) {
+    custom_lua_wrapper<std::unique_ptr<provider>> l(
+        lua_wrapper::opt{}.ignore_libs().custom_load(
+            std::initializer_list<luaL_Reg>{{LUA_GNAME, luaopen_base},
+                                            {NULL, NULL}}
+                .begin()));
+    l.provider(std::make_unique<provider>(false));
     ret = l.eval_double(expr);
   }
   watch(ret);

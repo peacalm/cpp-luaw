@@ -13,9 +13,11 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-#include <iostream>
-//
 #include <gtest/gtest.h>
+
+#include <initializer_list>
+#include <iostream>
+#include <string>
 
 #if defined(ENABLE_MYOSTREAM_WATCH)
 #include <myostream.h>
@@ -755,6 +757,58 @@ TEST(lua_wrapper, COUNTER) {
 
   EXPECT_EQ(l.eval_int("c={1,2,4,1,2,1} return COUNTER(c)[2]"), 2);
   EXPECT_EQ(l.eval_int("c={1,2,4,nil,1,2,1} return COUNTER(c)[1]"), 3);
+}
+
+TEST(lua_wrapper, opt) {
+  {
+    lua_wrapper l;
+    EXPECT_EQ(l.gettop(), 0);
+    EXPECT_GT(l.eval_int("return os.time()"), 0);
+  }
+  {
+    lua_wrapper l(lua_wrapper::opt{}.preload_libs());
+    EXPECT_EQ(l.gettop(), 0);
+    EXPECT_GT(l.eval_int("os = require 'os' ; return os.time()"), 0);
+  }
+  {
+    lua_wrapper l(lua_wrapper::opt{}.ignore_libs());
+    EXPECT_EQ(l.eval_int("return os.time()"), 0);
+    EXPECT_EQ(l.gettop(), 0);
+  }
+  {
+    lua_wrapper l(lua_wrapper::opt{}.ignore_libs().register_exfunc(false));
+    EXPECT_EQ(l.eval_int("return IF(true, 1, 2)"), 0);
+    EXPECT_EQ(l.gettop(), 0);
+  }
+  {
+    lua_wrapper l(
+        lua_wrapper::opt().custom_load(std::initializer_list<luaL_Reg>{
+            {LUA_OSLIBNAME, luaopen_os},
+            {NULL, NULL}}.begin()));
+    EXPECT_EQ(l.gettop(), 0);
+    EXPECT_GT(l.eval_int("return os.time()"), 0);
+  }
+  {
+    lua_wrapper l(
+        lua_wrapper::opt().custom_preload(std::initializer_list<luaL_Reg>{
+            {LUA_OSLIBNAME, luaopen_os},
+            {NULL, NULL}}.begin()));
+    EXPECT_EQ(l.gettop(), 0);
+    EXPECT_GT(l.eval_int("os=require 'os'; return os.time()"), 0);
+  }
+  {
+    lua_wrapper l(lua_wrapper::opt()
+                      .custom_load(std::initializer_list<luaL_Reg>{
+                          {LUA_GNAME, luaopen_base},
+                          {LUA_OSLIBNAME, luaopen_os},
+                          {NULL, NULL}}.begin())
+                      .custom_preload(std::initializer_list<luaL_Reg>{
+                          {LUA_MATHLIBNAME, luaopen_math},
+                          {LUA_STRLIBNAME, luaopen_string},
+                          {NULL, NULL}}.begin()));
+    EXPECT_EQ(l.gettop(), 0);
+    EXPECT_GE(l.eval_int("m = require 'math' return m.sqrt(os.time())"), 40990);
+  }
 }
 
 struct dummy_provider {
