@@ -71,7 +71,7 @@ const char* expr =
     "return a + b - c * d + e / f * g ^ h - x * p - q * n / s + v - m + c ^ k";
 const int rep = 100000;
 
-TEST(custom_lua_wrapper, re_init_smart_provider_ptr_eval_no_cache) {
+TEST(custom_lua_wrapper, re_init_eval) {
   double ret;
   for (int i = 0; i < rep; ++i) {
     custom_lua_wrapper<std::unique_ptr<provider>> l;
@@ -81,7 +81,7 @@ TEST(custom_lua_wrapper, re_init_smart_provider_ptr_eval_no_cache) {
   watch(ret);
 }
 
-TEST(custom_lua_wrapper, re_init_smart_provider_ptr_nolib_eval_no_cache) {
+TEST(custom_lua_wrapper, re_init_nolib_eval) {
   double ret;
   for (int i = 0; i < rep; ++i) {
     custom_lua_wrapper<std::unique_ptr<provider>> l(luaL_newstate());
@@ -93,7 +93,7 @@ TEST(custom_lua_wrapper, re_init_smart_provider_ptr_nolib_eval_no_cache) {
   watch(ret);
 }
 
-TEST(custom_lua_wrapper, re_init_raw_provider_ptr_eval_no_cache) {
+TEST(custom_lua_wrapper, re_init_raw_provider_ptr_eval) {
   double    ret;
   provider* p = new provider;
   for (int i = 0; i < rep; ++i) {
