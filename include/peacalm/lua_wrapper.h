@@ -142,24 +142,123 @@ class lua_wrapper {
   lua_State* L_;
 
 public:
-  lua_wrapper() { init(); }
-  lua_wrapper(lua_State* L) { L_ = L; }
-  ~lua_wrapper() {
-    if (L_) close();
+  // Initialization options for lua_wrapper
+  class opt {
+    enum libinit : char { ignore = 0, load = 1, preload = 2 };
+
+  public:
+    opt() {}
+
+    opt& ignore_libs() {
+      linit_ = ignore;
+      return *this;
+    }
+    opt& load_libs() {
+      linit_ = load;
+      return *this;
+    }
+    opt& preload_libs() {
+      linit_ = preload;
+      return *this;
+    }
+
+    // register extended functions
+    opt& register_exfunc(bool r) {
+      exfunc_ = r;
+      return *this;
+    }
+
+    opt& use_state(lua_State* L) {
+      L_ = L;
+      return *this;
+    }
+
+    opt& custom_load(const luaL_Reg* l) {
+      lload_ = l;
+      return *this;
+    }
+
+    opt& custom_preload(const luaL_Reg* l) {
+      lpreload_ = l;
+      return *this;
+    }
+
+  private:
+    libinit         linit_    = load;
+    bool            exfunc_   = true;
+    lua_State*      L_        = nullptr;
+    const luaL_Reg* lload_    = nullptr;
+    const luaL_Reg* lpreload_ = nullptr;
+    friend class lua_wrapper;
+  };
+
+  lua_wrapper(const opt& o = opt{}) { init(o); }
+  lua_wrapper(lua_State* L) { init(opt{}.use_state(L)); }
+  ~lua_wrapper() { close(); }
+
+  void init(const opt& o = opt{}) {
+    if (o.L_) {
+      L_ = o.L_;
+    } else {
+      L_ = luaL_newstate();
+    }
+
+    if (o.linit_ == opt::libinit::load) {
+      luaL_openlibs(L_);
+    } else if (o.linit_ == opt::libinit::preload) {
+      preload_libs();
+    }
+
+    if (o.exfunc_) { register_functions(); }
+
+    if (o.lload_) {
+      for (const luaL_Reg* p = o.lload_; p->func; ++p) {
+        luaL_requiref(L_, p->name, p->func, 1);
+        lua_pop(L_, 1);
+      }
+    }
+
+    if (o.lpreload_) {
+      lua_getglobal(L_, LUA_LOADLIBNAME);
+      lua_getfield(L_, -1, "preload");
+      for (const luaL_Reg* p = o.lpreload_; p->func; ++p) {
+        lua_pushcfunction(L_, p->func);
+        lua_setfield(L_, -2, p->name);
+      }
+      lua_pop(L_, 2);
+    }
   }
 
-  void init() {
-    L_ = luaL_newstate();
-    luaL_openlibs(L_);
-    register_functions();
-  }
   void close() {
-    lua_close(L_);
-    L_ = nullptr;
+    if (L_) {
+      lua_close(L_);
+      L_ = nullptr;
+    }
   }
-  void reset() {
+
+  void reset(const opt& o = opt{}) {
     close();
-    init();
+    init(o);
+  }
+
+  void preload_libs() {
+    luaL_requiref(L_, LUA_GNAME, luaopen_base, 1);
+    luaL_requiref(L_, LUA_LOADLIBNAME, luaopen_package, 1);
+    lua_getfield(L_, -1, "preload");
+    static const luaL_Reg preloadlibs[] = {{LUA_COLIBNAME, luaopen_coroutine},
+                                           {LUA_TABLIBNAME, luaopen_table},
+                                           {LUA_IOLIBNAME, luaopen_io},
+                                           {LUA_OSLIBNAME, luaopen_os},
+                                           {LUA_STRLIBNAME, luaopen_string},
+                                           {LUA_MATHLIBNAME, luaopen_math},
+                                           {LUA_UTF8LIBNAME, luaopen_utf8},
+                                           {LUA_DBLIBNAME, luaopen_debug},
+                                           {NULL, NULL}};
+    for (const luaL_Reg* p = preloadlibs; p->func; ++p) {
+      lua_pushcfunction(L_, p->func);
+      lua_setfield(L_, -2, p->name);
+    }
+    lua_pop(L_, 3);
   }
 
   void register_functions() {
