@@ -736,6 +736,9 @@ TEST(lua_wrapper, SET) {
   EXPECT_EQ(l.eval_bool("s={1,2,4} return SET(s)[4] == true"), true);
   EXPECT_EQ(l.eval_bool("s={1,nil,'x','y',4} return SET(s)['x'] == true"),
             true);
+
+  EXPECT_EQ(l.eval_bool("s=SET{1,2,4} return s[4] == true"), true);
+  EXPECT_EQ(l.eval_bool("s=SET(1,nil,'x','y',4) return s.x == true"), true);
 }
 
 TEST(lua_wrapper, COUNTER) {
@@ -757,6 +760,9 @@ TEST(lua_wrapper, COUNTER) {
 
   EXPECT_EQ(l.eval_int("c={1,2,4,1,2,1} return COUNTER(c)[2]"), 2);
   EXPECT_EQ(l.eval_int("c={1,2,4,nil,1,2,1} return COUNTER(c)[1]"), 3);
+
+  EXPECT_EQ(l.eval_int("c=COUNTER{1,2,4,1,2,1} return c[2] + c[4]"), 3);
+  EXPECT_EQ(l.eval_int("c=COUNTER(1,2,4,nil,1,2,1) return c[1]"), 3);
 }
 
 TEST(lua_wrapper, opt) {
