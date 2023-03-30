@@ -86,6 +86,8 @@ TEST(custom_lua_wrapper, re_init_smart_provider_ptr_nolib_eval_no_cache) {
   for (int i = 0; i < rep; ++i) {
     custom_lua_wrapper<std::unique_ptr<provider>> l(luaL_newstate());
     l.provider(std::make_unique<provider>(false));
+    for (int i = 0; i < 26; ++i)
+      l.set_number(std::string{char('a' + i)}, i + 1);
     ret = l.eval_double(expr);
   }
   watch(ret);
