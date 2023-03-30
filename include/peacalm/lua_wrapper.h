@@ -173,11 +173,13 @@ public:
       return *this;
     }
 
+    // pointer to luaL_Reg array ending with {NULL, NULL}
     opt& custom_load(const luaL_Reg* l) {
       lload_ = l;
       return *this;
     }
 
+    // pointer to luaL_Reg array ending with {NULL, NULL}
     opt& custom_preload(const luaL_Reg* l) {
       lpreload_ = l;
       return *this;
