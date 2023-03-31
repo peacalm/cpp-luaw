@@ -96,6 +96,7 @@ int SET(lua_State* L) {
 
 // Convert multiple arguments or a list to a dict, where key's value is the
 // key's appearance count.
+// Return nil if key not exists.
 int COUNTER(lua_State* L) {
   int n = lua_gettop(L);
   if (n <= 0) {
@@ -133,6 +134,27 @@ int COUNTER(lua_State* L) {
     lua_pushinteger(L, cnt + 1);
     lua_settable(L, -3);
   }
+  return 1;
+}
+
+static int COUNTER0__index(lua_State* L) {
+  lua_pushinteger(L, 0);
+  return 1;
+}
+
+// Like COUNTER but return 0 if key not exists.
+int COUNTER0(lua_State* L) {
+  COUNTER(L);
+  lua_getglobal(L, "COUNTER0_mt");
+  if (lua_isnil(L, -1)) {
+    lua_pop(L, 1);
+    luaL_newmetatable(L, "COUNTER0_mt");
+    lua_pushcfunction(L, COUNTER0__index);
+    lua_setfield(L, -2, "__index");
+    lua_pushvalue(L, -1);
+    lua_setglobal(L, "COUNTER0_mt");
+  }
+  lua_setmetatable(L, -2);
   return 1;
 }
 
@@ -267,6 +289,7 @@ public:
     lua_register(L_, "IF", luafunc::IF);
     lua_register(L_, "SET", luafunc::SET);
     lua_register(L_, "COUNTER", luafunc::COUNTER);
+    lua_register(L_, "COUNTER0", luafunc::COUNTER0);
   }
 
   lua_State* L() const { return L_; }

@@ -763,6 +763,19 @@ TEST(lua_wrapper, COUNTER) {
 
   EXPECT_EQ(l.eval_int("c=COUNTER{1,2,4,1,2,1} return c[2] + c[4]"), 3);
   EXPECT_EQ(l.eval_int("c=COUNTER(1,2,4,nil,1,2,1) return c[1]"), 3);
+
+  EXPECT_TRUE(l.eval_bool("return COUNTER(1,2,3)[4] == nil"));
+}
+
+TEST(lua_wrapper, COUNTER0) {
+  lua_wrapper l;
+  EXPECT_TRUE(l.eval_bool("return COUNTER0(1,2,3)[4] == 0"));
+  EXPECT_EQ(l.eval_int("return COUNTER0(1,2,3)[4]"), 0);
+
+  EXPECT_EQ(l.eval_int("return COUNTER0(1,2,4,1,2,1)[1]"), 3);
+  EXPECT_TRUE(l.eval_bool("return COUNTER0(1,2,4,1,2,1)[3] == 0"));
+
+  EXPECT_EQ(l.gettop(), 0);
 }
 
 TEST(lua_wrapper, opt) {
@@ -778,12 +791,12 @@ TEST(lua_wrapper, opt) {
   }
   {
     lua_wrapper l(lua_wrapper::opt{}.ignore_libs());
-    EXPECT_EQ(l.eval_int("return os.time()"), 0);
+    EXPECT_EQ(l.eval_int("--[[error]] return os.time()"), 0);
     EXPECT_EQ(l.gettop(), 0);
   }
   {
     lua_wrapper l(lua_wrapper::opt{}.ignore_libs().register_exfunc(false));
-    EXPECT_EQ(l.eval_int("return IF(true, 1, 2)"), 0);
+    EXPECT_EQ(l.eval_int("--[[error]] return IF(true, 1, 2)"), 0);
     EXPECT_EQ(l.gettop(), 0);
   }
   {
