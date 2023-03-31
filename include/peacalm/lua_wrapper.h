@@ -40,7 +40,7 @@ namespace luafunc {
 //           ...,
 //           result_if_all_exprs_are_false)
 // Example: return IF(a > b, 'good', 'bad')
-int IF(lua_State* L) {
+inline int IF(lua_State* L) {
   int n = lua_gettop(L);
   if (n < 3 || (~n & 1)) {
     const char* s = n < 3 ? "IF: At least 3 arguments"
@@ -62,7 +62,7 @@ int IF(lua_State* L) {
 
 // Convert multiple arguments or a list to a set, where key's value is boolean
 // true.
-int SET(lua_State* L) {
+inline int SET(lua_State* L) {
   int n = lua_gettop(L);
   if (n <= 0) {
     lua_newtable(L);
@@ -97,7 +97,7 @@ int SET(lua_State* L) {
 // Convert multiple arguments or a list to a dict, where key's value is the
 // key's appearance count.
 // Return nil if key not exists.
-int COUNTER(lua_State* L) {
+inline int COUNTER(lua_State* L) {
   int n = lua_gettop(L);
   if (n <= 0) {
     lua_newtable(L);
@@ -137,13 +137,13 @@ int COUNTER(lua_State* L) {
   return 1;
 }
 
-static int COUNTER0__index(lua_State* L) {
+static inline int COUNTER0__index(lua_State* L) {
   lua_pushinteger(L, 0);
   return 1;
 }
 
 // Like COUNTER but return 0 if key not exists.
-int COUNTER0(lua_State* L) {
+inline int COUNTER0(lua_State* L) {
   COUNTER(L);
   lua_getglobal(L, "COUNTER0_mt");
   if (lua_isnil(L, -1)) {
