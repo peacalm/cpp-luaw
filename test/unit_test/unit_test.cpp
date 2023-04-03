@@ -846,6 +846,7 @@ TEST(custom_lua_wrapper, eval) {
   l.provider(std::make_unique<dummy_provider>(2));
   EXPECT_EQ(l.eval_int("return x"), 2);
   EXPECT_EQ(l.eval_int("return a + b"), 4);
+  EXPECT_EQ(l.eval_int("a = 4; return a + b"), 6);
 }
 
 int main(int argc, char **argv) {
