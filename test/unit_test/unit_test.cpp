@@ -439,7 +439,10 @@ TEST(lua_wrapper, set_and_get) {
   EXPECT_EQ(l.get_double("b"), 1);
   EXPECT_EQ(l.get_double("i"), 5);
   l.set_integer("i0", 0);
+  l.set_string("s0", "0");
   EXPECT_EQ(l.get_bool("i0"), false);
+  EXPECT_EQ(l.get_int("s0"), 0);
+  EXPECT_EQ(l.get_bool("s0"), false);
   EXPECT_EQ(l.get_bool("none"), false);
   EXPECT_EQ(l.get_bool("none", true), true);
   l.set_boolean("bfalse", false);
