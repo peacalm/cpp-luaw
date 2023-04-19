@@ -170,21 +170,23 @@ public:
 
   public:
     opt() {}
-
+    // Ignore all standard libs
     opt& ignore_libs() {
       linit_ = ignore;
       return *this;
     }
+    // Load all standard libs
     opt& load_libs() {
       linit_ = load;
       return *this;
     }
+    // Preload all standard libs
     opt& preload_libs() {
       linit_ = preload;
       return *this;
     }
 
-    // register extended functions
+    // Register extended functions
     opt& register_exfunc(bool r) {
       exfunc_ = r;
       return *this;
@@ -195,13 +197,15 @@ public:
       return *this;
     }
 
-    // pointer to luaL_Reg array ending with {NULL, NULL}
+    // Load libs specified by `l`
+    // `l` must point to a luaL_Reg array which ends with {NULL, NULL}
     opt& custom_load(const luaL_Reg* l) {
       lload_ = l;
       return *this;
     }
 
-    // pointer to luaL_Reg array ending with {NULL, NULL}
+    // Preload libs specified by `l`
+    // `l` must point to a luaL_Reg array which ends with {NULL, NULL}
     opt& custom_preload(const luaL_Reg* l) {
       lpreload_ = l;
       return *this;
