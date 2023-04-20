@@ -15,7 +15,7 @@ Features:
 * If a variable provider is provided, it can automatically seek variabls from 
 provider while evaluate expressions.
 
-**Notice**: Type conversions may different to Lua!
+**Notice**: Type conversions may be different to Lua!
 
 We mainly use C++'s type conversion strategy, in addition, 
 a conversion strategy between number (float number) and 
