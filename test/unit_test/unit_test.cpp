@@ -864,6 +864,16 @@ TEST(lua_wrapper, template_type_conversion) {
   EXPECT_EQ(l.to<long>(), 1);
   EXPECT_EQ(l.to<long long>(), 1);
   EXPECT_EQ(l.to<std::string>(), "1");
+  {
+    // failure conversions
+    EXPECT_EQ((l.to<std::map<int, int>>()), (std::map<int, int>{}));
+    lua_pushstring(l.L(), "abc");
+    EXPECT_EQ((l.to<std::unordered_map<int, int>>()),
+              (std::unordered_map<int, int>{}));
+    lua_pushboolean(l.L(), true);
+    EXPECT_EQ((l.to<std::vector<int>>()), (std::vector<int>{}));
+  }
+  l.settop(0);
 
   // vector
   {
@@ -973,7 +983,6 @@ TEST(lua_wrapper, template_type_conversion) {
                   {"a", 1}, {"b", 2}, {"1", 11}, {"2", 1}, {"F", 0}}));
     EXPECT_EQ(l.gettop(), sz);
   }
-
   {
     const char *expr = "m={a=1.0, b=2.5, c=3, 1.1, 2.2, true, F=false}";
     l.dostring(expr);
