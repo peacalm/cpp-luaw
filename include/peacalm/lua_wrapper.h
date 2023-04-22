@@ -432,6 +432,26 @@ public:
 
   /** @}*/
 
+  /**
+   * @brief Convert a value in Lua stack to complex C++ type
+   *
+   * @tparam T The result type user expected. T can be any type composited by
+   * bool, integer types, double, std::string, std::vector, std::map and
+   * std::unordered_map
+   * @param [in] idx value's index in stack
+   * @param [in] enable_log Whether print a log when exception occurs
+   * @param [out] failed Will be set whether the operation is failed if this
+   * pointer is not nullptr. If T is a container type, it regards the operation
+   * as failed if any element converts failed
+   * @return Return the value on given index in type T if conversion succeeded,
+   * otherwise return initial value of T(i.e. by statement `T{}`) if T is a
+   * simple type, e.g. bool, int, double, std::string, etc. If T is a container
+   * type, the result will contain all elements whose conversion succeeded and
+   * discard elements whose conversion failed.
+   *
+   * @{
+   */
+
   // To simple types except of to c_str which is unsafe
   template <typename T>
   std::enable_if_t<
@@ -525,6 +545,8 @@ public:
     return ret;
   }
 
+  /** @}*/
+
   ///////////////////////// set global variables ///////////////////////////////
 
   void set_integer(const char* name, long long value) {
@@ -575,13 +597,14 @@ public:
   ///////////////////////// get global variables ///////////////////////////////
 
   /**
-   * @brief Get a variable in Lua and Convert it to C++ type
+   * @brief Get a global variable in Lua and convert it to simple C++ type
    *
    * @param [in] name The variable's name
    * @param [in] def The default value returned if failed
    * @param [in] enable_log Whether print a log when exception occurs
    * @param [out] failed Will be set whether the operation is failed if this
-   * pointer is not nullptr
+   * pointer is not nullptr. If T is a container type, it regards the operation
+   * as failed if any element converts failed
    *
    * @{
    */
@@ -632,6 +655,19 @@ public:
 
   /** @}*/
 
+  /**
+   * @brief Get a global variable in Lua and convert it to complex C++ type
+   *
+   * @tparam T The result type user expected. T can be any type composited by
+   * bool, integer types, double, std::string, std::vector, std::map and
+   * std::unordered_map
+   * @param [in] name The variable's name
+   * @param [in] enable_log Whether print a log when exception occurs
+   * @param [out] failed Will be set whether the operation is failed if this
+   * pointer is not nullptr. If T is a container type, it regards the operation
+   * as failed if any element converts failed
+   * @return The variable's value in type T
+   */
   template <typename T>
   T get(const char* name, bool enable_log = true, bool* failed = nullptr) {
     getglobal(name);
@@ -643,7 +679,7 @@ public:
   //////////////////////// evaluate expression /////////////////////////////////
 
   /**
-   * @brief Evaluate a Lua expression and get the result in C++ type
+   * @brief Evaluate a Lua expression and get the result in simple C++ type
    *
    * @param [in] expr Lua expression, which must have a return value
    * @param [in] def The default value returned if failed
@@ -722,6 +758,41 @@ public:
   }
 
   /** @}*/
+
+  /**
+   * @brief Evaluate a Lua expression and get result in complex C++ type
+   *
+   * @tparam T The result type user expected. T can be any type composited by
+   * bool, integer types, double, std::string, std::vector, std::map and
+   * std::unordered_map
+   * @param [in] expr Lua expression, which must have a return value
+   * @param [in] enable_log Whether print a log when exception occurs
+   * @param [out] failed Will be set whether the operation is failed if this
+   * pointer is not nullptr. If T is a container type, it regards the operation
+   * as failed if any element converts failed
+   * @return The expression's result in type T
+   */
+  template <typename T>
+  T eval(const std::string& expr,
+         bool               enable_log = true,
+         bool*              failed     = nullptr) {
+    int sz = gettop();
+    if (dostring(expr) != LUA_OK) {
+      if (failed) *failed = true;
+      if (enable_log) log_error_in_stack();
+      settop(sz);
+      return T{};
+    }
+    assert(gettop() >= sz);
+    if (gettop() <= sz) {
+      if (failed) *failed = true;
+      if (enable_log) log_error("No return");
+      return T{};
+    }
+    auto ret = to<T>(-1, enable_log, failed);
+    settop(sz);
+    return ret;
+  }
 
   ///////////////////////// error log //////////////////////////////////////////
 

@@ -1059,6 +1059,42 @@ TEST(lua_wrapper, template_type_conversion) {
   }
 }
 
+TEST(lua_wrapper, template_get) {
+  lua_wrapper l;
+  l.dostring("a = 1; b = {1,2}; c={'x', 'y', 'z'}; d={a=1,b=2}");
+  EXPECT_EQ(l.get<long>("a"), 1);
+  EXPECT_EQ(l.get<std::vector<int>>("b"), (std::vector<int>{1, 2}));
+  EXPECT_EQ(l.get<std::vector<std::string>>("c"),
+            (std::vector<std::string>{"x", "y", "z"}));
+
+  l.dostring("e={ {a=1,b=2}, {a=2,b=1} }");
+  using type = std::vector<std::map<std::string, int>>;
+  EXPECT_EQ(l.get<type>("e"),
+            (type{{{"a", 1}, {"b", 2}}, {{"a", 2}, {"b", 1}}}));
+}
+
+TEST(lua_wrapper, template_eval) {
+  lua_wrapper l;
+  {
+    const char *expr = "return {1,2,3}";
+    auto        v    = l.eval<std::vector<unsigned>>(expr);
+    watch(expr, v);
+    EXPECT_EQ(v, (std::vector<unsigned>{1, 2, 3}));
+  }
+  {
+    const char *expr = "return {x=1,y=2}";
+    auto        v    = l.eval<std::unordered_map<std::string, int>>(expr);
+    watch(expr, v);
+    EXPECT_EQ(v, (std::unordered_map<std::string, int>{{"x", 1}, {"y", 2}}));
+  }
+  {
+    const char *expr = "return {[2.2]=2,[2.6]=3, x=1, y=2, 'bug'}";
+    auto        v    = l.eval<std::unordered_map<double, int>>(expr);
+    watch(expr, v);
+    EXPECT_EQ(v, (std::unordered_map<double, int>{{2.2, 2}, {2.6, 3}}));
+  }
+}
+
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
 
