@@ -864,6 +864,8 @@ TEST(lua_wrapper, template_type_conversion) {
   EXPECT_EQ(l.to<long>(), 1);
   EXPECT_EQ(l.to<long long>(), 1);
   EXPECT_EQ(l.to<std::string>(), "1");
+  // l.to<const char*>(); // building will fail
+
   {
     // failure conversions
     EXPECT_EQ((l.to<std::map<int, int>>()), (std::map<int, int>{}));

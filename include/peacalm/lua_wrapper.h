@@ -844,7 +844,7 @@ std::string lua_wrapper::to<std::string>(int   idx,
                                          bool  enable_log,
                                          bool* failed) {
   if (lua_isstring(L_, idx)) {
-    lua_pushvalue(L_, idx);
+    lua_pushvalue(L_, idx);  // make a copy, so, it's safe
     std::string ret = lua_tostring(L_, -1);
     lua_pop(L_, 1);
     if (failed) *failed = false;
