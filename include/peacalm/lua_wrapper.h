@@ -316,7 +316,19 @@ public:
   int dofile(const std::string& fname)   { return dofile(fname.c_str()); }
   // clang-format on
 
+  // clang-format off
+  int isfunction(int idx)      { return lua_isfunction(L_, idx); }
+  int istable(int idx)         { return lua_istable(L_, idx); }
+  int islightuserdata(int idx) { return lua_islightuserdata(L_, idx); }
+  int isnil(int idx)           { return lua_isnil(L_, idx); }
+  int isboolean(int idx)       { return lua_isboolean(L_, idx); }
+  int isthread(int idx)        { return lua_isthread(L_, idx); }
+  int isnone(int idx)          { return lua_isnone(L_, idx); }
+  int isnoneornil(int idx)     { return lua_isnoneornil(L_, idx); }
+  // clang-format on
+
   int getglobal(const char* name) { return lua_getglobal(L_, name); }
+
   int pcall(int n, int r, int f) { return lua_pcall(L_, n, r, f); }
 
   int         type(int i) const { return lua_type(L_, i); }
@@ -675,6 +687,12 @@ public:
     pop();
     return ret;
   }
+  template <typename T>
+  T get(const std::string& name,
+        bool               enable_log = true,
+        bool*              failed     = nullptr) {
+    return get<T>(name.c_str(), enable_log, failed);
+  }
 
   //////////////////////// evaluate expression /////////////////////////////////
 
@@ -773,9 +791,7 @@ public:
    * @return The expression's result in type T
    */
   template <typename T>
-  T eval(const std::string& expr,
-         bool               enable_log = true,
-         bool*              failed     = nullptr) {
+  T eval(const char* expr, bool enable_log = true, bool* failed = nullptr) {
     int sz = gettop();
     if (dostring(expr) != LUA_OK) {
       if (failed) *failed = true;
@@ -792,6 +808,12 @@ public:
     auto ret = to<T>(-1, enable_log, failed);
     settop(sz);
     return ret;
+  }
+  template <typename T>
+  T eval(const std::string& expr,
+         bool               enable_log = true,
+         bool*              failed     = nullptr) {
+    return eval<T>(expr.c_str(), enable_log, failed);
   }
 
   ///////////////////////// error log //////////////////////////////////////////
