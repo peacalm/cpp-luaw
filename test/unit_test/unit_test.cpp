@@ -573,6 +573,11 @@ TEST(lua_wrapper, eval) {
   EXPECT_EQ(l.gettop(), 0);
 }
 
+TEST(lua_wrapper, eval_multi_ret) {
+  lua_wrapper l;
+  EXPECT_EQ(l.eval_int("return 1,2,3"), 3);
+}
+
 struct vprovider {
   int def = 1;
   vprovider(int i = 1) : def(i) {
@@ -591,7 +596,7 @@ std::set<std::string> toset(const std::vector<std::string> &v) {
   return std::set<std::string>(v.begin(), v.end());
 }
 
-TEST(lua_wrapper_crtp, edetect_variable_namesval) {
+TEST(lua_wrapper_crtp, detect_variable_names_eval) {
   lua_wrapper_is_provider<vprovider> l;
 
   EXPECT_EQ(toset(l.detect_variable_names("return a + b")), toset({"a", "b"}));
