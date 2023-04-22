@@ -19,8 +19,10 @@
 #include <cassert>
 #include <cstring>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 // This comment to avoid clang-format mix includes before sort
@@ -314,6 +316,7 @@ public:
   int dofile(const std::string& fname)   { return dofile(fname.c_str()); }
   // clang-format on
 
+  int getglobal(const char* name) { return lua_getglobal(L_, name); }
   int pcall(int n, int r, int f) { return lua_pcall(L_, n, r, f); }
 
   int         type(int i) const { return lua_type(L_, i); }
@@ -393,6 +396,8 @@ public:
 
   DEFINE_TYPE_CONVERSION(int, int, 0)
   DEFINE_TYPE_CONVERSION(uint, unsigned int, 0)
+  DEFINE_TYPE_CONVERSION(long, long, 0)
+  DEFINE_TYPE_CONVERSION(ulong, unsigned long, 0)
   DEFINE_TYPE_CONVERSION(llong, long long, 0)
   DEFINE_TYPE_CONVERSION(ullong, unsigned long long, 0)
   DEFINE_TYPE_CONVERSION(bool, bool, false)
@@ -426,6 +431,99 @@ public:
   }
 
   /** @}*/
+
+  // To simple types except of to c_str which is unsafe
+  template <typename T>
+  std::enable_if_t<
+      std::is_same<T, bool>::value || std::is_same<T, int>::value ||
+          std::is_same<T, unsigned int>::value ||
+          std::is_same<T, long>::value ||
+          std::is_same<T, unsigned long>::value ||
+          std::is_same<T, long long>::value ||
+          std::is_same<T, unsigned long long>::value ||
+          std::is_same<T, double>::value || std::is_same<T, std::string>::value,
+      T>
+  to(int idx = -1, bool enable_log = true, bool* failed = nullptr);
+
+  // to std::vector
+  template <typename T>
+  std::enable_if_t<std::is_same<T,
+                                std::vector<typename T::value_type,
+                                            typename T::allocator_type>>::value,
+                   T>
+  to(int idx = -1, bool enable_log = true, bool* failed = nullptr) {
+    T ret;
+    if (!lua_istable(L_, idx)) {
+      if (failed) *failed = true;
+      if (enable_log) log_type_convert_error(idx, "vector");
+      return ret;
+    }
+    if (failed) *failed = false;
+    int sz = luaL_len(L_, idx);
+    ret.reserve(sz);
+    for (int i = 1; i <= sz; ++i) {
+      lua_geti(L_, idx, i);
+      bool subfailed;
+      ret.push_back(to<typename T::value_type>(-1, enable_log, &subfailed));
+      if (subfailed && failed) *failed = true;
+      pop();
+    }
+    return ret;
+  }
+
+  // To std::map
+  template <typename T>
+  std::enable_if_t<std::is_same<T,
+                                std::map<typename T::key_type,
+                                         typename T::mapped_type,
+                                         typename T::key_compare,
+                                         typename T::allocator_type>>::value,
+                   T>
+  to(int idx = -1, bool enable_log = true, bool* failed = nullptr) {
+    return tom<T>(idx, enable_log, failed, "map");
+  }
+
+  // To std::unordered_map
+  template <typename T>
+  std::enable_if_t<
+      std::is_same<T,
+                   std::unordered_map<typename T::key_type,
+                                      typename T::mapped_type,
+                                      typename T::hasher,
+                                      typename T::key_equal,
+                                      typename T::allocator_type>>::value,
+      T>
+  to(int idx = -1, bool enable_log = true, bool* failed = nullptr) {
+    return tom<T>(idx, enable_log, failed, "unordered_map");
+  }
+
+  // Implementation of to map or to unordered_map
+  template <typename T>
+  T tom(int         idx        = -1,
+        bool        enable_log = true,
+        bool*       failed     = nullptr,
+        const char* tname      = "map") {
+    T ret;
+    if (!lua_istable(L_, idx)) {
+      if (failed) *failed = true;
+      if (enable_log) log_type_convert_error(idx, tname);
+      return ret;
+    }
+    if (failed) *failed = false;
+    int absidx = idx > 0 ? idx : gettop() + idx + 1;
+    lua_pushnil(L_);
+    while (lua_next(L_, absidx) != 0) {
+      bool        kfailed = false, vfailed = false;
+      const auto& key = to<typename T::key_type>(-2, enable_log, &kfailed);
+      if (!kfailed) {
+        const auto& val = to<typename T::mapped_type>(-1, enable_log, &vfailed);
+        if (!vfailed) ret.insert({std::move(key), std::move(val)});
+      }
+      if ((kfailed || vfailed) && failed) *failed = true;
+      pop();
+    }
+    return ret;
+  }
 
   ///////////////////////// set global variables ///////////////////////////////
 
@@ -507,6 +605,8 @@ public:
 
   DEFINE_GLOBAL_GET(int, int, 0)
   DEFINE_GLOBAL_GET(uint, unsigned int, 0)
+  DEFINE_GLOBAL_GET(long, long, 0)
+  DEFINE_GLOBAL_GET(ulong, unsigned long, 0)
   DEFINE_GLOBAL_GET(llong, long long, 0)
   DEFINE_GLOBAL_GET(ullong, unsigned long long, 0)
   DEFINE_GLOBAL_GET(bool, bool, false)
@@ -577,6 +677,8 @@ public:
 
   DEFINE_EVAL(int, int, 0)
   DEFINE_EVAL(uint, unsigned int, 0)
+  DEFINE_EVAL(long, long, 0)
+  DEFINE_EVAL(ulong, unsigned long, 0)
   DEFINE_EVAL(llong, long long, 0)
   DEFINE_EVAL(ullong, unsigned long long, 0)
   DEFINE_EVAL(bool, bool, false)
@@ -636,8 +738,46 @@ public:
       pop();
     }
   }
+};
 
-};  // namespace peacalm
+#define DEFINE_TO_SPECIALIZATIOIN(typename, type, default)             \
+  template <>                                                          \
+  type lua_wrapper::to<type>(int idx, bool enable_log, bool* failed) { \
+    return to_##typename(idx, default, enable_log, failed);            \
+  }
+
+DEFINE_TO_SPECIALIZATIOIN(bool, bool, false)
+DEFINE_TO_SPECIALIZATIOIN(int, int, 0)
+DEFINE_TO_SPECIALIZATIOIN(uint, unsigned int, 0)
+DEFINE_TO_SPECIALIZATIOIN(long, long, 0)
+DEFINE_TO_SPECIALIZATIOIN(ulong, unsigned long, 0)
+DEFINE_TO_SPECIALIZATIOIN(llong, long long, 0)
+DEFINE_TO_SPECIALIZATIOIN(ullong, unsigned long long, 0)
+DEFINE_TO_SPECIALIZATIOIN(double, double, false)
+#undef DEFINE_TO_SPECIALIZATIOIN
+
+// A safe implementation of tostring
+// Avoid implicitly modifying number to string in stack, which may cause panic
+// while doing lua_next
+template <>
+std::string lua_wrapper::to<std::string>(int   idx,
+                                         bool  enable_log,
+                                         bool* failed) {
+  if (lua_isstring(L_, idx)) {
+    lua_pushvalue(L_, idx);
+    std::string ret = lua_tostring(L_, -1);
+    lua_pop(L_, 1);
+    if (failed) *failed = false;
+    return ret;
+  }
+  if (lua_isnoneornil(L_, idx)) {
+    if (failed) *failed = false;
+    return "";
+  }
+  if (failed) *failed = true;
+  if (enable_log) log_type_convert_error(idx, "string");
+  return "";
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 

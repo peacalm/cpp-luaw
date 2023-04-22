@@ -191,6 +191,7 @@ TEST(lua_wrapper, type_conversion) {
   EXPECT_EQ(l.to_bool(-1), true);  // integer to true
   EXPECT_EQ(l.to_int(-1), 3);
   EXPECT_EQ(l.to_llong(-1, -1), 3);
+  EXPECT_EQ(l.to_long(-1, -1), 3);
   EXPECT_EQ(l.to_double(-1, 2.5), 3);
   EXPECT_EQ(l.to_string(-1, ""), std::string("3"));  // convert to string
 
@@ -389,6 +390,9 @@ TEST(lua_wrapper, set_and_get) {
 
   EXPECT_EQ(l.get_bool("b"), true);
   EXPECT_EQ(l.get_int("i"), 5);
+  EXPECT_EQ(l.get_uint("i"), 5);
+  EXPECT_EQ(l.get_long("i"), 5);
+  EXPECT_EQ(l.get_ulong("i"), 5);
   EXPECT_EQ(l.get_double("f"), 3.14);
   EXPECT_EQ(l.get_string("s"), "Hello Lua!");
   EXPECT_EQ(strcmp(l.get_c_str("s"), "Hello Lua!"), 0);
@@ -552,6 +556,7 @@ TEST(lua_wrapper, eval) {
   l.dostring("e = a + b + c + d");
   EXPECT_EQ(l.get_int("e"), 10);
   EXPECT_EQ(l.eval_int("return e"), 10);
+  EXPECT_EQ(l.eval_ulong("return e"), 10);
 
   EXPECT_EQ(l.eval_double("return a + b * c / d"), 1 + 2 * 3 / 4.0);
 
@@ -850,6 +855,208 @@ TEST(custom_lua_wrapper, eval) {
   EXPECT_EQ(l.eval_int("return x"), 2);
   EXPECT_EQ(l.eval_int("return a + b"), 4);
   EXPECT_EQ(l.eval_int("a = 4; return a + b"), 6);
+}
+
+TEST(lua_wrapper, template_type_conversion) {
+  lua_wrapper l;
+  lua_pushinteger(l.L(), 1);
+  EXPECT_EQ(l.to<int>(), 1);
+  EXPECT_EQ(l.to<long>(), 1);
+  EXPECT_EQ(l.to<long long>(), 1);
+  EXPECT_EQ(l.to<std::string>(), "1");
+
+  // vector
+  {
+    const char *expr = "t={1,2,3,4}";
+    l.dostring(expr);
+    l.getglobal("t");
+    int  sz = l.gettop();
+    auto v  = l.to<std::vector<int>>();
+    watch(expr, v);
+    EXPECT_EQ(v, (std::vector<int>{1, 2, 3, 4}));
+    EXPECT_EQ(l.gettop(), sz);
+  }
+  {
+    const char *expr = "t={a=1,b=2, 10,20}";
+    l.dostring(expr);
+    l.getglobal("t");
+    int  sz = l.gettop();
+    auto v  = l.to<std::vector<int>>(-1);
+    watch(expr, v);
+    EXPECT_EQ(v, (std::vector<int>{10, 20}));
+    EXPECT_EQ(l.gettop(), sz);
+  }
+  {
+    const char *expr = "t={{1,2},{3,4}}";
+    l.dostring(expr);
+    l.getglobal("t");
+    int  sz = l.gettop();
+    auto v  = l.to<std::vector<std::vector<int>>>(-1, true, nullptr);
+    watch(expr, v);
+    EXPECT_EQ(v, (std::vector<std::vector<int>>{{1, 2}, {3, 4}}));
+    EXPECT_EQ(l.gettop(), sz);
+  }
+
+  // map
+  {
+    const char *expr = "m={a=1, b=2, c=3}";
+    l.dostring(expr);
+    lua_getglobal(l.L(), "m");
+    int sz       = l.gettop();
+    using map_t  = std::map<std::string, long>;
+    using umap_t = std::unordered_map<std::string, long>;
+    auto m       = l.to<map_t>();
+    auto um      = l.to<umap_t>();
+    watch(expr, m, um);
+    EXPECT_EQ(m, (map_t{{"a", 1}, {"b", 2}, {"c", 3}}));
+    EXPECT_EQ(um, (umap_t{{"a", 1}, {"b", 2}, {"c", 3}}));
+    EXPECT_EQ(l.gettop(), sz);
+  }
+  {
+    const char *expr = "m={a=1, b=2, 3, 4}";
+    l.dostring(expr);
+    lua_getglobal(l.L(), "m");
+    int sz       = l.gettop();
+    using map_t  = std::map<std::string, long>;
+    using umap_t = std::unordered_map<std::string, long>;
+    auto m       = l.to<map_t>(-1);
+    auto um      = l.to<umap_t>(-1);
+    watch(expr, m, um);
+    EXPECT_EQ(m, (map_t{{"a", 1}, {"b", 2}, {"1", 3}, {"2", 4}}));
+    EXPECT_EQ(um, (umap_t{{"a", 1}, {"b", 2}, {"1", 3}, {"2", 4}}));
+    EXPECT_EQ(l.gettop(), sz);
+  }
+  {
+    const char *expr = "m={a=1, 1, 2, [3] = 3, [5]=5}";
+    l.dostring(expr);
+    lua_getglobal(l.L(), "m");
+    int  sz = l.gettop();
+    auto m  = l.to<std::map<int, int>>();
+    auto um = l.to<std::unordered_map<int, int>>();
+    watch(expr, m, um);
+    EXPECT_EQ(m, (std::map<int, int>{{1, 1}, {2, 2}, {3, 3}, {5, 5}}));
+    EXPECT_EQ(um,
+              (std::unordered_map<int, int>{{1, 1}, {2, 2}, {3, 3}, {5, 5}}));
+    EXPECT_EQ(l.gettop(), sz);
+  }
+  {
+    const char *expr = "m={[1]=1, [2]=2,  10, 20}";
+    l.dostring(expr);
+    l.getglobal("m");
+    int  sz = l.gettop();
+    auto m  = l.to<std::map<int, int>>(-1, true, nullptr);
+    auto um = l.to<std::unordered_map<int, int>>(-1, true, nullptr);
+    watch(expr, m, um);
+    EXPECT_EQ(m, (std::map<int, int>{{1, 10}, {2, 20}}));
+    EXPECT_EQ(um, (std::unordered_map<int, int>{{1, 10}, {2, 20}}));
+    EXPECT_EQ(l.gettop(), sz);
+  }
+  {
+    const char *expr = "m={10, 20, [1]=1, [2]=2}";
+    l.dostring(expr);
+    l.getglobal("m");
+    int  sz = l.gettop();
+    auto m  = l.to<std::map<int, int>>(-1, true, nullptr);
+    watch(expr, m);
+    EXPECT_EQ(m, (std::map<int, int>{{1, 10}, {2, 20}}));
+    EXPECT_EQ(l.gettop(), sz);
+  }
+  {
+    const char *expr = "m={a=1, b=2, 11, true, F=false}";
+    l.dostring(expr);
+    lua_getglobal(l.L(), "m");
+    int  sz = l.gettop();
+    auto m  = l.to<std::map<std::string, int>>(-1, true, nullptr);
+    watch(expr, m);
+    EXPECT_EQ(m,
+              (std::map<std::string, int>{
+                  {"a", 1}, {"b", 2}, {"1", 11}, {"2", 1}, {"F", 0}}));
+    EXPECT_EQ(l.gettop(), sz);
+  }
+
+  {
+    const char *expr = "m={a=1.0, b=2.5, c=3, 1.1, 2.2, true, F=false}";
+    l.dostring(expr);
+    lua_getglobal(l.L(), "m");
+    int  sz = l.gettop();
+    auto m  = l.to<std::map<std::string, double>>(-1, true, nullptr);
+    watch(expr, m);
+    EXPECT_EQ(m,
+              (std::map<std::string, double>{{"a", 1},
+                                             {"b", 2.5},
+                                             {"c", 3},
+                                             {"1", 1.1},
+                                             {"2", 2.2},
+                                             {"3", 1},
+                                             {"F", 0}}));
+    EXPECT_EQ(l.gettop(), sz);
+  }
+  {
+    const char *expr = "m={a=1.0, b=2.5, c=3, 1.1, 2.2, true, F=false}";
+    l.dostring(expr);
+    lua_getglobal(l.L(), "m");
+    int  sz = l.gettop();
+    auto m  = l.to<std::unordered_map<std::string, double>>(-1, true, nullptr);
+    watch(expr, m);
+    EXPECT_EQ(m,
+              (std::unordered_map<std::string, double>{{"a", 1},
+                                                       {"b", 2.5},
+                                                       {"c", 3},
+                                                       {"1", 1.1},
+                                                       {"2", 2.2},
+                                                       {"3", 1},
+                                                       {"F", 0}}));
+    EXPECT_EQ(l.gettop(), sz);
+  }
+
+  // complex
+  {
+    const char *expr = "m={a={1,3}, b={2,4}}";
+    l.dostring(expr);
+    lua_getglobal(l.L(), "m");
+    int  sz = l.gettop();
+    auto m  = l.to<std::map<std::string, std::vector<int>>>(-1);
+    watch(expr, m);
+    EXPECT_EQ(m,
+              (std::map<std::string, std::vector<int>>{{"a", {1, 3}},
+                                                       {"b", {2, 4}}}));
+    EXPECT_EQ(l.gettop(), sz);
+  }
+  {
+    const char *expr = "m={[10010]={1,3}, [10086]={2,4}}";
+    l.dostring(expr);
+    lua_getglobal(l.L(), "m");
+    int  sz = l.gettop();
+    auto m  = l.to<std::map<std::string, std::vector<int>>>(-1);
+    watch(expr, m);
+    EXPECT_EQ(m,
+              (std::map<std::string, std::vector<int>>{{"10010", {1, 3}},
+                                                       {"10086", {2, 4}}}));
+    EXPECT_EQ(l.gettop(), sz);
+  }
+  {
+    const char *expr = "m={[10010]={1,3}, [10086]={2,4}}";
+    l.dostring(expr);
+    lua_getglobal(l.L(), "m");
+    int  sz = l.gettop();
+    auto m  = l.to<std::map<int, std::vector<int>>>(-1);
+    watch(expr, m);
+    EXPECT_EQ(
+        m, (std::map<int, std::vector<int>>{{10010, {1, 3}}, {10086, {2, 4}}}));
+    EXPECT_EQ(l.gettop(), sz);
+  }
+  {
+    const char *expr = "m={a={X=1,Y=3}, b={X=2,Y=4}}";
+    l.dostring(expr);
+    lua_getglobal(l.L(), "m");
+    int sz     = l.gettop();
+    using type = std::unordered_map<std::string, std::map<std::string, int>>;
+    auto m     = l.to<type>(-1);
+    watch(expr, m);
+    EXPECT_EQ(m,
+              (type{{"a", {{"X", 1}, {"Y", 3}}}, {"b", {{"X", 2}, {"Y", 4}}}}));
+    EXPECT_EQ(l.gettop(), sz);
+  }
 }
 
 int main(int argc, char **argv) {
