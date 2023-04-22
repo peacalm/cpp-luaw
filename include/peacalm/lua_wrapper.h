@@ -365,7 +365,7 @@ public:
    */
 
 #define DEFINE_TYPE_CONVERSION(typename, type, default)        \
-  type to_##typename(int   idx,                                \
+  type to_##typename(int   idx        = -1,                    \
                      type  def        = default,               \
                      bool  enable_log = true,                  \
                      bool* failed     = nullptr) {                 \
@@ -406,7 +406,7 @@ public:
 
   // NOTICE: Lua will implicitly convert number to string
   // boolean can't convert to string
-  const char* to_c_str(int         idx,
+  const char* to_c_str(int         idx        = -1,
                        const char* def        = "",
                        bool        enable_log = true,
                        bool*       failed     = nullptr) {
@@ -423,7 +423,7 @@ public:
     return def;
   }
 
-  std::string to_string(int                idx,
+  std::string to_string(int                idx        = -1,
                         const std::string& def        = "",
                         bool               enable_log = true,
                         bool*              failed     = nullptr) {
