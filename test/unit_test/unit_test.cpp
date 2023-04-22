@@ -913,6 +913,16 @@ TEST(lua_wrapper, template_type_conversion) {
     EXPECT_EQ(v, (std::vector<std::vector<int>>{{1, 2}, {3, 4}}));
     EXPECT_EQ(l.gettop(), sz);
   }
+  {
+    const char *expr = "t={1, 2, nil, nil, 4}";
+    l.dostring(expr);
+    l.getglobal("t");
+    int  sz = l.gettop();
+    auto v  = l.to<std::vector<int>>(-1);
+    watch(expr, v);
+    EXPECT_EQ(v, (std::vector<int>{1, 2, 0, 0, 4}));
+    EXPECT_EQ(l.gettop(), sz);
+  }
 
   // map
   {
@@ -927,6 +937,20 @@ TEST(lua_wrapper, template_type_conversion) {
     watch(expr, m, um);
     EXPECT_EQ(m, (map_t{{"a", 1}, {"b", 2}, {"c", 3}}));
     EXPECT_EQ(um, (umap_t{{"a", 1}, {"b", 2}, {"c", 3}}));
+    EXPECT_EQ(l.gettop(), sz);
+  }
+  {
+    const char *expr = "m={a=1, b=nil, c=3}";
+    l.dostring(expr);
+    lua_getglobal(l.L(), "m");
+    int sz       = l.gettop();
+    using map_t  = std::map<std::string, long>;
+    using umap_t = std::unordered_map<std::string, long>;
+    auto m       = l.to<map_t>();
+    auto um      = l.to<umap_t>();
+    watch(expr, m, um);
+    EXPECT_EQ(m, (map_t{{"a", 1}, {"c", 3}}));
+    EXPECT_EQ(um, (umap_t{{"a", 1}, {"c", 3}}));
     EXPECT_EQ(l.gettop(), sz);
   }
   {
