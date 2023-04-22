@@ -355,8 +355,8 @@ public:
   /**
    * @brief Convert a value in Lua stack to C++ type value
    *
-   * @param [in] i Index of Lua stack where the in
-   * @param [in] default The default value returned if convert failed
+   * @param [in] idx Index of Lua stack where the in
+   * @param [in] def The default value returned if convert failed
    * @param [in] enable_log Whether print a log when exception occurs
    * @param [out] failed Will be set whether the convertion is failed if this
    * pointer is not nullptr
@@ -365,32 +365,32 @@ public:
    */
 
 #define DEFINE_TYPE_CONVERSION(typename, type, default)        \
-  type to_##typename(int   i,                                  \
+  type to_##typename(int   idx,                                \
                      type  def        = default,               \
                      bool  enable_log = true,                  \
                      bool* failed     = nullptr) {                 \
     /* check integer before number to avoid precision lost. */ \
-    if (lua_isinteger(L_, i)) {                                \
+    if (lua_isinteger(L_, idx)) {                              \
       if (failed) *failed = false;                             \
-      return static_cast<type>(lua_tointeger(L_, i));          \
+      return static_cast<type>(lua_tointeger(L_, idx));        \
     }                                                          \
-    if (lua_isnumber(L_, i)) {                                 \
+    if (lua_isnumber(L_, idx)) {                               \
       if (failed) *failed = false;                             \
       /* try integer first to avoid precision lost */          \
-      long long t = lua_tointeger(L_, i);                      \
+      long long t = lua_tointeger(L_, idx);                    \
       if (t != 0) return t;                                    \
-      return static_cast<type>(lua_tonumber(L_, i));           \
+      return static_cast<type>(lua_tonumber(L_, idx));         \
     }                                                          \
-    if (lua_isboolean(L_, i)) {                                \
+    if (lua_isboolean(L_, idx)) {                              \
       if (failed) *failed = false;                             \
-      return static_cast<type>(lua_toboolean(L_, i));          \
+      return static_cast<type>(lua_toboolean(L_, idx));        \
     }                                                          \
-    if (lua_isnoneornil(L_, i)) {                              \
+    if (lua_isnoneornil(L_, idx)) {                            \
       if (failed) *failed = false;                             \
       return def;                                              \
     }                                                          \
     if (failed) *failed = true;                                \
-    if (enable_log) log_type_convert_error(i, #type);          \
+    if (enable_log) log_type_convert_error(idx, #type);        \
     return def;                                                \
   }
 
@@ -406,28 +406,28 @@ public:
 
   // NOTICE: Lua will implicitly convert number to string
   // boolean can't convert to string
-  const char* to_c_str(int         i,
+  const char* to_c_str(int         idx,
                        const char* def        = "",
                        bool        enable_log = true,
                        bool*       failed     = nullptr) {
-    if (lua_isstring(L_, i)) {  // include number
+    if (lua_isstring(L_, idx)) {  // include number
       if (failed) *failed = false;
-      return lua_tostring(L_, i);
+      return lua_tostring(L_, idx);
     }
-    if (lua_isnoneornil(L_, i)) {
+    if (lua_isnoneornil(L_, idx)) {
       if (failed) *failed = false;
       return def;
     }
     if (failed) *failed = true;
-    if (enable_log) log_type_convert_error(i, "string");
+    if (enable_log) log_type_convert_error(idx, "string");
     return def;
   }
 
-  std::string to_string(int                i,
+  std::string to_string(int                idx,
                         const std::string& def        = "",
                         bool               enable_log = true,
                         bool*              failed     = nullptr) {
-    return std::string{to_c_str(i, def.c_str(), enable_log, failed)};
+    return std::string{to_c_str(idx, def.c_str(), enable_log, failed)};
   }
 
   /** @}*/
@@ -578,7 +578,7 @@ public:
    * @brief Get a variable in Lua and Convert it to C++ type
    *
    * @param [in] name The variable's name
-   * @param [in] default The default value returned if failed
+   * @param [in] def The default value returned if failed
    * @param [in] enable_log Whether print a log when exception occurs
    * @param [out] failed Will be set whether the operation is failed if this
    * pointer is not nullptr
@@ -632,13 +632,21 @@ public:
 
   /** @}*/
 
+  template <typename T>
+  T get(const char* name, bool enable_log = true, bool* failed = nullptr) {
+    getglobal(name);
+    auto ret = to<T>(-1, enable_log, failed);
+    pop();
+    return ret;
+  }
+
   //////////////////////// evaluate expression /////////////////////////////////
 
   /**
    * @brief Evaluate a Lua expression and get the result in C++ type
    *
    * @param [in] expr Lua expression, which must have a return value
-   * @param [in] default The default value returned if failed
+   * @param [in] def The default value returned if failed
    * @param [in] enable_log Whether print a log when exception occurs
    * @param [out] failed Will be set whether the operation is failed if this
    * pointer is not nullptr
@@ -721,20 +729,21 @@ public:
     std::cerr << "Lua: " << s << std::endl;
   }
 
-  void log_error_in_stack(int i = -1) const {
-    std::cerr << "Lua: " << lua_tostring(L_, i) << std::endl;
+  void log_error_in_stack(int idx = -1) const {
+    std::cerr << "Lua: " << lua_tostring(L_, idx) << std::endl;
   }
 
-  void log_type_convert_error(int i, const char* to) {
+  void log_type_convert_error(int idx, const char* to) {
     std::cerr << "Lua: Can't convert to " << to << " by ";
-    if (lua_isnumber(L_, i) || lua_isstring(L_, i) || lua_isboolean(L_, i) ||
-        lua_isnil(L_, i) || lua_isinteger(L_, i)) {
-      std::cerr << type_name(i) << ": ";
+    if (lua_isnumber(L_, idx) || lua_isstring(L_, idx) ||
+        lua_isboolean(L_, idx) || lua_isnil(L_, idx) ||
+        lua_isinteger(L_, idx)) {
+      std::cerr << type_name(idx) << ": ";
     }
-    if (lua_isstring(L_, i)) {
-      std::cerr << lua_tostring(L_, i) << std::endl;
+    if (lua_isstring(L_, idx)) {
+      std::cerr << lua_tostring(L_, idx) << std::endl;
     } else {
-      std::cerr << luaL_tolstring(L_, i, NULL) << std::endl;
+      std::cerr << luaL_tolstring(L_, idx, NULL) << std::endl;
       pop();
     }
   }
@@ -877,7 +886,7 @@ public:
    * from variable provider automatically, then get the result in C++ type
    *
    * @param [in] expr Lua expression, which must have a return value
-   * @param [in] default The default value returned if failed
+   * @param [in] def The default value returned if failed
    * @param [in] enable_log Whether print a log when exception occurs
    * @param [out] failed Will be set whether the operation is failed if this
    * pointer is not nullptr
