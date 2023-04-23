@@ -361,15 +361,15 @@ public:
   //    [-9223372036854775808, 9223372036854775807]
   //
   // Examples:
-  //   number 2.5 -> string "2.5" (By Lua)
-  //   string "2.5" -> double 2.5 (By Lua)
-  //   double 2.5 -> int 2 (By C++)
-  //   string "2.5" -> int 2 (Firstly "2.5"->2.5 by lua, then 2.5->2 by C++)
-  //   bool true -> int 1 (By C++)
-  //   int 0 -> bool false (By C++)
-  //   double 2.5 -> bool true (By C++)
-  //   string "2.5" -> bool true ("2.5"->2.5 by Lua, then 2.5->true by C++)
-  //
+  // * number 2.5 -> string "2.5" (By Lua)
+  // * string "2.5" -> double 2.5 (By Lua)
+  // * double 2.5 -> int 2 (By C++)
+  // * string "2.5" -> int 2 (Firstly "2.5"->2.5 by lua, then 2.5->2 by C++)
+  // * bool true -> int 1 (By C++)
+  // * int 0 -> bool false (By C++)
+  // * double 2.5 -> bool true (By C++)
+  // * string "2.5" -> bool true ("2.5"->2.5 by Lua, then 2.5->true by C++)
+  // * string "0" -> bool true ("0"->0 by Lua, then 0->false by C++)
 
   /**
    * @brief Convert a value in Lua stack to C++ simple type value.
