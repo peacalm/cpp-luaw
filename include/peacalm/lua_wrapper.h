@@ -317,14 +317,14 @@ public:
   // clang-format on
 
   // clang-format off
-  int isfunction(int idx)      { return lua_isfunction(L_, idx); }
-  int istable(int idx)         { return lua_istable(L_, idx); }
-  int islightuserdata(int idx) { return lua_islightuserdata(L_, idx); }
-  int isnil(int idx)           { return lua_isnil(L_, idx); }
-  int isboolean(int idx)       { return lua_isboolean(L_, idx); }
-  int isthread(int idx)        { return lua_isthread(L_, idx); }
-  int isnone(int idx)          { return lua_isnone(L_, idx); }
-  int isnoneornil(int idx)     { return lua_isnoneornil(L_, idx); }
+  bool isfunction(int idx = -1)      { return lua_isfunction(L_, idx); }
+  bool istable(int idx = -1)         { return lua_istable(L_, idx); }
+  bool islightuserdata(int idx = -1) { return lua_islightuserdata(L_, idx); }
+  bool isnil(int idx = -1)           { return lua_isnil(L_, idx); }
+  bool isboolean(int idx = -1)       { return lua_isboolean(L_, idx); }
+  bool isthread(int idx = -1)        { return lua_isthread(L_, idx); }
+  bool isnone(int idx = -1)          { return lua_isnone(L_, idx); }
+  bool isnoneornil(int idx = -1)     { return lua_isnoneornil(L_, idx); }
   // clang-format on
 
   int getglobal(const char* name) { return lua_getglobal(L_, name); }
@@ -372,6 +372,8 @@ public:
    * @param [in] enable_log Whether print a log when exception occurs
    * @param [out] failed Will be set whether the convertion is failed if this
    * pointer is not nullptr
+   * @param [out] exists Set whether the value at given index exists. Regard
+   * none and nil as not exists.
    *
    * @{
    */
@@ -380,7 +382,9 @@ public:
   type to_##typename(int   idx        = -1,                    \
                      type  def        = default,               \
                      bool  enable_log = true,                  \
-                     bool* failed     = nullptr) {                 \
+                     bool* failed     = nullptr,               \
+                     bool* exists     = nullptr) {                 \
+    if (exists) *exists = !isnoneornil(idx);                   \
     /* check integer before number to avoid precision lost. */ \
     if (lua_isinteger(L_, idx)) {                              \
       if (failed) *failed = false;                             \
@@ -421,7 +425,9 @@ public:
   const char* to_c_str(int         idx        = -1,
                        const char* def        = "",
                        bool        enable_log = true,
-                       bool*       failed     = nullptr) {
+                       bool*       failed     = nullptr,
+                       bool*       exists     = nullptr) {
+    if (exists) *exists = !isnoneornil(idx);
     if (lua_isstring(L_, idx)) {  // include number
       if (failed) *failed = false;
       return lua_tostring(L_, idx);
@@ -438,8 +444,9 @@ public:
   std::string to_string(int                idx        = -1,
                         const std::string& def        = "",
                         bool               enable_log = true,
-                        bool*              failed     = nullptr) {
-    return std::string{to_c_str(idx, def.c_str(), enable_log, failed)};
+                        bool*              failed     = nullptr,
+                        bool*              exists     = nullptr) {
+    return std::string{to_c_str(idx, def.c_str(), enable_log, failed, exists)};
   }
 
   /** @}*/
@@ -455,6 +462,8 @@ public:
    * @param [out] failed Will be set whether the operation is failed if this
    * pointer is not nullptr. If T is a container type, it regards the operation
    * as failed if any element converts failed
+   * @param [out] exists Set whether the value at given index exists. Regard
+   * none and nil as not exists.
    * @return Return the value on given index in type T if conversion succeeded,
    * otherwise return initial value of T(i.e. by statement `T{}`) if T is a
    * simple type, e.g. bool, int, double, std::string, etc. If T is a container
@@ -475,7 +484,10 @@ public:
           std::is_same<T, unsigned long long>::value ||
           std::is_same<T, double>::value || std::is_same<T, std::string>::value,
       T>
-  to(int idx = -1, bool enable_log = true, bool* failed = nullptr);
+  to(int   idx        = -1,
+     bool  enable_log = true,
+     bool* failed     = nullptr,
+     bool* exists     = nullptr);
 
   // to std::vector
   template <typename T>
@@ -483,7 +495,11 @@ public:
                                 std::vector<typename T::value_type,
                                             typename T::allocator_type>>::value,
                    T>
-  to(int idx = -1, bool enable_log = true, bool* failed = nullptr) {
+  to(int   idx        = -1,
+     bool  enable_log = true,
+     bool* failed     = nullptr,
+     bool* exists     = nullptr) {
+    if (exists) *exists = !isnoneornil(-1);
     T ret;
     if (!lua_istable(L_, idx)) {
       if (failed) *failed = true;
@@ -511,8 +527,11 @@ public:
                                          typename T::key_compare,
                                          typename T::allocator_type>>::value,
                    T>
-  to(int idx = -1, bool enable_log = true, bool* failed = nullptr) {
-    return tom<T>(idx, enable_log, failed, "map");
+  to(int   idx        = -1,
+     bool  enable_log = true,
+     bool* failed     = nullptr,
+     bool* exists     = nullptr) {
+    return tom<T>(idx, enable_log, failed, exists, "map");
   }
 
   // To std::unordered_map
@@ -525,8 +544,11 @@ public:
                                       typename T::key_equal,
                                       typename T::allocator_type>>::value,
       T>
-  to(int idx = -1, bool enable_log = true, bool* failed = nullptr) {
-    return tom<T>(idx, enable_log, failed, "unordered_map");
+  to(int   idx        = -1,
+     bool  enable_log = true,
+     bool* failed     = nullptr,
+     bool* exists     = nullptr) {
+    return tom<T>(idx, enable_log, failed, exists, "unordered_map");
   }
 
   // Implementation of to map or to unordered_map
@@ -534,7 +556,9 @@ public:
   T tom(int         idx        = -1,
         bool        enable_log = true,
         bool*       failed     = nullptr,
+        bool*       exists     = nullptr,
         const char* tname      = "map") {
+    if (exists) *exists = !isnoneornil(-1);
     T ret;
     if (!lua_istable(L_, idx)) {
       if (failed) *failed = true;
@@ -617,25 +641,29 @@ public:
    * @param [out] failed Will be set whether the operation is failed if this
    * pointer is not nullptr. If T is a container type, it regards the operation
    * as failed if any element converts failed
+   * @param [out] exists Set whether the variable exists. Regard none and nil as
+   * not exists.
    *
    * @{
    */
 
-#define DEFINE_GLOBAL_GET(typename, type, default)                \
-  type get_##typename(const char* name,                           \
-                      const type& def        = default,           \
-                      bool        enable_log = true,              \
-                      bool*       failed     = nullptr) {                   \
-    lua_getglobal(L_, name);                                      \
-    type ret = to_##typename(-1, def, enable_log, failed);        \
-    pop();                                                        \
-    return ret;                                                   \
-  }                                                               \
-  type get_##typename(const std::string& name,                    \
-                      const type&        def        = default,    \
-                      bool               enable_log = true,       \
-                      bool*              failed     = nullptr) {                   \
-    return get_##typename(name.c_str(), def, enable_log, failed); \
+#define DEFINE_GLOBAL_GET(typename, type, default)                        \
+  type get_##typename(const char* name,                                   \
+                      const type& def        = default,                   \
+                      bool        enable_log = true,                      \
+                      bool*       failed     = nullptr,                   \
+                      bool*       exists     = nullptr) {                           \
+    lua_getglobal(L_, name);                                              \
+    type ret = to_##typename(-1, def, enable_log, failed, exists);        \
+    pop();                                                                \
+    return ret;                                                           \
+  }                                                                       \
+  type get_##typename(const std::string& name,                            \
+                      const type&        def        = default,            \
+                      bool               enable_log = true,               \
+                      bool*              failed     = nullptr,            \
+                      bool*              exists     = nullptr) {                           \
+    return get_##typename(name.c_str(), def, enable_log, failed, exists); \
   }
 
   DEFINE_GLOBAL_GET(int, int, 0)
@@ -654,15 +682,17 @@ public:
   const char* get_c_str(const char* name,
                         const char* def        = "",
                         bool        enable_log = true,
-                        bool*       failed     = nullptr) {
+                        bool*       failed     = nullptr,
+                        bool*       exists     = nullptr) {
     lua_getglobal(L_, name);
-    return to_c_str(-1, def, enable_log, failed);
+    return to_c_str(-1, def, enable_log, failed, exists);
   }
   const char* get_c_str(const std::string& name,
                         const char*        def        = "",
                         bool               enable_log = true,
-                        bool*              failed     = nullptr) {
-    return get_c_str(name.c_str(), def, enable_log, failed);
+                        bool*              failed     = nullptr,
+                        bool*              exists     = nullptr) {
+    return get_c_str(name.c_str(), def, enable_log, failed, exists);
   }
 
   /** @}*/
@@ -678,20 +708,26 @@ public:
    * @param [out] failed Will be set whether the operation is failed if this
    * pointer is not nullptr. If T is a container type, it regards the operation
    * as failed if any element converts failed
+   * @param [out] exists Set whether the variable exists. Regard none and nil as
+   * not exists.
    * @return The variable's value in type T
    */
   template <typename T>
-  T get(const char* name, bool enable_log = true, bool* failed = nullptr) {
+  T get(const char* name,
+        bool        enable_log = true,
+        bool*       failed     = nullptr,
+        bool*       exists     = nullptr) {
     getglobal(name);
-    auto ret = to<T>(-1, enable_log, failed);
+    auto ret = to<T>(-1, enable_log, failed, exists);
     pop();
     return ret;
   }
   template <typename T>
   T get(const std::string& name,
         bool               enable_log = true,
-        bool*              failed     = nullptr) {
-    return get<T>(name.c_str(), enable_log, failed);
+        bool*              failed     = nullptr,
+        bool*              exists     = nullptr) {
+    return get<T>(name.c_str(), enable_log, failed, exists);
   }
 
   //////////////////////// evaluate expression /////////////////////////////////
@@ -842,10 +878,11 @@ public:
   }
 };
 
-#define DEFINE_TO_SPECIALIZATIOIN(typename, type, default)             \
-  template <>                                                          \
-  type lua_wrapper::to<type>(int idx, bool enable_log, bool* failed) { \
-    return to_##typename(idx, default, enable_log, failed);            \
+#define DEFINE_TO_SPECIALIZATIOIN(typename, type, default)          \
+  template <>                                                       \
+  type lua_wrapper::to<type>(                                       \
+      int idx, bool enable_log, bool* failed, bool* exists) {       \
+    return to_##typename(idx, default, enable_log, failed, exists); \
   }
 
 DEFINE_TO_SPECIALIZATIOIN(bool, bool, false)
@@ -864,7 +901,9 @@ DEFINE_TO_SPECIALIZATIOIN(double, double, false)
 template <>
 std::string lua_wrapper::to<std::string>(int   idx,
                                          bool  enable_log,
-                                         bool* failed) {
+                                         bool* failed,
+                                         bool* exists) {
+  if (exists) *exists = !isnoneornil(idx);
   if (lua_isstring(L_, idx)) {
     lua_pushvalue(L_, idx);  // make a copy, so, it's safe
     std::string ret = lua_tostring(L_, -1);
