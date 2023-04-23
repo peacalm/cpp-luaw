@@ -1168,6 +1168,16 @@ TEST(lua_wrapper, template_type_conversion) {
     EXPECT_EQ(l.gettop(), sz);
   }
   {
+    const char *expr = "t={1,2,'c'}";
+    l.dostring(expr);
+    l.getglobal("t");
+    int  sz = l.gettop();
+    auto v  = l.to<std::vector<std::string>>();
+    watch(expr, v);
+    EXPECT_EQ(v, (std::vector<std::string>{"1", "2", "c"}));
+    EXPECT_EQ(l.gettop(), sz);
+  }
+  {
     const char *expr = "t={a=1,b=2, 10,20}";
     l.dostring(expr);
     l.getglobal("t");
@@ -1198,13 +1208,107 @@ TEST(lua_wrapper, template_type_conversion) {
     EXPECT_EQ(l.gettop(), sz);
   }
   {
-    const char *expr = "t={1, 2, 'a', b', 4}";
+    const char *expr = "t={1, 2, 'a', 'b', 4}";
     l.dostring(expr);
     l.getglobal("t");
     int  sz = l.gettop();
     auto v  = l.to<std::vector<int>>(-1);
     watch(expr, v);
     EXPECT_EQ(v, (std::vector<int>{1, 2, 4}));
+    EXPECT_EQ(l.gettop(), sz);
+  }
+  {
+    const char *expr = "t={1, 2, 'a', 'b', 4}";
+    l.dostring(expr);
+    l.getglobal("t");
+    int  sz = l.gettop();
+    bool failed, exists;
+    auto v = l.to<std::vector<std::string>>(-1, false, &failed, &exists);
+    watch(expr, v, failed, exists);
+    EXPECT_EQ(v, (std::vector<std::string>{"1", "2", "a", "b", "4"}));
+    EXPECT_EQ(l.gettop(), sz);
+  }
+
+  // set
+  {
+    const char *expr = "t={1,2,3,4,3,2}";
+    l.dostring(expr);
+    l.getglobal("t");
+    int  sz = l.gettop();
+    auto s  = l.to<std::set<int>>();
+    watch(expr, s);
+    EXPECT_EQ(s, (std::set<int>{1, 2, 3, 4}));
+    EXPECT_EQ(l.gettop(), sz);
+  }
+  {
+    const char *expr = "t={1,2,3,4,3}";
+    l.dostring(expr);
+    l.getglobal("t");
+    int  sz = l.gettop();
+    auto s  = l.to<std::unordered_set<int>>();
+    watch(expr, s);
+    EXPECT_EQ(s, (std::unordered_set<int>{1, 2, 3, 4}));
+    EXPECT_EQ(l.gettop(), sz);
+  }
+  {
+    const char *expr = "t={1,3,4,3}";
+    l.dostring(expr);
+    l.getglobal("t");
+    int  sz = l.gettop();
+    auto s  = l.to<std::unordered_set<std::string>>();
+    watch(expr, s);
+    EXPECT_EQ(s, (std::unordered_set<std::string>{"1", "3", "4"}));
+    EXPECT_EQ(l.gettop(), sz);
+  }
+  {
+    const char *expr = "t={a=1,b=2, 10,20}";
+    l.dostring(expr);
+    l.getglobal("t");
+    int  sz = l.gettop();
+    auto s  = l.to<std::set<int>>(-1);
+    watch(expr, s);
+    EXPECT_EQ(s, (std::set<int>{10, 20}));
+    EXPECT_EQ(l.gettop(), sz);
+  }
+  {
+    const char *expr = "t={1, 2, nil, 4}";
+    l.dostring(expr);
+    l.getglobal("t");
+    int  sz = l.gettop();
+    auto s  = l.to<std::set<int>>(-1);
+    watch(expr, s);
+    EXPECT_EQ(s, (std::set<int>{1, 2, 4}));  // ignore nil
+    EXPECT_EQ(l.gettop(), sz);
+  }
+  {
+    const char *expr = "t={1, 2, nil, nil, 4}";
+    l.dostring(expr);
+    l.getglobal("t");
+    int  sz = l.gettop();
+    auto s  = l.to<std::unordered_set<int>>(-1);
+    watch(expr, s);
+    EXPECT_EQ(s, (std::unordered_set<int>{1, 2, 4}));  // ignore nil
+    EXPECT_EQ(l.gettop(), sz);
+  }
+  {
+    const char *expr = "t={1, 2, 'a', 'b', 4}";
+    l.dostring(expr);
+    l.getglobal("t");
+    int  sz = l.gettop();
+    auto s  = l.to<std::set<int>>(-1);
+    watch(expr, s);
+    EXPECT_EQ(s, (std::set<int>{1, 2, 4}));
+    EXPECT_EQ(l.gettop(), sz);
+  }
+  {
+    const char *expr = "t={1, 2, 'a', 'b', 4}";
+    l.dostring(expr);
+    l.getglobal("t");
+    int  sz = l.gettop();
+    bool failed, exists;
+    auto s = l.to<std::unordered_set<std::string>>(-1, false, &failed, &exists);
+    watch(expr, s, failed, exists);
+    EXPECT_EQ(s, (std::unordered_set<std::string>{"1", "2", "a", "b", "4"}));
     EXPECT_EQ(l.gettop(), sz);
   }
 

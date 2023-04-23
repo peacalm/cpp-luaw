@@ -21,6 +21,7 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -455,8 +456,8 @@ public:
    * @brief Convert a value in Lua stack to complex C++ type
    *
    * @tparam T The result type user expected. T can be any type composited by
-   * bool, integer types, double, std::string, std::vector, std::map and
-   * std::unordered_map
+   * bool, integer types, double, std::string, std::vector, std::set,
+   * std::unordered_set, std::map and std::unordered_map
    * @param [in] idx value's index in stack
    * @param [in] disable_log Whether print a log when exception occurs
    * @param [out] failed Will be set whether the operation is failed if this
@@ -490,7 +491,7 @@ public:
      bool* failed      = nullptr,
      bool* exists      = nullptr);
 
-  // to std::vector
+  // To std::vector
   // NOTICE: Discard nil in list! e.g. {1,2,nil,4} -> vector<int>{1,2,3}
   template <typename T>
   std::enable_if_t<std::is_same<T,
@@ -526,6 +527,40 @@ public:
       pop();
     }
     return ret;
+  }
+
+  // To std::set
+  template <typename T>
+  std::enable_if_t<std::is_same<T,
+                                std::set<typename T::key_type,
+                                         typename T::key_compare,
+                                         typename T::allocator_type>>::value,
+                   T>
+  to(int   idx         = -1,
+     bool  disable_log = false,
+     bool* failed      = nullptr,
+     bool* exists      = nullptr) {
+    auto v = to<std::vector<typename T::key_type, typename T::allocator_type>>(
+        idx, disable_log, failed, exists);
+    return T(v.begin(), v.end());
+  }
+
+  // To std::unordered_set
+  template <typename T>
+  std::enable_if_t<
+      std::is_same<T,
+                   std::unordered_set<typename T::key_type,
+                                      typename T::hasher,
+                                      typename T::key_equal,
+                                      typename T::allocator_type>>::value,
+      T>
+  to(int   idx         = -1,
+     bool  disable_log = false,
+     bool* failed      = nullptr,
+     bool* exists      = nullptr) {
+    auto v = to<std::vector<typename T::key_type, typename T::allocator_type>>(
+        idx, disable_log, failed, exists);
+    return T(v.begin(), v.end());
   }
 
   // To std::map
