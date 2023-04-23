@@ -499,8 +499,12 @@ public:
      bool  disable_log = false,
      bool* failed      = nullptr,
      bool* exists      = nullptr) {
-    if (exists) *exists = !isnoneornil(-1);
+    if (exists) *exists = !isnoneornil(idx);
     T ret;
+    if (isnoneornil(idx)) {
+      if (failed) *failed = false;
+      return ret;
+    }
     if (!lua_istable(L_, idx)) {
       if (failed) *failed = true;
       if (!disable_log) log_type_convert_error(idx, "vector");
@@ -511,8 +515,11 @@ public:
     ret.reserve(sz);
     for (int i = 1; i <= sz; ++i) {
       lua_geti(L_, idx, i);
-      bool subfailed;
-      ret.push_back(to<typename T::value_type>(-1, disable_log, &subfailed));
+      bool subfailed, subexists;
+      auto subret =
+          to<typename T::value_type>(-1, disable_log, &subfailed, &subexists);
+      // Only add elements exist and conversion succeeded
+      if (!subfailed && subexists) ret.push_back(std::move(subret));
       if (subfailed && failed) *failed = true;
       pop();
     }
@@ -558,8 +565,12 @@ public:
         bool*       failed      = nullptr,
         bool*       exists      = nullptr,
         const char* tname       = "map") {
-    if (exists) *exists = !isnoneornil(-1);
+    if (exists) *exists = !isnoneornil(idx);
     T ret;
+    if (isnoneornil(idx)) {
+      if (failed) *failed = false;
+      return ret;
+    }
     if (!lua_istable(L_, idx)) {
       if (failed) *failed = true;
       if (!disable_log) log_type_convert_error(idx, tname);
@@ -569,12 +580,12 @@ public:
     int absidx = idx > 0 ? idx : gettop() + idx + 1;
     lua_pushnil(L_);
     while (lua_next(L_, absidx) != 0) {
-      bool        kfailed = false, vfailed = false;
-      const auto& key = to<typename T::key_type>(-2, disable_log, &kfailed);
-      if (!kfailed) {
-        const auto& val =
-            to<typename T::mapped_type>(-1, disable_log, &vfailed);
-        if (!vfailed) ret.insert({std::move(key), std::move(val)});
+      bool kfailed, kexists, vfailed, vexists;
+      auto key = to<typename T::key_type>(-2, disable_log, &kfailed, &kexists);
+      if (!kfailed && kexists) {
+        auto val =
+            to<typename T::mapped_type>(-1, disable_log, &vfailed, &vexists);
+        if (!vfailed && vexists) ret.insert({std::move(key), std::move(val)});
       }
       if ((kfailed || vfailed) && failed) *failed = true;
       pop();

@@ -378,6 +378,239 @@ TEST(lua_wrapper, large_number) {
   EXPECT_EQ(l.get_double("i"), i);
 }
 
+TEST(lua_wrapper, type_conversion_failed_exists) {
+  lua_wrapper l;
+  {
+    // none
+    bool disable_log = false, failed = false, exists = false;
+    EXPECT_EQ(l.to_bool(-1, true, disable_log, &failed, &exists), true);
+    EXPECT_FALSE(failed);
+    EXPECT_FALSE(exists);
+    failed = true, exists = false;
+    EXPECT_EQ(l.to_long(-1, -1, disable_log, &failed, &exists), -1);
+    EXPECT_FALSE(failed);
+    EXPECT_FALSE(exists);
+    failed = false, exists = true;
+    EXPECT_EQ(l.to_double(-1, 1.5, disable_log, &failed, &exists), 1.5);
+    EXPECT_FALSE(failed);
+    EXPECT_FALSE(exists);
+    failed = true, exists = true;
+    EXPECT_EQ(l.to_string(-1, "", disable_log, &failed, &exists), "");
+    EXPECT_FALSE(failed);
+    EXPECT_FALSE(exists);
+
+    failed = false, exists = false;
+    EXPECT_EQ(l.to<bool>(-1, disable_log, &failed, &exists), false);
+    EXPECT_FALSE(failed);
+    EXPECT_FALSE(exists);
+    failed = true, exists = false;
+    EXPECT_EQ(l.to<int>(-1, disable_log, &failed, &exists), 0);
+    EXPECT_FALSE(failed);
+    EXPECT_FALSE(exists);
+    failed = false, exists = true;
+    EXPECT_EQ(l.to<double>(-1, disable_log, &failed, &exists), 0.0);
+    EXPECT_FALSE(failed);
+    EXPECT_FALSE(exists);
+    failed = true, exists = true;
+    EXPECT_EQ(l.to<std::string>(-1, disable_log, &failed, &exists),
+              std::string{});
+    EXPECT_FALSE(failed);
+    EXPECT_FALSE(exists);
+  }
+  {
+    // nil
+    l.settop(0);
+    lua_pushnil(l.L());
+    bool disable_log = false, failed = false, exists = false;
+    EXPECT_EQ(l.to_bool(-1, true, disable_log, &failed, &exists), true);
+    EXPECT_FALSE(failed);
+    EXPECT_FALSE(exists);
+    failed = true, exists = false;
+    EXPECT_EQ(l.to_long(-1, -1, disable_log, &failed, &exists), -1);
+    EXPECT_FALSE(failed);
+    EXPECT_FALSE(exists);
+    failed = false, exists = true;
+    EXPECT_EQ(l.to_double(-1, 1.5, disable_log, &failed, &exists), 1.5);
+    EXPECT_FALSE(failed);
+    EXPECT_FALSE(exists);
+    failed = true, exists = true;
+    EXPECT_EQ(l.to_string(-1, "", disable_log, &failed, &exists), "");
+    EXPECT_FALSE(failed);
+    EXPECT_FALSE(exists);
+
+    failed = false, exists = false;
+    EXPECT_EQ(l.to<bool>(-1, disable_log, &failed, &exists), false);
+    EXPECT_FALSE(failed);
+    EXPECT_FALSE(exists);
+    failed = true, exists = false;
+    EXPECT_EQ(l.to<int>(-1, disable_log, &failed, &exists), 0);
+    EXPECT_FALSE(failed);
+    EXPECT_FALSE(exists);
+    failed = false, exists = true;
+    EXPECT_EQ(l.to<double>(-1, disable_log, &failed, &exists), 0.0);
+    EXPECT_FALSE(failed);
+    EXPECT_FALSE(exists);
+    failed = true, exists = true;
+    EXPECT_EQ(l.to<std::string>(-1, disable_log, &failed, &exists),
+              std::string{});
+    EXPECT_FALSE(failed);
+    EXPECT_FALSE(exists);
+  }
+  {
+    // bool
+    l.settop(0);
+    lua_pushboolean(l.L(), int(true));
+    bool disable_log = false, failed = false, exists = false;
+    EXPECT_EQ(l.to_bool(-1, false, disable_log, &failed, &exists), true);
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+    failed = true, exists = false;
+    EXPECT_EQ(l.to_long(-1, -1, disable_log, &failed, &exists), 1);
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+    failed = false, exists = true;
+    EXPECT_EQ(l.to_double(-1, 1.5, disable_log, &failed, &exists), 1);
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+    failed = true, exists = true;
+    EXPECT_EQ(l.to_string(-1, "", disable_log, &failed, &exists), "");
+    EXPECT_TRUE(failed);
+    EXPECT_TRUE(exists);
+
+    failed = false, exists = false;
+    EXPECT_EQ(l.to<bool>(-1, disable_log, &failed, &exists), true);
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+    failed = true, exists = false;
+    EXPECT_EQ(l.to<int>(-1, disable_log, &failed, &exists), 1);
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+    failed = false, exists = true;
+    EXPECT_EQ(l.to<double>(-1, disable_log, &failed, &exists), 1);
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+    failed = true, exists = true;
+    EXPECT_EQ(l.to<std::string>(-1, disable_log, &failed, &exists),
+              std::string{});
+    EXPECT_TRUE(failed);
+    EXPECT_TRUE(exists);
+  }
+  {
+    // int
+    l.settop(0);
+    lua_pushinteger(l.L(), 123);
+    bool disable_log = false, failed = false, exists = false;
+    EXPECT_EQ(l.to_bool(-1, false, disable_log, &failed, &exists), true);
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+    failed = true, exists = false;
+    EXPECT_EQ(l.to_long(-1, -1, disable_log, &failed, &exists), 123);
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+    failed = false, exists = true;
+    EXPECT_EQ(l.to_double(-1, 1.5, disable_log, &failed, &exists), 123);
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+    failed = true, exists = true;
+    EXPECT_EQ(l.to_string(-1, "", disable_log, &failed, &exists), "123");
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+
+    failed = false, exists = false;
+    EXPECT_EQ(l.to<bool>(-1, disable_log, &failed, &exists), true);
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+    failed = true, exists = false;
+    EXPECT_EQ(l.to<long long>(-1, disable_log, &failed, &exists), 123);
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+    failed = false, exists = true;
+    EXPECT_EQ(l.to<double>(-1, disable_log, &failed, &exists), 123);
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+    failed = true, exists = true;
+    EXPECT_EQ(l.to<std::string>(-1, disable_log, &failed, &exists), "123");
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+  }
+  {
+    // string
+    l.settop(0);
+    lua_pushstring(l.L(), "123.00");
+    bool disable_log = false, failed = false, exists = false;
+    EXPECT_EQ(l.to_bool(-1, false, disable_log, &failed, &exists), true);
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+    failed = true, exists = false;
+    EXPECT_EQ(l.to_long(-1, -1, disable_log, &failed, &exists), 123);
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+    failed = false, exists = true;
+    EXPECT_EQ(l.to_double(-1, 1.5, disable_log, &failed, &exists), 123);
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+    failed = true, exists = true;
+    EXPECT_EQ(l.to_string(-1, "", disable_log, &failed, &exists), "123.00");
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+
+    failed = false, exists = false;
+    EXPECT_EQ(l.to<bool>(-1, disable_log, &failed, &exists), true);
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+    failed = true, exists = false;
+    EXPECT_EQ(l.to<unsigned long long>(-1, disable_log, &failed, &exists), 123);
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+    failed = false, exists = true;
+    EXPECT_EQ(l.to<double>(-1, disable_log, &failed, &exists), 123);
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+    failed = true, exists = true;
+    EXPECT_EQ(l.to<std::string>(-1, disable_log, &failed, &exists), "123.00");
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+  }
+  {
+    // string
+    l.settop(0);
+    lua_pushstring(l.L(), "abc");
+    bool disable_log = false, failed = false, exists = false;
+    EXPECT_EQ(l.to_bool(-1, false, disable_log, &failed, &exists), false);
+    EXPECT_TRUE(failed);
+    EXPECT_TRUE(exists);
+    failed = true, exists = false;
+    EXPECT_EQ(l.to_int(-1, -1, disable_log, &failed, &exists), -1);
+    EXPECT_TRUE(failed);
+    EXPECT_TRUE(exists);
+    failed = false, exists = true;
+    EXPECT_EQ(l.to_double(-1, 1.5, disable_log, &failed, &exists), 1.5);
+    EXPECT_TRUE(failed);
+    EXPECT_TRUE(exists);
+    failed = true, exists = true;
+    EXPECT_EQ(l.to_string(-1, "", disable_log, &failed, &exists), "abc");
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+
+    failed = false, exists = false;
+    EXPECT_EQ(l.to<bool>(-1, disable_log, &failed, &exists), false);
+    EXPECT_TRUE(failed);
+    EXPECT_TRUE(exists);
+    failed = true, exists = false;
+    EXPECT_EQ(l.to<unsigned long>(-1, disable_log, &failed, &exists), 0);
+    EXPECT_TRUE(failed);
+    EXPECT_TRUE(exists);
+    failed = false, exists = true;
+    EXPECT_EQ(l.to<double>(-1, disable_log, &failed, &exists), 0);
+    EXPECT_TRUE(failed);
+    EXPECT_TRUE(exists);
+    failed = true, exists = true;
+    EXPECT_EQ(l.to<std::string>(-1, disable_log, &failed, &exists), "abc");
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+  }
+}
+
 TEST(lua_wrapper, set_and_get) {
   lua_wrapper l;
 
@@ -423,6 +656,25 @@ TEST(lua_wrapper, set_and_get) {
   EXPECT_EQ(l.get_uint("n1"), 0);
   EXPECT_EQ(l.get_llong("n1"), 0);
   EXPECT_EQ(l.get_ullong("n1"), 0);
+  {
+    bool failed = false, exists = false;
+    EXPECT_EQ(l.get_int("n1", 0, true, &failed, &exists), 0);
+    EXPECT_FALSE(exists);
+    EXPECT_EQ(l.get_uint("n1", 0, true, &failed, &exists), 0);
+    EXPECT_FALSE(exists);
+    EXPECT_EQ(l.get_llong("n1", 0, true, &failed, &exists), 0);
+    EXPECT_FALSE(exists);
+    EXPECT_EQ(l.get_ullong("n1", 0, true, &failed, &exists), 0);
+    EXPECT_FALSE(exists);
+    EXPECT_EQ(l.get_int("nxxx", 0, true, &failed, &exists), 0);
+    EXPECT_FALSE(exists);
+    EXPECT_EQ(l.get_uint("nxxx", 0, true, &failed, &exists), 0);
+    EXPECT_FALSE(exists);
+    EXPECT_EQ(l.get_llong("nxxx", 0, true, &failed, &exists), 0);
+    EXPECT_FALSE(exists);
+    EXPECT_EQ(l.get_ullong("nxxx", 0, true, &failed, &exists), 0);
+    EXPECT_FALSE(exists);
+  }
 
   // return default value
   EXPECT_EQ(l.get_int("n1", 1), 1);
@@ -466,18 +718,20 @@ TEST(lua_wrapper, set_and_get) {
   EXPECT_EQ(l.gettop(), 0);
 
   // false conversion
-  bool failed = false;
-  EXPECT_EQ(l.get_bool("s", false, true, &failed), false);
-  EXPECT_TRUE(failed);
-  failed = false;
-  EXPECT_EQ(l.get_bool("s", true, true, &failed), true);
-  EXPECT_TRUE(failed);
-  failed = false;
-  EXPECT_EQ(l.get_int("s", 0, true, &failed), 0);
-  EXPECT_TRUE(failed);
-  failed = false;
-  EXPECT_EQ(l.get_int("s", -1, true, &failed), -1);
-  EXPECT_TRUE(failed);
+  {
+    bool failed = false;
+    EXPECT_EQ(l.get_bool("s", false, true, &failed), false);
+    EXPECT_TRUE(failed);
+    failed = false;
+    EXPECT_EQ(l.get_bool("s", true, true, &failed), true);
+    EXPECT_TRUE(failed);
+    failed = false;
+    EXPECT_EQ(l.get_int("s", 0, true, &failed), 0);
+    EXPECT_TRUE(failed);
+    failed = false;
+    EXPECT_EQ(l.get_int("s", -1, true, &failed), -1);
+    EXPECT_TRUE(failed);
+  }
 
   EXPECT_EQ(l.gettop(), 0);
 
@@ -940,7 +1194,17 @@ TEST(lua_wrapper, template_type_conversion) {
     int  sz = l.gettop();
     auto v  = l.to<std::vector<int>>(-1);
     watch(expr, v);
-    EXPECT_EQ(v, (std::vector<int>{1, 2, 0, 0, 4}));
+    EXPECT_EQ(v, (std::vector<int>{1, 2, 4}));  // ignore nil
+    EXPECT_EQ(l.gettop(), sz);
+  }
+  {
+    const char *expr = "t={1, 2, 'a', b', 4}";
+    l.dostring(expr);
+    l.getglobal("t");
+    int  sz = l.gettop();
+    auto v  = l.to<std::vector<int>>(-1);
+    watch(expr, v);
+    EXPECT_EQ(v, (std::vector<int>{1, 2, 4}));
     EXPECT_EQ(l.gettop(), sz);
   }
 
@@ -1121,16 +1385,136 @@ TEST(lua_wrapper, template_type_conversion) {
 
 TEST(lua_wrapper, template_get) {
   lua_wrapper l;
-  l.dostring("a = 1; b = {1,2}; c={'x', 'y', 'z'}; d={a=1,b=2}");
+  bool        failed, exists;
+  l.dostring(
+      "a = 1; b = {1,2}; c={'x', 'y', 'z'}; d={a=1,b=2}; e={ {a=1,b=2}, "
+      "{a=2,b=1} }");
   EXPECT_EQ(l.get<long>("a"), 1);
+  EXPECT_EQ(l.get<long>("a", false, &failed, &exists), 1);
+  EXPECT_FALSE(failed);
+  EXPECT_TRUE(exists);
+
   EXPECT_EQ(l.get<std::vector<int>>("b"), (std::vector<int>{1, 2}));
+  EXPECT_EQ(l.get<std::vector<int>>("b", false, &failed, &exists),
+            (std::vector<int>{1, 2}));
+  EXPECT_FALSE(failed);
+  EXPECT_TRUE(exists);
+
   EXPECT_EQ(l.get<std::vector<std::string>>("c"),
             (std::vector<std::string>{"x", "y", "z"}));
+  EXPECT_EQ(l.get<std::vector<std::string>>("c", false, &failed, &exists),
+            (std::vector<std::string>{"x", "y", "z"}));
+  EXPECT_FALSE(failed);
+  EXPECT_TRUE(exists);
 
-  l.dostring("e={ {a=1,b=2}, {a=2,b=1} }");
+  EXPECT_EQ((l.get<std::unordered_map<std::string, int>>(
+                "d", false, &failed, &exists)),
+            (std::unordered_map<std::string, int>{{"a", 1}, {"b", 2}}));
+  EXPECT_FALSE(failed);
+  EXPECT_TRUE(exists);
+
+  l.set_nil("d");
+  EXPECT_EQ((l.get<std::unordered_map<std::string, int>>(
+                "d", false, &failed, &exists)),
+            (std::unordered_map<std::string, int>{}));
+  EXPECT_FALSE(failed);
+  EXPECT_FALSE(exists);
+
   using type = std::vector<std::map<std::string, int>>;
   EXPECT_EQ(l.get<type>("e"),
             (type{{{"a", 1}, {"b", 2}}, {{"a", 2}, {"b", 1}}}));
+  EXPECT_EQ(l.get<type>("e", false, &failed, &exists),
+            (type{{{"a", 1}, {"b", 2}}, {{"a", 2}, {"b", 1}}}));
+  EXPECT_FALSE(failed);
+  EXPECT_TRUE(exists);
+
+  //
+
+  l.dostring(
+      "a = '1' a2 = false a3 = true a4 ='x'; "
+      "b = {1, '2', 'x'} b2 = {1, '2', '3.5'}; "
+      "c = {'x', 'y', 'z', false}; "
+      "d = {a=1,b=2, [33]=3} d2 = {1,2,['3']=3, ['4']=4}; "
+      "d3 = {'a', 2, c='c'}");
+  EXPECT_EQ(l.get<long>("a"), 1);
+  EXPECT_EQ(l.get<long>("a", false, &failed, &exists), 1);
+  EXPECT_FALSE(failed);
+  EXPECT_TRUE(exists);
+  EXPECT_EQ(l.get<long>("a2", false, &failed, &exists), 0);
+  EXPECT_FALSE(failed);
+  EXPECT_TRUE(exists);
+  EXPECT_EQ(l.get<long>("a3", false, &failed, &exists), 1);
+  EXPECT_FALSE(failed);
+  EXPECT_TRUE(exists);
+  EXPECT_EQ(l.get<long>("a4", false, &failed, &exists), 0);
+  EXPECT_TRUE(failed);
+  EXPECT_TRUE(exists);
+  EXPECT_EQ(l.get<long>("axxx", false, &failed, &exists), 0);
+  EXPECT_FALSE(failed);
+  EXPECT_FALSE(exists);
+
+  EXPECT_EQ(l.get<std::vector<int>>("b", false, &failed, &exists),
+            (std::vector<int>{1, 2}));
+  EXPECT_TRUE(failed);
+  EXPECT_TRUE(exists);
+  EXPECT_EQ(l.get<std::vector<int>>("b2", false, &failed, &exists),
+            (std::vector<int>{1, 2, 3}));
+  EXPECT_FALSE(failed);
+  EXPECT_TRUE(exists);
+
+  EXPECT_EQ(l.get<std::vector<std::string>>("c"),
+            (std::vector<std::string>{"x", "y", "z"}));
+  EXPECT_EQ(l.get<std::vector<std::string>>("c", false, &failed, &exists),
+            (std::vector<std::string>{"x", "y", "z"}));
+  EXPECT_TRUE(failed);
+  EXPECT_TRUE(exists);
+
+  EXPECT_EQ(
+      (l.get<std::unordered_map<std::string, int>>(
+          "d", false, &failed, &exists)),
+      (std::unordered_map<std::string, int>{{"a", 1}, {"b", 2}, {"33", 3}}));
+  EXPECT_FALSE(failed);
+  EXPECT_TRUE(exists);
+
+  EXPECT_EQ((l.get<std::unordered_map<std::string, int>>(
+                "d2", false, &failed, &exists)),
+            (std::unordered_map<std::string, int>{
+                {"1", 1}, {"2", 2}, {"3", 3}, {"4", 4}}));
+  EXPECT_FALSE(failed);
+  EXPECT_TRUE(exists);
+
+  EXPECT_EQ((l.get<std::map<int, int>>("d2", false, &failed, &exists)),
+            (std::map<int, int>{{1, 1}, {2, 2}, {3, 3}, {4, 4}}));
+  EXPECT_FALSE(failed);
+  EXPECT_TRUE(exists);
+
+  EXPECT_EQ((l.get<std::unordered_map<std::string, int>>(
+                "d3", false, &failed, &exists)),
+            (std::unordered_map<std::string, int>{{"2", 2}}));
+  EXPECT_TRUE(failed);
+  EXPECT_TRUE(exists);
+
+  EXPECT_EQ((l.get<std::map<int, int>>("d3", false, &failed, &exists)),
+            (std::map<int, int>{{2, 2}}));
+  EXPECT_TRUE(failed);
+  EXPECT_TRUE(exists);
+
+  EXPECT_EQ((l.get<std::unordered_map<std::string, std::string>>(
+                "d3", false, &failed, &exists)),
+            (std::unordered_map<std::string, std::string>{
+                {"1", "a"}, {"2", "2"}, {"c", "c"}}));
+  EXPECT_FALSE(failed);
+  EXPECT_TRUE(exists);
+
+  l.dostring("d=nil d2=nil d3=nil");
+  EXPECT_EQ((l.get<std::map<int, int>>("d2", false, &failed, &exists)),
+            (std::map<int, int>{}));
+  EXPECT_FALSE(failed);
+  EXPECT_FALSE(exists);
+  EXPECT_EQ((l.get<std::map<std::string, int>>("d3", false, &failed, &exists)),
+            (std::map<std::string, int>{}));
+  EXPECT_FALSE(failed);
+  EXPECT_FALSE(exists);
 }
 
 TEST(lua_wrapper, template_eval) {
