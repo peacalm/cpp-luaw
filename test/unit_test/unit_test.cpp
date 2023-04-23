@@ -1652,6 +1652,89 @@ TEST(lua_wrapper, template_eval) {
   }
 }
 
+TEST(lua_wrapper, seek) {
+  lua_wrapper l;
+  l.gseek("g");
+  EXPECT_EQ(l.gettop(), 1);
+  EXPECT_TRUE(l.isnil(-1));
+  l.seek("gg");
+  EXPECT_EQ(l.gettop(), 2);
+  EXPECT_TRUE(l.isnil(-1));
+  l.seek(1);
+  EXPECT_EQ(l.gettop(), 3);
+  EXPECT_TRUE(l.isnil(-1));
+
+  l.settop(0);
+  l.dostring("g={a=1, gg={a=11,b='bb'}, list={1,2,3}}");
+  l.gseek("g");
+  EXPECT_EQ(l.gettop(), 1);
+  EXPECT_TRUE(l.istable(-1));
+  l.seek("a");
+  EXPECT_EQ(l.gettop(), 2);
+  EXPECT_EQ(l.to<int>(), 1);
+  l.pop();
+  l.seek("gg");
+  EXPECT_EQ(l.gettop(), 2);
+  EXPECT_TRUE(l.istable(-1));
+  l.seek("a");
+  EXPECT_EQ(l.gettop(), 3);
+  EXPECT_EQ(l.to<int>(), 11);
+  l.pop();
+  l.seek("b");
+  EXPECT_EQ(l.gettop(), 3);
+  EXPECT_EQ(l.to<std::string>(), "bb");
+  l.pop(2);
+  l.seek("list");
+  int list_idx = l.gettop();
+  EXPECT_EQ(l.seek(2).to_int(), 2);
+  l.pop();
+  EXPECT_EQ(l.seek(3).to<long>(), 3);
+  EXPECT_EQ(l.seek(1, list_idx).to_double(), 1);
+  EXPECT_EQ(l.gettop(), 4);
+
+  l.settop(0);
+  EXPECT_EQ(l.gseek("g").seek("gg").seek("a").to_int(), 11);
+  EXPECT_EQ(l.gseek("g").seek("list").seek(2).to_int(), 2);
+  EXPECT_EQ(l.gettop(), 6);
+
+  l.seek(3);
+  EXPECT_TRUE(l.isnil());
+  l.pop(2);
+  l.seek(3);
+  EXPECT_FALSE(l.isnil());
+  EXPECT_EQ(l.to_uint(), 3);
+
+  l.settop(0);
+  l.dostring("g={{1,2,3.0}, {'a', 'b', 'c'}, m={{a=1},{a=2}} }");
+  EXPECT_EQ(l.gseek("g").seek(1).seek(1).to_int(), 1);
+  l.settop(0);
+  EXPECT_EQ(l.gseek("g").seek(1).seek(3).to_int(), 3);
+  l.settop(0);
+  EXPECT_EQ(l.gseek("g").seek(1).seek(3).to_string(), "3.0");
+  l.settop(0);
+  EXPECT_EQ(l.gseek("g").seek(2).seek(3).to<std::string>(), "c");
+  l.settop(0);
+  EXPECT_EQ(l.gseek("g").seek("m").seek(1).seek("a").to_int(), 1);
+  l.settop(0);
+  EXPECT_EQ(l.gseek("g").seek("m").seek(2).seek("a").to_int(), 2);
+
+  l.settop(0);
+  EXPECT_EQ(l.gseek("g").seek(1).to<std::vector<int>>(),
+            (std::vector<int>{1, 2, 3}));
+  l.settop(0);
+  EXPECT_EQ(l.gseek("g").seek(1).to<std::vector<std::string>>(),
+            (std::vector<std::string>{"1", "2", "3.0"}));
+  l.pop();
+  EXPECT_EQ((l.seek("m").seek(2).to<std::map<std::string, int>>()),
+            (std::map<std::string, int>{{"a", 2}}));
+
+  l.seek(3);
+  EXPECT_TRUE(l.isnil());
+  l.pop();
+
+  l.settop(0);
+}
+
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
 

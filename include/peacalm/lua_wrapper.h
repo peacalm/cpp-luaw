@@ -164,6 +164,7 @@ inline int COUNTER0(lua_State* L) {
 }  // namespace luafunc
 
 class lua_wrapper {
+  using self_t = lua_wrapper;
   lua_State* L_;
 
 public:
@@ -631,6 +632,39 @@ public:
   }
 
   /** @}*/
+
+  ///////////////////////// seek fields ////////////////////////////////////////
+
+  /// Get a global value by name and push it onto the stack, or push a nil if
+  /// the name does not exist.
+  self_t& gseek(const char* name) {
+    getglobal(name);
+    return *this;
+  }
+  self_t& gseek(const std::string& name) { return gseek(name.c_str()); }
+
+  /// Push t[name] onto the stack where t is the value at the given index `idx`,
+  /// or push a nil on failed.
+  self_t& seek(const char* name, int idx = -1) {
+    if (gettop() > 0 && istable(idx)) {
+      lua_getfield(L_, idx, name);
+    } else {
+      lua_pushnil(L_);
+    }
+    return *this;
+  }
+  self_t& seek(const std::string& name) { return seek(name.c_str()); }
+
+  /// Push t[n] onto the stack where t is the value at the given index `idx`, or
+  /// push a nil on failed.
+  self_t& seek(int n, int idx = -1) {
+    if (gettop() > 0 && istable(idx)) {
+      lua_geti(L_, idx, n);
+    } else {
+      lua_pushnil(L_);
+    }
+    return *this;
+  }
 
   ///////////////////////// set global variables ///////////////////////////////
 
