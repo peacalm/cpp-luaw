@@ -467,8 +467,9 @@ public:
    * @return Return the value on given index in type T if conversion succeeded,
    * otherwise return initial value of T(i.e. by statement `T{}`) if T is a
    * simple type, e.g. bool, int, double, std::string, etc. If T is a container
-   * type, the result will contain all elements whose conversion succeeded and
-   * discard elements whose conversion failed.
+   * type, the result will contain all non-nil elements whose conversion
+   * succeeded and discard elements who are nil or elements whose conversion
+   * failed.
    *
    * @{
    */
@@ -490,6 +491,7 @@ public:
      bool* exists      = nullptr);
 
   // to std::vector
+  // NOTICE: Discard nil in list! e.g. {1,2,nil,4} -> vector<int>{1,2,3}
   template <typename T>
   std::enable_if_t<std::is_same<T,
                                 std::vector<typename T::value_type,
