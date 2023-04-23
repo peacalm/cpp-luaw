@@ -369,7 +369,7 @@ public:
    *
    * @param [in] idx Index of Lua stack where the in
    * @param [in] def The default value returned if convert failed
-   * @param [in] enable_log Whether print a log when exception occurs
+   * @param [in] disable_log Whether print a log when exception occurs
    * @param [out] failed Will be set whether the convertion is failed if this
    * pointer is not nullptr
    * @param [out] exists Set whether the value at given index exists. Regard
@@ -379,11 +379,11 @@ public:
    */
 
 #define DEFINE_TYPE_CONVERSION(typename, type, default)        \
-  type to_##typename(int   idx        = -1,                    \
-                     type  def        = default,               \
-                     bool  enable_log = true,                  \
-                     bool* failed     = nullptr,               \
-                     bool* exists     = nullptr) {                 \
+  type to_##typename(int   idx         = -1,                   \
+                     type  def         = default,              \
+                     bool  disable_log = false,                \
+                     bool* failed      = nullptr,              \
+                     bool* exists      = nullptr) {                 \
     if (exists) *exists = !isnoneornil(idx);                   \
     /* check integer before number to avoid precision lost. */ \
     if (lua_isinteger(L_, idx)) {                              \
@@ -406,7 +406,7 @@ public:
       return def;                                              \
     }                                                          \
     if (failed) *failed = true;                                \
-    if (enable_log) log_type_convert_error(idx, #type);        \
+    if (!disable_log) log_type_convert_error(idx, #type);      \
     return def;                                                \
   }
 
@@ -422,11 +422,11 @@ public:
 
   // NOTICE: Lua will implicitly convert number to string
   // boolean can't convert to string
-  const char* to_c_str(int         idx        = -1,
-                       const char* def        = "",
-                       bool        enable_log = true,
-                       bool*       failed     = nullptr,
-                       bool*       exists     = nullptr) {
+  const char* to_c_str(int         idx         = -1,
+                       const char* def         = "",
+                       bool        disable_log = false,
+                       bool*       failed      = nullptr,
+                       bool*       exists      = nullptr) {
     if (exists) *exists = !isnoneornil(idx);
     if (lua_isstring(L_, idx)) {  // include number
       if (failed) *failed = false;
@@ -437,16 +437,16 @@ public:
       return def;
     }
     if (failed) *failed = true;
-    if (enable_log) log_type_convert_error(idx, "string");
+    if (!disable_log) log_type_convert_error(idx, "string");
     return def;
   }
 
-  std::string to_string(int                idx        = -1,
-                        const std::string& def        = "",
-                        bool               enable_log = true,
-                        bool*              failed     = nullptr,
-                        bool*              exists     = nullptr) {
-    return std::string{to_c_str(idx, def.c_str(), enable_log, failed, exists)};
+  std::string to_string(int                idx         = -1,
+                        const std::string& def         = "",
+                        bool               disable_log = false,
+                        bool*              failed      = nullptr,
+                        bool*              exists      = nullptr) {
+    return std::string{to_c_str(idx, def.c_str(), disable_log, failed, exists)};
   }
 
   /** @}*/
@@ -458,7 +458,7 @@ public:
    * bool, integer types, double, std::string, std::vector, std::map and
    * std::unordered_map
    * @param [in] idx value's index in stack
-   * @param [in] enable_log Whether print a log when exception occurs
+   * @param [in] disable_log Whether print a log when exception occurs
    * @param [out] failed Will be set whether the operation is failed if this
    * pointer is not nullptr. If T is a container type, it regards the operation
    * as failed if any element converts failed
@@ -484,10 +484,10 @@ public:
           std::is_same<T, unsigned long long>::value ||
           std::is_same<T, double>::value || std::is_same<T, std::string>::value,
       T>
-  to(int   idx        = -1,
-     bool  enable_log = true,
-     bool* failed     = nullptr,
-     bool* exists     = nullptr);
+  to(int   idx         = -1,
+     bool  disable_log = false,
+     bool* failed      = nullptr,
+     bool* exists      = nullptr);
 
   // to std::vector
   template <typename T>
@@ -495,15 +495,15 @@ public:
                                 std::vector<typename T::value_type,
                                             typename T::allocator_type>>::value,
                    T>
-  to(int   idx        = -1,
-     bool  enable_log = true,
-     bool* failed     = nullptr,
-     bool* exists     = nullptr) {
+  to(int   idx         = -1,
+     bool  disable_log = false,
+     bool* failed      = nullptr,
+     bool* exists      = nullptr) {
     if (exists) *exists = !isnoneornil(-1);
     T ret;
     if (!lua_istable(L_, idx)) {
       if (failed) *failed = true;
-      if (enable_log) log_type_convert_error(idx, "vector");
+      if (!disable_log) log_type_convert_error(idx, "vector");
       return ret;
     }
     if (failed) *failed = false;
@@ -512,7 +512,7 @@ public:
     for (int i = 1; i <= sz; ++i) {
       lua_geti(L_, idx, i);
       bool subfailed;
-      ret.push_back(to<typename T::value_type>(-1, enable_log, &subfailed));
+      ret.push_back(to<typename T::value_type>(-1, disable_log, &subfailed));
       if (subfailed && failed) *failed = true;
       pop();
     }
@@ -527,11 +527,11 @@ public:
                                          typename T::key_compare,
                                          typename T::allocator_type>>::value,
                    T>
-  to(int   idx        = -1,
-     bool  enable_log = true,
-     bool* failed     = nullptr,
-     bool* exists     = nullptr) {
-    return tom<T>(idx, enable_log, failed, exists, "map");
+  to(int   idx         = -1,
+     bool  disable_log = false,
+     bool* failed      = nullptr,
+     bool* exists      = nullptr) {
+    return tom<T>(idx, disable_log, failed, exists, "map");
   }
 
   // To std::unordered_map
@@ -544,25 +544,25 @@ public:
                                       typename T::key_equal,
                                       typename T::allocator_type>>::value,
       T>
-  to(int   idx        = -1,
-     bool  enable_log = true,
-     bool* failed     = nullptr,
-     bool* exists     = nullptr) {
-    return tom<T>(idx, enable_log, failed, exists, "unordered_map");
+  to(int   idx         = -1,
+     bool  disable_log = false,
+     bool* failed      = nullptr,
+     bool* exists      = nullptr) {
+    return tom<T>(idx, disable_log, failed, exists, "unordered_map");
   }
 
   // Implementation of to map or to unordered_map
   template <typename T>
-  T tom(int         idx        = -1,
-        bool        enable_log = true,
-        bool*       failed     = nullptr,
-        bool*       exists     = nullptr,
-        const char* tname      = "map") {
+  T tom(int         idx         = -1,
+        bool        disable_log = false,
+        bool*       failed      = nullptr,
+        bool*       exists      = nullptr,
+        const char* tname       = "map") {
     if (exists) *exists = !isnoneornil(-1);
     T ret;
     if (!lua_istable(L_, idx)) {
       if (failed) *failed = true;
-      if (enable_log) log_type_convert_error(idx, tname);
+      if (!disable_log) log_type_convert_error(idx, tname);
       return ret;
     }
     if (failed) *failed = false;
@@ -570,9 +570,10 @@ public:
     lua_pushnil(L_);
     while (lua_next(L_, absidx) != 0) {
       bool        kfailed = false, vfailed = false;
-      const auto& key = to<typename T::key_type>(-2, enable_log, &kfailed);
+      const auto& key = to<typename T::key_type>(-2, disable_log, &kfailed);
       if (!kfailed) {
-        const auto& val = to<typename T::mapped_type>(-1, enable_log, &vfailed);
+        const auto& val =
+            to<typename T::mapped_type>(-1, disable_log, &vfailed);
         if (!vfailed) ret.insert({std::move(key), std::move(val)});
       }
       if ((kfailed || vfailed) && failed) *failed = true;
@@ -637,7 +638,7 @@ public:
    *
    * @param [in] name The variable's name
    * @param [in] def The default value returned if failed
-   * @param [in] enable_log Whether print a log when exception occurs
+   * @param [in] disable_log Whether print a log when exception occurs
    * @param [out] failed Will be set whether the operation is failed if this
    * pointer is not nullptr. If T is a container type, it regards the operation
    * as failed if any element converts failed
@@ -647,23 +648,23 @@ public:
    * @{
    */
 
-#define DEFINE_GLOBAL_GET(typename, type, default)                        \
-  type get_##typename(const char* name,                                   \
-                      const type& def        = default,                   \
-                      bool        enable_log = true,                      \
-                      bool*       failed     = nullptr,                   \
-                      bool*       exists     = nullptr) {                           \
-    lua_getglobal(L_, name);                                              \
-    type ret = to_##typename(-1, def, enable_log, failed, exists);        \
-    pop();                                                                \
-    return ret;                                                           \
-  }                                                                       \
-  type get_##typename(const std::string& name,                            \
-                      const type&        def        = default,            \
-                      bool               enable_log = true,               \
-                      bool*              failed     = nullptr,            \
-                      bool*              exists     = nullptr) {                           \
-    return get_##typename(name.c_str(), def, enable_log, failed, exists); \
+#define DEFINE_GLOBAL_GET(typename, type, default)                         \
+  type get_##typename(const char* name,                                    \
+                      const type& def         = default,                   \
+                      bool        disable_log = false,                     \
+                      bool*       failed      = nullptr,                   \
+                      bool*       exists      = nullptr) {                            \
+    lua_getglobal(L_, name);                                               \
+    type ret = to_##typename(-1, def, disable_log, failed, exists);        \
+    pop();                                                                 \
+    return ret;                                                            \
+  }                                                                        \
+  type get_##typename(const std::string& name,                             \
+                      const type&        def         = default,            \
+                      bool               disable_log = false,              \
+                      bool*              failed      = nullptr,            \
+                      bool*              exists      = nullptr) {                            \
+    return get_##typename(name.c_str(), def, disable_log, failed, exists); \
   }
 
   DEFINE_GLOBAL_GET(int, int, 0)
@@ -680,19 +681,19 @@ public:
   // NO POP! Cause the c_str body is in stack
   // Leave the duty of popping stack to caller
   const char* get_c_str(const char* name,
-                        const char* def        = "",
-                        bool        enable_log = true,
-                        bool*       failed     = nullptr,
-                        bool*       exists     = nullptr) {
+                        const char* def         = "",
+                        bool        disable_log = false,
+                        bool*       failed      = nullptr,
+                        bool*       exists      = nullptr) {
     lua_getglobal(L_, name);
-    return to_c_str(-1, def, enable_log, failed, exists);
+    return to_c_str(-1, def, disable_log, failed, exists);
   }
   const char* get_c_str(const std::string& name,
-                        const char*        def        = "",
-                        bool               enable_log = true,
-                        bool*              failed     = nullptr,
-                        bool*              exists     = nullptr) {
-    return get_c_str(name.c_str(), def, enable_log, failed, exists);
+                        const char*        def         = "",
+                        bool               disable_log = false,
+                        bool*              failed      = nullptr,
+                        bool*              exists      = nullptr) {
+    return get_c_str(name.c_str(), def, disable_log, failed, exists);
   }
 
   /** @}*/
@@ -704,7 +705,7 @@ public:
    * bool, integer types, double, std::string, std::vector, std::map and
    * std::unordered_map
    * @param [in] name The variable's name
-   * @param [in] enable_log Whether print a log when exception occurs
+   * @param [in] disable_log Whether print a log when exception occurs
    * @param [out] failed Will be set whether the operation is failed if this
    * pointer is not nullptr. If T is a container type, it regards the operation
    * as failed if any element converts failed
@@ -714,20 +715,20 @@ public:
    */
   template <typename T>
   T get(const char* name,
-        bool        enable_log = true,
-        bool*       failed     = nullptr,
-        bool*       exists     = nullptr) {
+        bool        disable_log = false,
+        bool*       failed      = nullptr,
+        bool*       exists      = nullptr) {
     getglobal(name);
-    auto ret = to<T>(-1, enable_log, failed, exists);
+    auto ret = to<T>(-1, disable_log, failed, exists);
     pop();
     return ret;
   }
   template <typename T>
   T get(const std::string& name,
-        bool               enable_log = true,
-        bool*              failed     = nullptr,
-        bool*              exists     = nullptr) {
-    return get<T>(name.c_str(), enable_log, failed, exists);
+        bool               disable_log = false,
+        bool*              failed      = nullptr,
+        bool*              exists      = nullptr) {
+    return get<T>(name.c_str(), disable_log, failed, exists);
   }
 
   //////////////////////// evaluate expression /////////////////////////////////
@@ -737,40 +738,40 @@ public:
    *
    * @param [in] expr Lua expression, which must have a return value
    * @param [in] def The default value returned if failed
-   * @param [in] enable_log Whether print a log when exception occurs
+   * @param [in] disable_log Whether print a log when exception occurs
    * @param [out] failed Will be set whether the operation is failed if this
    * pointer is not nullptr
    *
    * @{
    */
 
-#define DEFINE_EVAL(typename, type, default)                       \
-  type eval_##typename(const char* expr,                           \
-                       const type& def        = default,           \
-                       bool        enable_log = true,              \
-                       bool*       failed     = nullptr) {                   \
-    int sz = gettop();                                             \
-    if (dostring(expr) != LUA_OK) {                                \
-      if (failed) *failed = true;                                  \
-      if (enable_log) log_error_in_stack();                        \
-      settop(sz);                                                  \
-      return def;                                                  \
-    }                                                              \
-    assert(gettop() >= sz);                                        \
-    if (gettop() <= sz) {                                          \
-      if (failed) *failed = true;                                  \
-      if (enable_log) log_error("No return");                      \
-      return def;                                                  \
-    }                                                              \
-    type ret = to_##typename(-1, def, enable_log, failed);         \
-    settop(sz);                                                    \
-    return ret;                                                    \
-  }                                                                \
-  type eval_##typename(const std::string& expr,                    \
-                       const type&        def        = default,    \
-                       bool               enable_log = true,       \
-                       bool*              failed     = nullptr) {                   \
-    return eval_##typename(expr.c_str(), def, enable_log, failed); \
+#define DEFINE_EVAL(typename, type, default)                        \
+  type eval_##typename(const char* expr,                            \
+                       const type& def         = default,           \
+                       bool        disable_log = false,             \
+                       bool*       failed      = nullptr) {                    \
+    int sz = gettop();                                              \
+    if (dostring(expr) != LUA_OK) {                                 \
+      if (failed) *failed = true;                                   \
+      if (!disable_log) log_error_in_stack();                       \
+      settop(sz);                                                   \
+      return def;                                                   \
+    }                                                               \
+    assert(gettop() >= sz);                                         \
+    if (gettop() <= sz) {                                           \
+      if (failed) *failed = true;                                   \
+      if (!disable_log) log_error("No return");                     \
+      return def;                                                   \
+    }                                                               \
+    type ret = to_##typename(-1, def, disable_log, failed);         \
+    settop(sz);                                                     \
+    return ret;                                                     \
+  }                                                                 \
+  type eval_##typename(const std::string& expr,                     \
+                       const type&        def         = default,    \
+                       bool               disable_log = false,      \
+                       bool*              failed      = nullptr) {                    \
+    return eval_##typename(expr.c_str(), def, disable_log, failed); \
   }
 
   DEFINE_EVAL(int, int, 0)
@@ -786,29 +787,29 @@ public:
 
   // Caller is responsible for popping stack if succeeds
   const char* eval_c_str(const char* expr,
-                         const char* def        = "",
-                         bool        enable_log = true,
-                         bool*       failed     = nullptr) {
+                         const char* def         = "",
+                         bool        disable_log = false,
+                         bool*       failed      = nullptr) {
     int sz = gettop();
     if (dostring(expr) != LUA_OK) {
       if (failed) *failed = true;
-      if (enable_log) log_error_in_stack();
+      if (!disable_log) log_error_in_stack();
       settop(sz);
       return def;
     }
     assert(gettop() >= sz);
     if (gettop() <= sz) {
       if (failed) *failed = true;
-      if (enable_log) log_error("No return");
+      if (!disable_log) log_error("No return");
       return def;
     }
-    return to_c_str(-1, def, enable_log, failed);
+    return to_c_str(-1, def, disable_log, failed);
   }
   const char* eval_c_str(const std::string& expr,
-                         const char*        def        = "",
-                         bool               enable_log = true,
-                         bool*              failed     = nullptr) {
-    return eval_c_str(expr.c_str(), def, enable_log, failed);
+                         const char*        def         = "",
+                         bool               disable_log = false,
+                         bool*              failed      = nullptr) {
+    return eval_c_str(expr.c_str(), def, disable_log, failed);
   }
 
   /** @}*/
@@ -820,36 +821,36 @@ public:
    * bool, integer types, double, std::string, std::vector, std::map and
    * std::unordered_map
    * @param [in] expr Lua expression, which must have a return value
-   * @param [in] enable_log Whether print a log when exception occurs
+   * @param [in] disable_log Whether print a log when exception occurs
    * @param [out] failed Will be set whether the operation is failed if this
    * pointer is not nullptr. If T is a container type, it regards the operation
    * as failed if any element converts failed
    * @return The expression's result in type T
    */
   template <typename T>
-  T eval(const char* expr, bool enable_log = true, bool* failed = nullptr) {
+  T eval(const char* expr, bool disable_log = false, bool* failed = nullptr) {
     int sz = gettop();
     if (dostring(expr) != LUA_OK) {
       if (failed) *failed = true;
-      if (enable_log) log_error_in_stack();
+      if (!disable_log) log_error_in_stack();
       settop(sz);
       return T{};
     }
     assert(gettop() >= sz);
     if (gettop() <= sz) {
       if (failed) *failed = true;
-      if (enable_log) log_error("No return");
+      if (!disable_log) log_error("No return");
       return T{};
     }
-    auto ret = to<T>(-1, enable_log, failed);
+    auto ret = to<T>(-1, disable_log, failed);
     settop(sz);
     return ret;
   }
   template <typename T>
   T eval(const std::string& expr,
-         bool               enable_log = true,
-         bool*              failed     = nullptr) {
-    return eval<T>(expr.c_str(), enable_log, failed);
+         bool               disable_log = false,
+         bool*              failed      = nullptr) {
+    return eval<T>(expr.c_str(), disable_log, failed);
   }
 
   ///////////////////////// error log //////////////////////////////////////////
@@ -878,11 +879,11 @@ public:
   }
 };
 
-#define DEFINE_TO_SPECIALIZATIOIN(typename, type, default)          \
-  template <>                                                       \
-  type lua_wrapper::to<type>(                                       \
-      int idx, bool enable_log, bool* failed, bool* exists) {       \
-    return to_##typename(idx, default, enable_log, failed, exists); \
+#define DEFINE_TO_SPECIALIZATIOIN(typename, type, default)           \
+  template <>                                                        \
+  type lua_wrapper::to<type>(                                        \
+      int idx, bool disable_log, bool* failed, bool* exists) {       \
+    return to_##typename(idx, default, disable_log, failed, exists); \
   }
 
 DEFINE_TO_SPECIALIZATIOIN(bool, bool, false)
@@ -900,7 +901,7 @@ DEFINE_TO_SPECIALIZATIOIN(double, double, false)
 // while doing lua_next
 template <>
 std::string lua_wrapper::to<std::string>(int   idx,
-                                         bool  enable_log,
+                                         bool  disable_log,
                                          bool* failed,
                                          bool* exists) {
   if (exists) *exists = !isnoneornil(idx);
@@ -916,7 +917,7 @@ std::string lua_wrapper::to<std::string>(int   idx,
     return "";
   }
   if (failed) *failed = true;
-  if (enable_log) log_type_convert_error(idx, "string");
+  if (!disable_log) log_type_convert_error(idx, "string");
   return "";
 }
 
@@ -1019,7 +1020,7 @@ public:
    *
    * @param [in] expr Lua expression, which must have a return value
    * @param [in] def The default value returned if failed
-   * @param [in] enable_log Whether print a log when exception occurs
+   * @param [in] disable_log Whether print a log when exception occurs
    * @param [out] failed Will be set whether the operation is failed if this
    * pointer is not nullptr
    *
@@ -1027,19 +1028,19 @@ public:
    */
 
   // auto eval: prepare variables automatically
-#define DEFINE_EVAL(typename, type, default)                                  \
-  type auto_eval_##typename(const char* expr,                                 \
-                            const type& def        = default,                 \
-                            bool        enable_log = true,                    \
-                            bool*       failed     = nullptr) {                         \
-    prepare(expr);                                                            \
-    return base_t::eval_##typename(expr, def, enable_log, failed);            \
-  }                                                                           \
-  type auto_eval_##typename(const std::string& expr,                          \
-                            const type&        def        = default,          \
-                            bool               enable_log = true,             \
-                            bool*              failed     = nullptr) {                         \
-    return this->auto_eval_##typename(expr.c_str(), def, enable_log, failed); \
+#define DEFINE_EVAL(typename, type, default)                                   \
+  type auto_eval_##typename(const char* expr,                                  \
+                            const type& def         = default,                 \
+                            bool        disable_log = false,                   \
+                            bool*       failed      = nullptr) {                          \
+    prepare(expr);                                                             \
+    return base_t::eval_##typename(expr, def, disable_log, failed);            \
+  }                                                                            \
+  type auto_eval_##typename(const std::string& expr,                           \
+                            const type&        def         = default,          \
+                            bool               disable_log = false,            \
+                            bool*              failed      = nullptr) {                          \
+    return this->auto_eval_##typename(expr.c_str(), def, disable_log, failed); \
   }
 
   DEFINE_EVAL(int, int, 0)
@@ -1052,17 +1053,17 @@ public:
 #undef DEFINE_EVAL
 
   const char* auto_eval_c_str(const char* expr,
-                              const char* def        = "",
-                              bool        enable_log = true,
-                              bool*       failed     = nullptr) {
+                              const char* def         = "",
+                              bool        disable_log = false,
+                              bool*       failed      = nullptr) {
     prepare(expr);
-    return base_t::eval_c_str(expr, def, enable_log, failed);
+    return base_t::eval_c_str(expr, def, disable_log, failed);
   }
   const char* auto_eval_c_str(const std::string& expr,
-                              const char*        def        = "",
-                              bool               enable_log = true,
-                              bool*              failed     = nullptr) {
-    return this->auto_eval_c_str(expr.c_str(), def, enable_log, failed);
+                              const char*        def         = "",
+                              bool               disable_log = false,
+                              bool*              failed      = nullptr) {
+    return this->auto_eval_c_str(expr.c_str(), def, disable_log, failed);
   }
 
   /** @}*/
