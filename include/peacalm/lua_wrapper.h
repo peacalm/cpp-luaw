@@ -366,15 +366,15 @@ public:
   //
 
   /**
-   * @brief Convert a value in Lua stack to C++ type value
+   * @brief Convert a value in Lua stack to C++ simple type value.
    *
-   * @param [in] idx Index of Lua stack where the in
-   * @param [in] def The default value returned if convert failed
-   * @param [in] disable_log Whether print a log when exception occurs
+   * @param [in] idx Index of Lua stack where the in.
+   * @param [in] def The default value returned if convert failed.
+   * @param [in] disable_log Whether print a log when exception occurs.
    * @param [out] failed Will be set whether the convertion is failed if this
-   * pointer is not nullptr
-   * @param [out] exists Set whether the value at given index exists. Regard
-   * none and nil as not exists.
+   * pointer is not nullptr.
+   * @param [out] exists Will be set whether the value at given index exists if
+   * this pointer is not nullptr. Regard none and nil as not exists.
    *
    * @{
    */
@@ -453,18 +453,18 @@ public:
   /** @}*/
 
   /**
-   * @brief Convert a value in Lua stack to complex C++ type
+   * @brief Convert a value in Lua stack to complex C++ type.
    *
    * @tparam T The result type user expected. T can be any type composited by
    * bool, integer types, double, std::string, std::vector, std::set,
-   * std::unordered_set, std::map and std::unordered_map
-   * @param [in] idx value's index in stack
-   * @param [in] disable_log Whether print a log when exception occurs
+   * std::unordered_set, std::map and std::unordered_map.
+   * @param [in] idx value's index in stack.
+   * @param [in] disable_log Whether print a log when exception occurs.
    * @param [out] failed Will be set whether the operation is failed if this
    * pointer is not nullptr. If T is a container type, it regards the operation
-   * as failed if any element converts failed
-   * @param [out] exists Set whether the value at given index exists. Regard
-   * none and nil as not exists.
+   * as failed if any element converts failed.
+   * @param [out] exists Will be set whether the value at given index exists if
+   * this pointer is not nullptr. Regard none and nil as not exists.
    * @return Return the value on given index in type T if conversion succeeded,
    * otherwise return initial value of T(i.e. by statement `T{}`) if T is a
    * simple type, e.g. bool, int, double, std::string, etc. If T is a container
@@ -682,14 +682,14 @@ public:
   ///////////////////////// get global variables ///////////////////////////////
 
   /**
-   * @brief Get a global variable in Lua and convert it to simple C++ type
+   * @brief Get a global variable in Lua and convert it to simple C++ type.
    *
-   * @param [in] name The variable's name
-   * @param [in] def The default value returned if failed
-   * @param [in] disable_log Whether print a log when exception occurs
+   * @param [in] name The variable's name.
+   * @param [in] def The default value returned if failed.
+   * @param [in] disable_log Whether print a log when exception occurs.
    * @param [out] failed Will be set whether the operation is failed if this
    * pointer is not nullptr. If T is a container type, it regards the operation
-   * as failed if any element converts failed
+   * as failed if any element converts failed.
    * @param [out] exists Set whether the variable exists. Regard none and nil as
    * not exists.
    *
@@ -747,19 +747,19 @@ public:
   /** @}*/
 
   /**
-   * @brief Get a global variable in Lua and convert it to complex C++ type
+   * @brief Get a global variable in Lua and convert it to complex C++ type.
    *
    * @tparam T The result type user expected. T can be any type composited by
-   * bool, integer types, double, std::string, std::vector, std::map and
-   * std::unordered_map
-   * @param [in] name The variable's name
-   * @param [in] disable_log Whether print a log when exception occurs
+   * bool, integer types, double, std::string, std::vector, std::set,
+   * std::unordered_set, std::map and std::unordered_map.
+   * @param [in] name The variable's name.
+   * @param [in] disable_log Whether print a log when exception occurs.
    * @param [out] failed Will be set whether the operation is failed if this
    * pointer is not nullptr. If T is a container type, it regards the operation
-   * as failed if any element converts failed
+   * as failed if any element converts failed.
    * @param [out] exists Set whether the variable exists. Regard none and nil as
    * not exists.
-   * @return The variable's value in type T
+   * @return The variable's value in type T.
    */
   template <typename T>
   T get(const char* name,
@@ -782,13 +782,13 @@ public:
   //////////////////////// evaluate expression /////////////////////////////////
 
   /**
-   * @brief Evaluate a Lua expression and get the result in simple C++ type
+   * @brief Evaluate a Lua expression and get the result in simple C++ type.
    *
-   * @param [in] expr Lua expression, which must have a return value
-   * @param [in] def The default value returned if failed
-   * @param [in] disable_log Whether print a log when exception occurs
+   * @param [in] expr Lua expression, which must have a return value.
+   * @param [in] def The default value returned if failed.
+   * @param [in] disable_log Whether print a log when exception occurs.
    * @param [out] failed Will be set whether the operation is failed if this
-   * pointer is not nullptr
+   * pointer is not nullptr.
    *
    * @{
    */
@@ -863,17 +863,17 @@ public:
   /** @}*/
 
   /**
-   * @brief Evaluate a Lua expression and get result in complex C++ type
+   * @brief Evaluate a Lua expression and get result in complex C++ type.
    *
    * @tparam T The result type user expected. T can be any type composited by
-   * bool, integer types, double, std::string, std::vector, std::map and
-   * std::unordered_map
-   * @param [in] expr Lua expression, which must have a return value
-   * @param [in] disable_log Whether print a log when exception occurs
+   * bool, integer types, double, std::string, std::vector, std::set,
+   * std::unordered_set, std::map and std::unordered_map.
+   * @param [in] expr Lua expression, which must have a return value.
+   * @param [in] disable_log Whether print a log when exception occurs.
    * @param [out] failed Will be set whether the operation is failed if this
    * pointer is not nullptr. If T is a container type, it regards the operation
-   * as failed if any element converts failed
-   * @return The expression's result in type T
+   * as failed if any element converts failed.
+   * @return The expression's result in type T.
    */
   template <typename T>
   T eval(const char* expr, bool disable_log = false, bool* failed = nullptr) {
@@ -1064,13 +1064,13 @@ public:
 
   /**
    * @brief Evaluate a Lua expression meanwhile can retrieve variables needed
-   * from variable provider automatically, then get the result in C++ type
+   * from variable provider automatically, then get the result in C++ type.
    *
-   * @param [in] expr Lua expression, which must have a return value
-   * @param [in] def The default value returned if failed
-   * @param [in] disable_log Whether print a log when exception occurs
+   * @param [in] expr Lua expression, which must have a return value.
+   * @param [in] def The default value returned if failed.
+   * @param [in] disable_log Whether print a log when exception occurs.
    * @param [out] failed Will be set whether the operation is failed if this
-   * pointer is not nullptr
+   * pointer is not nullptr.
    *
    * @{
    */
