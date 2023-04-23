@@ -649,7 +649,7 @@ public:
   self_t& gseek(const std::string& name) { return gseek(name.c_str()); }
 
   /// Push t[name] onto the stack where t is the value at the given index `idx`,
-  /// or push a nil on failed.
+  /// or push a nil if the operation fails.
   self_t& seek(const char* name, int idx = -1) {
     if (gettop() > 0 && istable(idx)) {
       lua_getfield(L_, idx, name);
@@ -661,7 +661,7 @@ public:
   self_t& seek(const std::string& name) { return seek(name.c_str()); }
 
   /// Push t[n] onto the stack where t is the value at the given index `idx`, or
-  /// push a nil on failed.
+  /// push a nil if the operation fails.
   self_t& seek(int n, int idx = -1) {
     if (gettop() > 0 && istable(idx)) {
       lua_geti(L_, idx, n);
