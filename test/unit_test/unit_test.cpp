@@ -1702,6 +1702,8 @@ TEST(lua_wrapper, seek) {
   l.pop(2);
   l.seek(3);
   EXPECT_FALSE(l.isnil());
+  EXPECT_TRUE(l.isinteger());
+  EXPECT_TRUE(l.isnumber());
   EXPECT_EQ(l.to_uint(), 3);
 
   l.settop(0);

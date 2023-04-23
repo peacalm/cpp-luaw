@@ -319,14 +319,19 @@ public:
   // clang-format on
 
   // clang-format off
-  bool isfunction(int idx = -1)      { return lua_isfunction(L_, idx); }
-  bool istable(int idx = -1)         { return lua_istable(L_, idx); }
-  bool islightuserdata(int idx = -1) { return lua_islightuserdata(L_, idx); }
-  bool isnil(int idx = -1)           { return lua_isnil(L_, idx); }
+  bool isstring(int idx = -1)        { return lua_isstring(L_, idx); }
+  bool isnumber(int idx = -1)        { return lua_isnumber(L_, idx); }
+  bool isinteger(int idx = -1)       { return lua_isinteger(L_, idx); }
   bool isboolean(int idx = -1)       { return lua_isboolean(L_, idx); }
-  bool isthread(int idx = -1)        { return lua_isthread(L_, idx); }
+  bool isnil(int idx = -1)           { return lua_isnil(L_, idx); }
   bool isnone(int idx = -1)          { return lua_isnone(L_, idx); }
   bool isnoneornil(int idx = -1)     { return lua_isnoneornil(L_, idx); }
+  bool istable(int idx = -1)         { return lua_istable(L_, idx); }
+  bool iscfunction(int idx = -1)     { return lua_iscfunction(L_, idx); }
+  bool isfunction(int idx = -1)      { return lua_isfunction(L_, idx); }
+  bool isuserdata(int idx = -1)      { return lua_isuserdata(L_, idx); }
+  bool islightuserdata(int idx = -1) { return lua_islightuserdata(L_, idx); }
+  bool isthread(int idx = -1)        { return lua_isthread(L_, idx); }
   // clang-format on
 
   int getglobal(const char* name) { return lua_getglobal(L_, name); }
