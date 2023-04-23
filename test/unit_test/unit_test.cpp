@@ -1428,8 +1428,6 @@ TEST(lua_wrapper, template_get) {
   EXPECT_FALSE(failed);
   EXPECT_TRUE(exists);
 
-  //
-
   l.dostring(
       "a = '1' a2 = false a3 = true a4 ='x'; "
       "b = {1, '2', 'x'} b2 = {1, '2', '3.5'}; "
@@ -1515,6 +1513,17 @@ TEST(lua_wrapper, template_get) {
             (std::map<std::string, int>{}));
   EXPECT_FALSE(failed);
   EXPECT_FALSE(exists);
+
+  l.dostring("d4={a=1, b=true, c=false, d=nil, e='s'}");
+  EXPECT_EQ((l.get<std::map<std::string, int>>("d4", false, &failed, &exists)),
+            (std::map<std::string, int>{{"a", 1}, {"b", 1}, {"c", 0}}));
+  EXPECT_TRUE(failed);
+  EXPECT_TRUE(exists);
+  EXPECT_EQ((l.get<std::map<std::string, std::string>>(
+                "d4", false, &failed, &exists)),
+            (std::map<std::string, std::string>{{"a", "1"}, {"e", "s"}}));
+  EXPECT_TRUE(failed);
+  EXPECT_TRUE(exists);
 }
 
 TEST(lua_wrapper, template_eval) {
