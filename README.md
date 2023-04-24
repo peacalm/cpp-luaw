@@ -15,6 +15,8 @@ Features:
 * If a variable provider is provided, it can automatically seek variabls from 
 provider while evaluate expressions.
 
+## Value conversion
+
 **Notice**: Value conversions may be different to Lua!
 
 We mainly use C++'s type conversion strategy, in addition, 
