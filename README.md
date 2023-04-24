@@ -26,11 +26,11 @@ double, string to string, then cast it to target type by C++'s type
 conversion strategy. Note that number in Lua is also string, and
 number-literal-string is also number.
 
-We mainly use C++'s value conversion strategy, in addition, a implicitly
+This lib mainly uses C++'s value conversion strategy, in addition, a implicitly
 conversion strategy between number and number-literal-string, which is
 supported by Lua.
 
-In total, we make value conversions behave more like C++.
+In total, this lib makes value conversions behave more like C++.
 
 Details:
 1. Implicitly conversion between integer, number, boolean using

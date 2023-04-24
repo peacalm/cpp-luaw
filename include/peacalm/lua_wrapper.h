@@ -356,11 +356,11 @@ public:
   // conversion strategy. Note that number in Lua is also string, and
   // number-literal-string is also number.
   //
-  // We mainly use C++'s value conversion strategy, in addition, a implicitly
-  // conversion strategy between number and number-literal-string, which is
-  // supported by Lua.
+  // This lib mainly uses C++'s value conversion strategy, in addition, a
+  // implicitly conversion strategy between number and number-literal-string,
+  // which is supported by Lua.
   //
-  // In total, we make value conversions behave more like C++.
+  // In total, this lib makes value conversions behave more like C++.
   //
   // Details:
   // 1. Implicitly conversion between integer, number, boolean using
@@ -908,8 +908,8 @@ public:
    * No default value provided. If T is not a container type, it will return T's
    * initial value if operation fails or target does not exist. If T is a
    * container type, the result will contain elements that successfully
-   * converted and discard elements fails or not exists. We regard none and nil
-   * as not exists.
+   * converted and discard elements fails or not exists. Regard none and nil as
+   * not exists.
    *
    * @param [in] path The first string in path should be a Lua global variable,
    * the last string in path should be a value which can convert to simple C++
