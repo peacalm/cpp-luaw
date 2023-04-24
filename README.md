@@ -182,6 +182,22 @@ std::string        get_string(@PATH_TYPE@ path, const std::string&        def = 
 template <typename T> T get(@PATH_TYPE@ path, bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
 ```
 
+Example:
+```C++
+peacalm::lua_wrapper l;
+l.dostring("a = 1 p={x=10,y=20} m={p1={1,2},p2={3,4}}");
+l.get_int({"a"});      // 1
+l.get_int({"ax"}, -1); // -1
+l.get<int>({"a"});     // 1
+l.get<int>({"ax"});    // 0
+
+l.get<int>({"p", "x"});    // 10
+l.get_int({"p", "z"}, 30); // 30
+l.get<int>({"p", "z"});    // 0
+
+l.get<std::vector<int>>({"m", "p2"}); // [3,4]
+```
+
 ## Usage Examples
 
 ### As a config file parser
