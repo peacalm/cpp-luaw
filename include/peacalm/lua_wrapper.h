@@ -343,10 +343,19 @@ public:
 
   ///////////////////////// type conversions ///////////////////////////////////
 
-  // NOTICE: Value conversions may different to Lua!
-  // HIGHLIGNT: We mainly use C++'s type conversion strategy, in addition,
-  //            a conversion strategy between number and number-literal-string,
-  //            which is supported by Lua.
+  // NOTICE: Value conversions from Lua to C++ may different with that in Lua!
+  //
+  // Conversion process: Firstly convert value in Lua to C++'s value with
+  // corresponding type, e.g. boolean to bool, integer to long long, number to
+  // double, string to string, then cast it to target type by C++'s type
+  // conversion strategy. Note that number in Lua is also string, and
+  // number-literal-string is also number.
+  //
+  // We mainly use C++'s value conversion strategy, in addition, a implicitly
+  // conversion strategy between number and number-literal-string, which is
+  // supported by Lua.
+  //
+  // In total, we make value conversions behave more like C++.
   //
   // Details:
   // 1. Implicitly conversion between integer, number, boolean using
@@ -356,17 +365,21 @@ public:
   // 4. NONE and NIL won't convert to any value, default value (user given or
   //    initial value of target type) will be returned
   // 5. Non-number-literal-string, including empty string, can't convert to any
-  //    other types, default value will be returned
+  //    other types, default value will be returned (can't convert to true as
+  //    Lua does)
   // 6. Integer's precision won't lost if it's value is representable by 64bit
   //    signed integer type, i.e. between [-2^63, 2^63 -1], which is
   //    [-9223372036854775808, 9223372036854775807]
   //
   // Examples:
   // * number 2.5 -> string "2.5" (By Lua)
+  // * number 3 -> string "3.0" (By Lua)
+  // * ingeger 3 -> string "3" (By Lua)
   // * string "2.5" -> double 2.5 (By Lua)
   // * double 2.5 -> int 2 (By C++)
   // * string "2.5" -> int 2 (Firstly "2.5"->2.5 by lua, then 2.5->2 by C++)
   // * bool true -> int 1 (By C++)
+  // * bool false -> int 0 (By C++)
   // * int 0 -> bool false (By C++)
   // * double 2.5 -> bool true (By C++)
   // * string "2.5" -> bool true ("2.5"->2.5 by Lua, then 2.5->true by C++)
