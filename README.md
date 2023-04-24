@@ -55,7 +55,7 @@ Examples:
 * string "2.5" -> int 2 (Firstly "2.5"->2.5 by lua, then 2.5->2 by C++)
 * bool true -> int 1 (By C++)
 * bool false -> int 0 (By C++)
-* int 0 -> bool false (By C++)
+* integer 0 -> bool false (By C++)
 * double 2.5 -> bool true (By C++)
 * string "2.5" -> bool true ("2.5"->2.5 by Lua, then 2.5->true by C++)
 * string "0" -> bool true ("0"->0 by Lua, then 0->false by C++)
