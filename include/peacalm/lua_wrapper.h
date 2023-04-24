@@ -303,6 +303,9 @@ public:
   lua_State* L() const { return L_; }
   void       L(lua_State* L) { L_ = L; }
 
+  /// Convert given index to absolute index of stack
+  int absindex(int idx) { return idx >= 0 ? idx : gettop() + idx + 1; }
+
   void pop(int n = 1) { lua_pop(L_, n); }
   int  gettop() const { return lua_gettop(L_); }
   void settop(int idx) { lua_settop(L_, idx); }
@@ -635,7 +638,7 @@ public:
     }
     T ret;
     if (failed) *failed = false;
-    int absidx = idx > 0 ? idx : gettop() + idx + 1;
+    int absidx = absindex(idx);
     lua_pushnil(L_);
     while (lua_next(L_, absidx) != 0) {
       bool kfailed, kexists, vfailed, vexists;
