@@ -247,7 +247,7 @@ public:
     if (o.lload_) {
       for (const luaL_Reg* p = o.lload_; p->func; ++p) {
         luaL_requiref(L_, p->name, p->func, 1);
-        lua_pop(L_, 1);
+        pop();
       }
     }
 
@@ -258,7 +258,7 @@ public:
         lua_pushcfunction(L_, p->func);
         lua_setfield(L_, -2, p->name);
       }
-      lua_pop(L_, 2);
+      pop(2);
     }
   }
 
@@ -291,7 +291,7 @@ public:
       lua_pushcfunction(L_, p->func);
       lua_setfield(L_, -2, p->name);
     }
-    lua_pop(L_, 3);
+    pop(3);
   }
 
   void register_functions() {
@@ -412,22 +412,22 @@ public:
                      bool* exists      = nullptr) {                 \
     if (exists) *exists = !isnoneornil(idx);                   \
     /* check integer before number to avoid precision lost. */ \
-    if (lua_isinteger(L_, idx)) {                              \
+    if (isinteger(idx)) {                                      \
       if (failed) *failed = false;                             \
       return static_cast<type>(lua_tointeger(L_, idx));        \
     }                                                          \
-    if (lua_isnumber(L_, idx)) {                               \
+    if (isnumber(idx)) {                                       \
       if (failed) *failed = false;                             \
       /* try integer first to avoid precision lost */          \
       long long t = lua_tointeger(L_, idx);                    \
       if (t != 0) return t;                                    \
       return static_cast<type>(lua_tonumber(L_, idx));         \
     }                                                          \
-    if (lua_isboolean(L_, idx)) {                              \
+    if (isboolean(idx)) {                                      \
       if (failed) *failed = false;                             \
       return static_cast<type>(lua_toboolean(L_, idx));        \
     }                                                          \
-    if (lua_isnoneornil(L_, idx)) {                            \
+    if (isnoneornil(idx)) {                                    \
       if (failed) *failed = false;                             \
       return def;                                              \
     }                                                          \
@@ -454,11 +454,11 @@ public:
                        bool*       failed      = nullptr,
                        bool*       exists      = nullptr) {
     if (exists) *exists = !isnoneornil(idx);
-    if (lua_isstring(L_, idx)) {  // include number
+    if (isstring(idx)) {  // include number
       if (failed) *failed = false;
       return lua_tostring(L_, idx);
     }
-    if (lua_isnoneornil(L_, idx)) {
+    if (isnoneornil(idx)) {
       if (failed) *failed = false;
       return def;
     }
@@ -532,7 +532,7 @@ public:
       if (failed) *failed = false;
       return T{};
     }
-    if (!lua_istable(L_, idx)) {
+    if (!istable(idx)) {
       if (failed) *failed = true;
       if (!disable_log) log_type_convert_error(idx, "vector");
       return T{};
@@ -632,7 +632,7 @@ public:
       if (failed) *failed = false;
       return T{};
     }
-    if (!lua_istable(L_, idx)) {
+    if (!istable(idx)) {
       if (failed) *failed = true;
       if (!disable_log) log_type_convert_error(idx, tname);
       return T{};
@@ -1148,12 +1148,11 @@ public:
 
   void log_type_convert_error(int idx, const char* to) {
     std::cerr << "Lua: Can't convert to " << to << " by ";
-    if (lua_isnumber(L_, idx) || lua_isstring(L_, idx) ||
-        lua_isboolean(L_, idx) || lua_isnil(L_, idx) ||
-        lua_isinteger(L_, idx)) {
+    if (isnumber(idx) || isstring(idx) || isboolean(idx) || isnil(idx) ||
+        isinteger(idx)) {
       std::cerr << type_name(idx) << ": ";
     }
-    if (lua_isstring(L_, idx)) {
+    if (isstring(idx)) {
       std::cerr << lua_tostring(L_, idx) << std::endl;
     } else {
       std::cerr << luaL_tolstring(L_, idx, NULL) << std::endl;
@@ -1188,14 +1187,14 @@ std::string lua_wrapper::to<std::string>(int   idx,
                                          bool* failed,
                                          bool* exists) {
   if (exists) *exists = !isnoneornil(idx);
-  if (lua_isstring(L_, idx)) {
+  if (isstring(idx)) {
     lua_pushvalue(L_, idx);  // make a copy, so, it's safe
     std::string ret = lua_tostring(L_, -1);
-    lua_pop(L_, 1);
+    pop();
     if (failed) *failed = false;
     return ret;
   }
-  if (lua_isnoneornil(L_, idx)) {
+  if (isnoneornil(idx)) {
     if (failed) *failed = false;
     return "";
   }
@@ -1257,7 +1256,7 @@ private:
     lua_pushcfunction(L(), _G__index);
     lua_setfield(L(), -2, "__index");
     lua_setmetatable(L(), -2);
-    lua_pop(L(), 1);
+    pop();
     lua_pushlightuserdata(L(), (void*)this);
     lua_setfield(L(), LUA_REGISTRYINDEX, "this");
   }
