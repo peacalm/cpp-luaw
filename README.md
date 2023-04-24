@@ -94,6 +94,20 @@ std::string        get_string(@NAME_TYPE@ name, const std::string&        def = 
 const char*        get_c_str (@NAME_TYPE@ name, const char*                def = "",    bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
 ```
 
+Example:
+```C++
+peacalm::lua_wrapper l;
+l.dostring("a = 1 b = true c = 2.5 d = 'good'");
+int a = l.get_int("a");            // 1
+bool b = l.get_bool("b");          // true
+bool b2 = l.get_bool("b2", false); // false
+bool b3 = l.get_bool("b2", true);  // true
+double c = l.get_double("c");      // 2.5
+std::string d = l.get_string("d"); // "good"
+bool dfailed, dexists;
+long dlong = l.get_long("d", -1, false, &dfailed, &dexists); // dlong == -1, dfailed == true, dexists == true
+```
+
 #### 1.2 Get Global Variables with Complex Type
 
 This version of API support get container types from Lua, 
@@ -117,6 +131,23 @@ succeeded and discard elements who are nil or elements whose conversion
 failed.
 ```C++
 template <typename T> T get(@NAME_TYPE@ name, bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+```
+
+Example:
+```C++
+peacalm::lua_wrapper l;
+l.dostring("a = 1 b = true v={1,2}, v2={1,2.5}, v3={1,nil,3}, m={p1={1,2},p2={3,4}}");
+auto a = l.get<int>("a");          // 1
+auto as = l.get<std::string>("a"); // "1"
+auto b = l.get<bool>("b");         // true
+auto bs = l.get<std::string>("b"); // "" (and this conversion fails)
+
+auto v = l.get<std::vector<int>>("v");          // [1,2]
+auto vs = l.get<std::vector<std::string>>("v"); // ["1","2"]
+auto v2 = l.get<std::vector<int>>("v2");        // [1,2] (2.5->2)
+auto v3 = l.get<std::vector<int>>("v3");        // [1,3] (ignore nil)
+
+auto m = l.get<std::map<std::string, std::vector<int>>>("m"); // {"p1":[1,2],"p2":[3,4]}
 ```
 
 ### 2. Recursively Get Fields of Global Variables From Lua
