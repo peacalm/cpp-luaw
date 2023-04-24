@@ -381,12 +381,12 @@ public:
   // * number 3 -> string "3.0" (By Lua)
   // * ingeger 3 -> string "3" (By Lua)
   // * string "2.5" -> double 2.5 (By Lua)
-  // * double 2.5 -> int 2 (By C++)
+  // * number 2.5 -> int 2 (By C++)
   // * string "2.5" -> int 2 (Firstly "2.5"->2.5 by lua, then 2.5->2 by C++)
-  // * bool true -> int 1 (By C++)
-  // * bool false -> int 0 (By C++)
+  // * boolean true -> int 1 (By C++)
+  // * boolean false -> int 0 (By C++)
   // * integer 0 -> bool false (By C++)
-  // * double 2.5 -> bool true (By C++)
+  // * number 2.5 -> bool true (By C++)
   // * string "2.5" -> bool true ("2.5"->2.5 by Lua, then 2.5->true by C++)
   // * string "0" -> bool false ("0"->0 by Lua, then 0->false by C++)
 
@@ -747,10 +747,11 @@ public:
    * exist.
    * @param [in] disable_log Whether print a log when exception occurs.
    * @param [out] failed Will be set whether the operation is failed if this
-   * pointer is not nullptr. If T is a container type, it regards the operation
-   * as failed if any element converts failed.
+   * pointer is not nullptr.
    * @param [out] exists Set whether the variable exists. Regard none and nil as
    * not exists.
+   * @return Return the variable's value if the variable exists and conversion
+   * succeeded.
    *
    * @{
    */
@@ -787,6 +788,7 @@ public:
 
   // NO POP! Cause the c_str body is in stack
   // Leave the duty of popping stack to caller
+  // You'd better use get_string unless you know the difference.
   const char* get_c_str(const char* name,
                         const char* def         = "",
                         bool        disable_log = false,
@@ -810,7 +812,8 @@ public:
    *
    * @tparam T The result type user expected. T can be any type composited by
    * bool, integer types, double, std::string, std::vector, std::set,
-   * std::unordered_set, std::map and std::unordered_map.
+   * std::unordered_set, std::map and std::unordered_map. Note that here const
+   * char* is not supported, which is unsafe.
    * @param [in] name The variable's name.
    * @param [in] disable_log Whether print a log when exception occurs.
    * @param [out] failed Will be set whether the operation is failed if this
@@ -818,7 +821,13 @@ public:
    * as failed if any element converts failed.
    * @param [out] exists Set whether the variable exists. Regard none and nil as
    * not exists.
-   * @return The variable's value in type T.
+   * @return Return the value with given name in type T if conversion succeeded,
+   * otherwise, if T is a simple type (e.g. bool, int, double, std::string,
+   * etc), return initial value of T(i.e. by statement `T{}`), if T is a
+   * container type, the result will contain all non-nil elements whose
+   * conversion succeeded and discard elements who are nil or elements whose
+   * conversion failed.
+   *
    */
   template <typename T>
   T get(const char* name,
@@ -841,9 +850,9 @@ public:
 /**
  * @brief Recursively get values in Lua and convert it to simple C++ type.
  *
- * @param [in] path The first string in path should be a Lua global variable,
- * the last string in path should be a value which can convert to simple C++
- * type, internal strings in path should be sub-table.
+ * @param [in] path The first key in path should be a Lua global variable,
+ * the last key in path should be a value which can convert to expected type,
+ * internal keys in path should be Lua table.
  * @param [in] def The default value returned if failed or target does not
  * exist.
  * @param [in] disable_log Whether print a log when exception occurs.
@@ -911,9 +920,9 @@ public:
    * converted and discard elements fails or not exists. Regard none and nil as
    * not exists.
    *
-   * @param [in] path The first string in path should be a Lua global variable,
-   * the last string in path should be a value which can convert to simple C++
-   * type, internal strings in path should be sub-table.
+   * @param [in] path The first key in path should be a Lua global variable,
+   * the last key in path should be a value which can convert to expected type,
+   * internal keys in path should be Lua table.
    * @param [in] disable_log Whether print a log when exception occurs.
    * @param [out] failed Will be set whether the operation is failed if this
    * pointer is not nullptr. If T is a container type, it regards the operation

@@ -16,7 +16,7 @@ Features:
 * If a variable provider is provided, it can automatically seek variabls from 
 provider while evaluate expressions.
 
-## Value Conversion
+## Value Conversions
 
 **Notice**: Value conversions from Lua to C++ may be different with that in Lua!
 
@@ -51,16 +51,118 @@ Examples:
 * number 3 -> string "3.0" (By Lua)
 * ingeger 3 -> string "3" (By Lua)
 * string "2.5" -> double 2.5 (By Lua)
-* double 2.5 -> int 2 (By C++)
+* number 2.5 -> int 2 (By C++)
 * string "2.5" -> int 2 (Firstly "2.5"->2.5 by lua, then 2.5->2 by C++)
-* bool true -> int 1 (By C++)
-* bool false -> int 0 (By C++)
+* boolean true -> int 1 (By C++)
+* boolean false -> int 0 (By C++)
 * integer 0 -> bool false (By C++)
-* double 2.5 -> bool true (By C++)
+* number 2.5 -> bool true (By C++)
 * string "2.5" -> bool true ("2.5"->2.5 by Lua, then 2.5->true by C++)
 * string "0" -> bool false ("0"->0 by Lua, then 0->false by C++)
 
-## Introduction
+## API Introduction
+
+### 1. Get Global Variables From Lua
+
+#### 1.1 Get Global Variables with Simple Type
+
+* @param [in] name The variable's name.
+* @param [in] def The default value returned if failed or target does not exist.
+* @param [in] disable_log Whether print a log when exception occurs.
+* @param [out] failed Will be set whether the operation is failed if this
+pointer is not nullptr.
+* @param [out] exists Set whether the variable exists. Regard none and nil as 
+not exists.
+* @return Return the variable's value if the variable exists and conversion 
+succeeded.
+
+```C++
+bool               get_bool  (const char* name, const bool&               def = false, bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+int                get_int   (const char* name, const int&                def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+unsigned int       get_uint  (const char* name, const unsigned int&       def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+long               get_long  (const char* name, const long&               def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+unsigned long      get_ulong (const char* name, const unsigned long&      def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+long long          get_llong (const char* name, const long long&          def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+unsigned long long get_ullong(const char* name, const unsigned long long& def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+double             get_double(const char* name, const double&             def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+std::string        get_string(const char* name, const std::string&        def = "",    bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+
+// Caller is responsible for popping the stack after calling this API. You'd better use get_string unless you know the difference.
+const char*        get_c_str(const char* name, const char*                def = "",    bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+```
+Also, we support an overload with std::string type of `name`:
+```C++
+bool               get_bool  (const std::string& name, const bool&               def = false, bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+int                get_int   (const std::string& name, const int&                def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+unsigned int       get_uint  (const std::string& name, const unsigned int&       def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+long               get_long  (const std::string& name, const long&               def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+unsigned long      get_ulong (const std::string& name, const unsigned long&      def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+long long          get_llong (const std::string& name, const long long&          def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+unsigned long long get_ullong(const std::string& name, const unsigned long long& def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+double             get_double(const std::string& name, const double&             def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+std::string        get_string(const std::string& name, const std::string&        def = "",    bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+
+// Caller is responsible for popping the stack after calling this API. You'd better use get_string unless you know the difference.
+const char*        get_c_str(const std::string& name, const char*                def = "",    bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+```
+
+#### 1.2 Get Global Variables with Complex Type
+
+This version of API support get container types from Lua, 
+and it doesn't support parameter default value.
+When getting a container type and the variable exists, the result will contain 
+elements who are successfully converted, and discard who are not or who are nil.
+Regard the operation failed if any element failed.
+
+* @tparam T The result type user expected. T can be any type composited by 
+bool, integer types, double, std::string, std::vector, std::set, 
+std::unordered_set, std::map and std::unordered_map. 
+Note that here const char* is not supported, which is unsafe.
+* @param [out] failed Will be set whether the operation is failed if this
+pointer is not nullptr. If T is a container type, it regards the operation
+as failed if any element converts failed.
+* @return Return the value with given name in type T if conversion succeeded,
+otherwise, if T is a simple type (e.g. bool, int, double, std::string, etc), 
+return initial value of T(i.e. by statement `T{}`), if T is a container
+type, the result will contain all non-nil elements whose conversion
+succeeded and discard elements who are nil or elements whose conversion
+failed.
+```C++
+template <typename T> T get(const char*        name, bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+template <typename T> T get(const std::string& name, bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+```
+
+### 2. Recursively Get Fields of Global Variables From Lua
+
+This version of API can get a table's field recursively by a given path.
+
+In the following API, `@PATH_TYPE@` could be any of: 
+`const std::initializer_list<const char*>&`, 
+`const std::initializer_list<std::string>&`, 
+`const std::vector<const char*>&`,
+`const std::vector<std::string>&`.
+
+* @param [in] path The first key in path should be a Lua global variable,
+the last key in path should be a value which can convert to expected type,
+internal keys in path should be Lua table.
+
+#### 2.1 Get Fields with Simple Type
+```C++
+bool               get_bool  (@PATH_TYPE@ path, const bool&               def = false, bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+int                get_int   (@PATH_TYPE@ path, const int&                def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+unsigned int       get_uint  (@PATH_TYPE@ path, const unsigned int&       def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+long               get_long  (@PATH_TYPE@ path, const long&               def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+unsigned long      get_ulong (@PATH_TYPE@ path, const unsigned long&      def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+long long          get_llong (@PATH_TYPE@ path, const long long&          def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+unsigned long long get_ullong(@PATH_TYPE@ path, const unsigned long long& def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+double             get_double(@PATH_TYPE@ path, const double&             def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+std::string        get_string(@PATH_TYPE@ path, const std::string&        def = "",    bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+```
+
+#### 2.2 Get Fields with Complex Type
+```C++
+template <typename T> T get(@PATH_TYPE@ path, bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+```
 
 ## Usage Examples
 
