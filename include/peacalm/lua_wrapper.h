@@ -18,6 +18,7 @@
 
 #include <cassert>
 #include <cstring>
+#include <initializer_list>
 #include <iostream>
 #include <map>
 #include <memory>
@@ -474,7 +475,7 @@ public:
     return std::string{to_c_str(idx, def.c_str(), disable_log, failed, exists)};
   }
 
-  /** @}*/
+  /** @} */
 
   /**
    * @brief Convert a value in Lua stack to complex C++ type.
@@ -654,7 +655,7 @@ public:
     return ret;
   }
 
-  /** @}*/
+  /** @} */
 
   ///////////////////////// seek fields ////////////////////////////////////////
 
@@ -742,7 +743,8 @@ public:
    * @brief Get a global variable in Lua and convert it to simple C++ type.
    *
    * @param [in] name The variable's name.
-   * @param [in] def The default value returned if failed.
+   * @param [in] def The default value returned if failed or target does not
+   * exist.
    * @param [in] disable_log Whether print a log when exception occurs.
    * @param [out] failed Will be set whether the operation is failed if this
    * pointer is not nullptr. If T is a container type, it regards the operation
@@ -801,7 +803,7 @@ public:
     return get_c_str(name.c_str(), def, disable_log, failed, exists);
   }
 
-  /** @}*/
+  /** @} */
 
   /**
    * @brief Get a global variable in Lua and convert it to complex C++ type.
@@ -836,6 +838,182 @@ public:
     return get<T>(name.c_str(), disable_log, failed, exists);
   }
 
+/**
+ * @brief Recursively get values in Lua and convert it to simple C++ type.
+ *
+ * @param [in] path The first string in path should be a Lua global variable,
+ * the last string in path should be a value which can convert to simple C++
+ * type, internal strings in path should be sub-table.
+ * @param [in] def The default value returned if failed or target does not
+ * exist.
+ * @param [in] disable_log Whether print a log when exception occurs.
+ * @param [out] failed Will be set whether the operation is failed if this
+ * pointer is not nullptr. If T is a container type, it regards the operation
+ * as failed if any element converts failed.
+ * @param [out] exists Set whether the variable exists. Regard none and nil as
+ * not exists.
+ *
+ * @{
+ */
+#define DEFINE_RECURSIVE_GET_SIMPLE_TYPE(typename, type, default)              \
+  type get_##typename(const std::initializer_list<const char*>& path,          \
+                      const type&                               def = default, \
+                      bool  disable_log                             = false,   \
+                      bool* failed                                  = nullptr, \
+                      bool* exists                                  = nullptr) {                                \
+    return __get<type>(                                                        \
+        path.begin(), path.end(), def, disable_log, failed, exists);           \
+  }                                                                            \
+  type get_##typename(const std::initializer_list<std::string>& path,          \
+                      const type&                               def = default, \
+                      bool  disable_log                             = false,   \
+                      bool* failed                                  = nullptr, \
+                      bool* exists                                  = nullptr) {                                \
+    return __get<type>(                                                        \
+        path.begin(), path.end(), def, disable_log, failed, exists);           \
+  }                                                                            \
+  type get_##typename(const std::vector<const char*>& path,                    \
+                      const type&                     def         = default,   \
+                      bool                            disable_log = false,     \
+                      bool*                           failed      = nullptr,   \
+                      bool*                           exists      = nullptr) {                                \
+    return __get<type>(                                                        \
+        path.begin(), path.end(), def, disable_log, failed, exists);           \
+  }                                                                            \
+  type get_##typename(const std::vector<std::string>& path,                    \
+                      const type&                     def         = default,   \
+                      bool                            disable_log = false,     \
+                      bool*                           failed      = nullptr,   \
+                      bool*                           exists      = nullptr) {                                \
+    return __get<type>(                                                        \
+        path.begin(), path.end(), def, disable_log, failed, exists);           \
+  }
+
+  DEFINE_RECURSIVE_GET_SIMPLE_TYPE(int, int, 0)
+  DEFINE_RECURSIVE_GET_SIMPLE_TYPE(uint, unsigned int, 0)
+  DEFINE_RECURSIVE_GET_SIMPLE_TYPE(long, long, 0)
+  DEFINE_RECURSIVE_GET_SIMPLE_TYPE(ulong, unsigned long, 0)
+  DEFINE_RECURSIVE_GET_SIMPLE_TYPE(llong, long long, 0)
+  DEFINE_RECURSIVE_GET_SIMPLE_TYPE(ullong, unsigned long long, 0)
+  DEFINE_RECURSIVE_GET_SIMPLE_TYPE(bool, bool, false)
+  DEFINE_RECURSIVE_GET_SIMPLE_TYPE(double, double, 0)
+  DEFINE_RECURSIVE_GET_SIMPLE_TYPE(string, std::string, "")
+#undef DEFINE_RECURSIVE_GET_SIMPLE_TYPE
+
+  /** @} */
+
+  /**
+   * @brief Recursively get values in Lua and convert it to complex C++ type.
+   *
+   * No default value provided. If T is not a container type, it will return T's
+   * initial value if operation fails or target does not exist. If T is a
+   * container type, the result will contain elements that successfully
+   * converted and discard elements fails or not exists. We regard none and nil
+   * as not exists.
+   *
+   * @param [in] path The first string in path should be a Lua global variable,
+   * the last string in path should be a value which can convert to simple C++
+   * type, internal strings in path should be sub-table.
+   * @param [in] disable_log Whether print a log when exception occurs.
+   * @param [out] failed Will be set whether the operation is failed if this
+   * pointer is not nullptr. If T is a container type, it regards the operation
+   * as failed if any element converts failed.
+   * @param [out] exists Set whether the variable exists. Regard none and nil as
+   * not exists.
+   *
+   * @{
+   */
+  template <typename T>
+  T get(const std::initializer_list<const char*>& path,
+        bool                                      disable_log = false,
+        bool*                                     failed      = nullptr,
+        bool*                                     exists      = nullptr) {
+    return __get<T>(path.begin(), path.end(), disable_log, failed, exists);
+  }
+  template <typename T>
+  T get(const std::initializer_list<std::string>& path,
+        bool                                      disable_log = false,
+        bool*                                     failed      = nullptr,
+        bool*                                     exists      = nullptr) {
+    return __get<T>(path.begin(), path.end(), disable_log, failed, exists);
+  }
+  template <typename T>
+  T get(const std::vector<const char*>& path,
+        bool                            disable_log = false,
+        bool*                           failed      = nullptr,
+        bool*                           exists      = nullptr) {
+    return __get<T>(path.begin(), path.end(), disable_log, failed, exists);
+  }
+  template <typename T>
+  T get(const std::vector<std::string>& path,
+        bool                            disable_log = false,
+        bool*                           failed      = nullptr,
+        bool*                           exists      = nullptr) {
+    return __get<T>(path.begin(), path.end(), disable_log, failed, exists);
+  }
+
+  /** @} */
+
+private:
+  template <typename T, typename Iterator>
+  T __get(Iterator b,
+          Iterator e,
+          bool     disable_log = false,
+          bool*    failed      = nullptr,
+          bool*    exists      = nullptr) {
+    if (b == e) {
+      if (failed) *failed = false;
+      if (exists) *exists = false;
+      return T{};
+    }
+    int  sz = gettop();
+    auto it = b;
+    gseek(tocstr(*it++));
+    if (it == e) {
+      auto ret = to<T>(-1, disable_log, failed, exists);
+      settop(sz);
+      return ret;
+    }
+    while (it != e) {
+      if (isnoneornil(-1)) {
+        if (failed) *failed = false;
+        if (exists) *exists = false;
+        settop(sz);
+        return T{};
+      }
+      if (!istable(-1)) {
+        if (failed) *failed = true;
+        if (exists) *exists = true;
+        if (!disable_log) log_type_convert_error(-1, "table");
+        settop(sz);
+        return T{};
+      }
+      seek(tocstr(*it++));
+    }
+    auto ret = to<T>(-1, disable_log, failed, exists);
+    settop(sz);
+    return ret;
+  }
+
+  template <typename T, typename Iterator>
+  T __get(Iterator b,
+          Iterator e,
+          const T& def,
+          bool     disable_log = false,
+          bool*    failed      = nullptr,
+          bool*    exists      = nullptr) {
+    bool tfailed, texists;
+    auto ret = __get<T>(b, e, disable_log, &tfailed, &texists);
+    if (failed) *failed = tfailed;
+    if (exists) *exists = texists;
+    if (tfailed || !texists) return def;
+    return ret;
+  }
+
+  const char* tocstr(const char* s) { return s; }
+  const char* tocstr(const std::string& s) { return s.c_str(); }
+
+public:
   //////////////////////// evaluate expression /////////////////////////////////
 
   /**
@@ -917,7 +1095,7 @@ public:
     return eval_c_str(expr.c_str(), def, disable_log, failed);
   }
 
-  /** @}*/
+  /** @} */
 
   /**
    * @brief Evaluate a Lua expression and get result in complex C++ type.
@@ -1171,7 +1349,7 @@ public:
     return this->auto_eval_c_str(expr.c_str(), def, disable_log, failed);
   }
 
-  /** @}*/
+  /** @} */
 
   //////////////////////////////////////////////////////////////////////////////
 

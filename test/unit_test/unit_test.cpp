@@ -1745,6 +1745,114 @@ TEST(lua_wrapper, seek) {
   l.settop(0);
 }
 
+TEST(lua_wrapper, recursive_get) {
+  lua_wrapper l;
+  l.dostring("a={b={c=3, d=2.0},b2=2, b3={1,2,1}} b=true s='s' d=2.5");
+
+  EXPECT_EQ(l.get<int>({"a", "b", "c"}), 3);
+  EXPECT_EQ(l.get<int>({std::string("a"), std::string("b"), std::string("c")}),
+            3);
+  EXPECT_EQ(l.get<int>(std::vector<const char *>{"a", "b", "c"}), 3);
+  EXPECT_EQ(l.get<int>(std::vector<std::string>{"a", "b", "c"}), 3);
+  EXPECT_EQ(l.get<int>(std::initializer_list<const char *>{"a", "b", "c"}), 3);
+  EXPECT_EQ(l.get<int>(std::initializer_list<std::string>{"a", "b", "c"}), 3);
+  EXPECT_EQ(l.get<int>(
+                std::initializer_list<std::string>{std::string("a"), "b", "c"}),
+            3);
+  EXPECT_EQ(l.gettop(), 0);
+
+  EXPECT_EQ(l.get<int>({"a", "b2"}), 2);
+  EXPECT_EQ(l.get<std::set<int>>({"a", "b3"}), (std::set<int>{1, 2}));
+  EXPECT_EQ(l.get<std::vector<int>>({"a", "b3"}), (std::vector<int>{1, 2, 1}));
+
+  EXPECT_EQ(l.gettop(), 0);
+
+  EXPECT_EQ(l.get<bool>({"b"}), true);
+  EXPECT_EQ(l.get<std::string>({"s"}), "s");
+  EXPECT_EQ(l.get<double>({"d"}), 2.5);
+
+  EXPECT_EQ(l.gettop(), 0);
+
+  EXPECT_EQ(l.get<bool>(std::vector<std::string>{}), false);
+  EXPECT_EQ(l.get<std::string>(std::initializer_list<const char *>{}), "");
+  EXPECT_EQ(l.get<std::string>(std::initializer_list<std::string>{}), "");
+
+  EXPECT_EQ(l.gettop(), 0);
+
+  EXPECT_EQ(l.get_int({"a", "b", "c"}), 3);
+  EXPECT_EQ(l.get_string({"a", "b", "c"}), "3");
+  EXPECT_EQ(l.get_double({"a", "b", "d"}), 2);
+  EXPECT_EQ(l.get_string({"a", "b", "d"}), "2.0");
+  EXPECT_EQ(l.get_ullong({"a", "b2"}), 2);
+  EXPECT_EQ(l.get_bool({"b"}), true);
+
+  EXPECT_EQ(l.gettop(), 0);
+
+  {
+    bool failed, exists;
+    EXPECT_EQ(l.get_string({"a", "b", "c"}, "def", false, &failed, &exists),
+              "3");
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+
+    EXPECT_EQ(l.get_string({"a", "b", "x"}, "def", false, &failed, &exists),
+              "def");
+    EXPECT_FALSE(failed);
+    EXPECT_FALSE(exists);
+    EXPECT_EQ(l.get_string({"a", "bx"}, "def", false, &failed, &exists), "def");
+    EXPECT_FALSE(failed);
+    EXPECT_FALSE(exists);
+    EXPECT_EQ(l.get_string({"aa", "b", "d"}, "def", false, &failed, &exists),
+              "def");
+    EXPECT_FALSE(failed);
+    EXPECT_FALSE(exists);
+
+    EXPECT_EQ(l.get_string({"a", "b"}, "def", false, &failed, &exists), "def");
+    EXPECT_TRUE(failed);
+    EXPECT_TRUE(exists);
+    EXPECT_EQ(l.get_string({"a"}, "def", false, &failed, &exists), "def");
+    EXPECT_TRUE(failed);
+    EXPECT_TRUE(exists);
+
+    EXPECT_EQ(l.get_string(
+                  std::vector<std::string>{}, "def", false, &failed, &exists),
+              "def");
+    EXPECT_FALSE(failed);
+    EXPECT_FALSE(exists);
+  }
+  {
+    bool failed, exists;
+    EXPECT_EQ(l.get<std::string>({"a", "b", "c"}, false, &failed, &exists),
+              "3");
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+
+    EXPECT_EQ(l.get<std::string>({"a", "b", "x"}, false, &failed, &exists), "");
+    EXPECT_FALSE(failed);
+    EXPECT_FALSE(exists);
+    EXPECT_EQ(l.get<std::string>({"a", "bx"}, false, &failed, &exists), "");
+    EXPECT_FALSE(failed);
+    EXPECT_FALSE(exists);
+    EXPECT_EQ(l.get<std::string>({"aa", "b", "d"}, false, &failed, &exists),
+              "");
+    EXPECT_FALSE(failed);
+    EXPECT_FALSE(exists);
+
+    EXPECT_EQ(l.get<std::string>({"a", "b"}, false, &failed, &exists), "");
+    EXPECT_TRUE(failed);
+    EXPECT_TRUE(exists);
+    EXPECT_EQ(l.get<std::string>({"a"}, false, &failed, &exists), "");
+    EXPECT_TRUE(failed);
+    EXPECT_TRUE(exists);
+
+    EXPECT_EQ(
+        l.get<std::string>(std::vector<std::string>{}, false, &failed, &exists),
+        "");
+    EXPECT_FALSE(failed);
+    EXPECT_FALSE(exists);
+  }
+}
+
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
 
