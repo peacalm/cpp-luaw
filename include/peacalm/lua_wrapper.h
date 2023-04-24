@@ -343,7 +343,8 @@ public:
 
   ///////////////////////// type conversions ///////////////////////////////////
 
-  // NOTICE: Value conversions from Lua to C++ may different with that in Lua!
+  // NOTICE: Value conversions from Lua to C++ may be different with that in
+  // Lua!
   //
   // Conversion process: Firstly convert value in Lua to C++'s value with
   // corresponding type, e.g. boolean to bool, integer to long long, number to
