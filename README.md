@@ -18,8 +18,8 @@ provider while evaluate expressions.
 **Notice**: Type conversions may be different to Lua!
 
 We mainly use C++'s type conversion strategy, in addition, 
-a conversion strategy between number (float number) and 
-number-literal-string, which is supported by Lua.
+a conversion strategy between number and number-literal-string, 
+which is supported by Lua.
 
 Details:
 1. Implicitly conversion between integer, number, boolean using
