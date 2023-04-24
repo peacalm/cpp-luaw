@@ -77,7 +77,7 @@ inline int SET(lua_State* L) {
     lua_newtable(L);
     int sz = luaL_len(L, 1);
     for (int i = 1; i <= sz; ++i) {
-      lua_rawgeti(L, 1, i);
+      lua_geti(L, 1, i);
       if (lua_isnil(L, -1)) {
         lua_pop(L, 1);
         continue;
@@ -112,7 +112,7 @@ inline int COUNTER(lua_State* L) {
     lua_newtable(L);
     int sz = luaL_len(L, 1);
     for (int i = 1; i <= sz; ++i) {
-      lua_rawgeti(L, 1, i);
+      lua_geti(L, 1, i);
       if (lua_isnil(L, -1)) {
         lua_pop(L, 1);
         continue;
