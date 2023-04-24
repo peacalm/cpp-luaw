@@ -26,9 +26,10 @@ Details:
    C++'s static_cast
 2. Implicitly conversion between number and number-literal-string by Lua
 3. When convert number 0 to boolean, will get false (not true as Lua does)
-4. NONE and NIL won't convert to any value, default will be returned
+4. NONE and NIL won't convert to any value, default value (user given or 
+   initial value of target type) will be returned
 5. Non-number-literal-string, including empty string, can't convert to any
-   other types, default will be returned
+   other types, default value will be returned
 6. Integer's precision won't lost if it's value is representable by 64bit
    signed integer type, i.e. between [-2^63, 2^63 -1], which is
    [-9223372036854775808, 9223372036854775807]
