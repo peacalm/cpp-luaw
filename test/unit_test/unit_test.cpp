@@ -1851,6 +1851,38 @@ TEST(lua_wrapper, recursive_get) {
     EXPECT_FALSE(failed);
     EXPECT_FALSE(exists);
   }
+
+  {
+    bool failed, exists;
+    l.dostring("g={a={1,2,nil,4}, b={1,true,3}, c={1.0,'x'} }");
+
+    auto ga = l.get<std::vector<int>>({"g", "a"}, false, &failed, &exists);
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+    EXPECT_EQ(ga, (std::vector<int>{1, 2, 4}));
+
+    auto gb = l.get<std::vector<int>>({"g", "b"}, false, &failed, &exists);
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+    EXPECT_EQ(gb, (std::vector<int>{1, 1, 3}));
+
+    auto gbs =
+        l.get<std::vector<std::string>>({"g", "b"}, false, &failed, &exists);
+    EXPECT_TRUE(failed);
+    EXPECT_TRUE(exists);
+    EXPECT_EQ(gbs, (std::vector<std::string>{"1", "3"}));
+
+    auto gcs =
+        l.get<std::vector<std::string>>({"g", "c"}, false, &failed, &exists);
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+    EXPECT_EQ(gcs, (std::vector<std::string>{"1.0", "x"}));
+
+    auto gcf = l.get<std::vector<double>>({"g", "c"}, false, &failed, &exists);
+    EXPECT_TRUE(failed);
+    EXPECT_TRUE(exists);
+    EXPECT_EQ(gcf, (std::vector<double>{1}));
+  }
 }
 
 int main(int argc, char **argv) {
