@@ -513,7 +513,7 @@ public:
      bool* exists      = nullptr);
 
   // To std::vector
-  // NOTICE: Discard nil in list! e.g. {1,2,nil,4} -> vector<int>{1,2,3}
+  // NOTICE: Discard nil in list! e.g. {1,2,nil,4} -> vector<int>{1,2,4}
   template <typename T>
   std::enable_if_t<std::is_same<T,
                                 std::vector<typename T::value_type,
@@ -524,16 +524,16 @@ public:
      bool* failed      = nullptr,
      bool* exists      = nullptr) {
     if (exists) *exists = !isnoneornil(idx);
-    T ret;
     if (isnoneornil(idx)) {
       if (failed) *failed = false;
-      return ret;
+      return T{};
     }
     if (!lua_istable(L_, idx)) {
       if (failed) *failed = true;
       if (!disable_log) log_type_convert_error(idx, "vector");
-      return ret;
+      return T{};
     }
+    T ret;
     if (failed) *failed = false;
     int sz = luaL_len(L_, idx);
     ret.reserve(sz);
@@ -624,16 +624,16 @@ public:
         bool*       exists      = nullptr,
         const char* tname       = "map") {
     if (exists) *exists = !isnoneornil(idx);
-    T ret;
     if (isnoneornil(idx)) {
       if (failed) *failed = false;
-      return ret;
+      return T{};
     }
     if (!lua_istable(L_, idx)) {
       if (failed) *failed = true;
       if (!disable_log) log_type_convert_error(idx, tname);
-      return ret;
+      return T{};
     }
+    T ret;
     if (failed) *failed = false;
     int absidx = idx > 0 ? idx : gettop() + idx + 1;
     lua_pushnil(L_);
