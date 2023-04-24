@@ -64,6 +64,9 @@ Examples:
 
 ### 1. Get Global Variables From Lua
 
+In the following API, `@NAME_TYPE@` could be `const char*` or `const std::string&`,
+They are overloaded.
+
 #### 1.1 Get Global Variables with Simple Type
 
 * @param [in] name The variable's name.
@@ -77,33 +80,18 @@ not exists.
 succeeded.
 
 ```C++
-bool               get_bool  (const char* name, const bool&               def = false, bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-int                get_int   (const char* name, const int&                def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-unsigned int       get_uint  (const char* name, const unsigned int&       def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-long               get_long  (const char* name, const long&               def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-unsigned long      get_ulong (const char* name, const unsigned long&      def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-long long          get_llong (const char* name, const long long&          def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-unsigned long long get_ullong(const char* name, const unsigned long long& def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-double             get_double(const char* name, const double&             def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-std::string        get_string(const char* name, const std::string&        def = "",    bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+bool               get_bool  (@NAME_TYPE@ name, const bool&               def = false, bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+int                get_int   (@NAME_TYPE@ name, const int&                def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+unsigned int       get_uint  (@NAME_TYPE@ name, const unsigned int&       def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+long               get_long  (@NAME_TYPE@ name, const long&               def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+unsigned long      get_ulong (@NAME_TYPE@ name, const unsigned long&      def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+long long          get_llong (@NAME_TYPE@ name, const long long&          def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+unsigned long long get_ullong(@NAME_TYPE@ name, const unsigned long long& def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+double             get_double(@NAME_TYPE@ name, const double&             def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+std::string        get_string(@NAME_TYPE@ name, const std::string&        def = "",    bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
 
 // Caller is responsible for popping the stack after calling this API. You'd better use get_string unless you know the difference.
-const char*        get_c_str(const char* name, const char*                def = "",    bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-```
-Also, we support an overload with std::string type of `name`:
-```C++
-bool               get_bool  (const std::string& name, const bool&               def = false, bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-int                get_int   (const std::string& name, const int&                def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-unsigned int       get_uint  (const std::string& name, const unsigned int&       def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-long               get_long  (const std::string& name, const long&               def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-unsigned long      get_ulong (const std::string& name, const unsigned long&      def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-long long          get_llong (const std::string& name, const long long&          def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-unsigned long long get_ullong(const std::string& name, const unsigned long long& def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-double             get_double(const std::string& name, const double&             def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-std::string        get_string(const std::string& name, const std::string&        def = "",    bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-
-// Caller is responsible for popping the stack after calling this API. You'd better use get_string unless you know the difference.
-const char*        get_c_str(const std::string& name, const char*                def = "",    bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+const char*        get_c_str(@NAME_TYPE@ name, const char*                def = "",    bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
 ```
 
 #### 1.2 Get Global Variables with Complex Type
@@ -128,8 +116,7 @@ type, the result will contain all non-nil elements whose conversion
 succeeded and discard elements who are nil or elements whose conversion
 failed.
 ```C++
-template <typename T> T get(const char*        name, bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-template <typename T> T get(const std::string& name, bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+template <typename T> T get(@NAME_TYPE@ name, bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
 ```
 
 ### 2. Recursively Get Fields of Global Variables From Lua
