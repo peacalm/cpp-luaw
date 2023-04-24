@@ -91,7 +91,7 @@ double             get_double(@NAME_TYPE@ name, const double&             def = 
 std::string        get_string(@NAME_TYPE@ name, const std::string&        def = "",    bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
 
 // Caller is responsible for popping the stack after calling this API. You'd better use get_string unless you know the difference.
-const char*        get_c_str(@NAME_TYPE@ name, const char*                def = "",    bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+const char*        get_c_str (@NAME_TYPE@ name, const char*                def = "",    bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
 ```
 
 #### 1.2 Get Global Variables with Complex Type
