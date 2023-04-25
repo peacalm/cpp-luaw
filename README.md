@@ -328,15 +328,18 @@ std::cout << l.gettop() << std::endl;    // 2
 // g.a on top
 l.to<int>(); // 1
 
-l.pop(); // now currently g on top
+l.pop(); // Now g on top of stack
 l.seek("gg").seek("a").to<int>(); // 11
 
-l.settop(0); // clear stack
+l.settop(0); // Clear stack
 // Note that list index starts from 1 in Lua
 l.gseek("g").seek("list").seek(2).to_int(); // 2
 // Start with gseek, ignore existing values on stack
 l.gseek("g").seek("gg").seek("ggg").seek("a").to_string(); // s
 std::cout << l.gettop() << std::endl; // 7, 3 for first line, 4 for second
+
+l.pop(); // Now ggg on top of stack
+l.to<std::unordered_map<std::string, std::string>>(); // {"a":"s"}
 
 l.settop(0);
 ```
