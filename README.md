@@ -123,7 +123,7 @@ Note that here const char* is not supported, which is unsafe.
 * @param [out] failed Will be set whether the operation is failed if this
 pointer is not nullptr. If T is a container type, it regards the operation
 as failed if any element converts failed.
-* @return Return the value with given name in type T if conversion succeeded,
+* @return Return the value with given name in type T if conversion succeeds,
 otherwise, if T is a simple type (e.g. bool, int, double, std::string, etc), 
 return initial value of T(i.e. by statement `T{}`), if T is a container
 type, the result will contain all non-nil elements whose conversion
@@ -279,8 +279,8 @@ self_t& seek(int n, int idx = -1);
 ```
 
 Type Conversion functions convert a value in Lua stack to C++ type:
-* @param [in] idx Index of Lua stack where the in.
-* @param [in] def The default value returned if convert failed.
+* @param [in] idx Index of Lua stack where the value in.
+* @param [in] def The default value returned if conversion fails.
 * @param [in] disable_log Whether print a log when exception occurs.
 * @param [out] failed Will be set whether the convertion is failed if this 
 pointer is not nullptr.

@@ -393,8 +393,8 @@ public:
   /**
    * @brief Convert a value in Lua stack to C++ simple type value.
    *
-   * @param [in] idx Index of Lua stack where the in.
-   * @param [in] def The default value returned if convert failed.
+   * @param [in] idx Index of Lua stack where the value in.
+   * @param [in] def The default value returned if conversion fails.
    * @param [in] disable_log Whether print a log when exception occurs.
    * @param [out] failed Will be set whether the convertion is failed if this
    * pointer is not nullptr.
@@ -490,7 +490,7 @@ public:
    * as failed if any element converts failed.
    * @param [out] exists Will be set whether the value at given index exists if
    * this pointer is not nullptr. Regard none and nil as not exists.
-   * @return Return the value on given index in type T if conversion succeeded,
+   * @return Return the value on given index in type T if conversion succeeds,
    * otherwise return initial value of T(i.e. by statement `T{}`) if T is a
    * simple type, e.g. bool, int, double, std::string, etc. If T is a container
    * type, the result will contain all non-nil elements whose conversion
@@ -822,7 +822,7 @@ public:
    * as failed if any element converts failed.
    * @param [out] exists Set whether the variable exists. Regard none and nil as
    * not exists.
-   * @return Return the value with given name in type T if conversion succeeded,
+   * @return Return the value with given name in type T if conversion succeeds,
    * otherwise, if T is a simple type (e.g. bool, int, double, std::string,
    * etc), return initial value of T(i.e. by statement `T{}`), if T is a
    * container type, the result will contain all non-nil elements whose
