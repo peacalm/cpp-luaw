@@ -52,12 +52,12 @@ int main() {
   auto m   = l.get<std::map<std::string, int>>("m");
   auto m_c = l.get_string({"m", "c"}, "nx");
 
-  auto g_flag   = l.get<std::map<std::string, std::string>>({"g", "flag"});
-  auto g_cities = l.get<std::set<std::string>>({"g", "cities"});
+  auto g_flag      = l.get<std::map<std::string, std::string>>({"g", "flag"});
+  auto g_bigcities = l.get<std::set<std::string>>({"g", "bigcities"});
   auto g_flag_star_num = l.get<int>({"g", "flag", "star_num"});
   auto g_population    = l.get_llong({"g", "population"}, -1);
 
-  watch(a, b, c, d, v, mii_by_v, m, m_c, g_flag, g_cities, g_population);
+  watch(a, b, c, d, v, mii_by_v, m, m_c, g_flag, g_bigcities, g_population);
 }
 // clang-format off
 /* OUTPUT:
@@ -70,6 +70,6 @@ mii_by_v = {1: 1, 2: 3, 3: 5, 4: 7}
 m = {a: 1, b: 2, c: 3, d: 4}
 m_c = 3
 g_flag = {bgcolor: red, star_color: yellow, star_num: 5, star_orientation: upper left}
-g_cities = {Beijing, Chongqing, Shanghai, Tianjin}
+g_bigcities = {Beijing, Chongqing, Shanghai, Tianjin}
 g_population = -1
 */

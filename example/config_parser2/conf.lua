@@ -12,5 +12,5 @@ g = {
         star_num = 5,
         star_orientation = "upper left"
     },
-    cities = {"Beijing", "Shanghai", "Tianjin", "Chongqing"}
+    bigcities = {"Beijing", "Shanghai", "Tianjin", "Chongqing"}
 }
