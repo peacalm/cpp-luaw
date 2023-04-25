@@ -59,9 +59,8 @@ int main() {
 
   watch(a, b, c, d, v, mii_by_v, m, m_c, g_flag, g_cities, g_population);
 }
-/*
-OUTPUT:
-
+// clang-format off
+/* OUTPUT:
 a = 1
 b = 3.14159
 c = 1000000000123
@@ -70,6 +69,7 @@ v = [1, 3, 5, 7]
 mii_by_v = {1: 1, 2: 3, 3: 5, 4: 7}
 m = {a: 1, b: 2, c: 3, d: 4}
 m_c = 3
-g_flag = {bgcolor: red, star_color: yellow, star_num: 5, star_orientation: upper
-left} g_cities = {Beijing, Chongqing, Shanghai, Tianjin} g_population = -1
+g_flag = {bgcolor: red, star_color: yellow, star_num: 5, star_orientation: upper left}
+g_cities = {Beijing, Chongqing, Shanghai, Tianjin}
+g_population = -1
 */
