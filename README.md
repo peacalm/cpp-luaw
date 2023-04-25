@@ -310,6 +310,7 @@ std::string        to_string(int idx = -1, const std::string&        def = "",  
 ```
 
 Conversion to complex C++ type, no default value parameter:
+
 Parameters description like [1.2 Get Global Variables with Complex Type](https://github.com/peacalm/cpp-lua_wrapper#12-get-global-variables-with-complex-type)
 ```C++
 // To complex type, without default value parameter
