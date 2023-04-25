@@ -12,7 +12,7 @@ C++ easier.
 Features:
 * Get values from Lua to C++
 * Set values from C++ to Lua
-* Evaluate string Lua expression in C++ to get values
+* Evaluate Lua expression in C++ to get values
 * If a variable provider is provided, it can automatically seek variabls from 
 provider while evaluate expressions.
 
