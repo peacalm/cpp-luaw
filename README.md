@@ -288,18 +288,18 @@ pointer is not nullptr.
 this pointer is not nullptr. Regard none and nil as not exists.
 ```C++
 // To simple type
-bool               to_bool  (int idx, const bool&               def = false, bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-int                to_int   (int idx, const int&                def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-unsigned int       to_uint  (int idx, const unsigned int&       def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-long               to_long  (int idx, const long&               def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-unsigned long      to_ulong (int idx, const unsigned long&      def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-long long          to_llong (int idx, const long long&          def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-unsigned long long to_ullong(int idx, const unsigned long long& def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-double             to_double(int idx, const double&             def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-std::string        to_string(int idx, const std::string&        def = "",    bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+bool               to_bool  (int idx = -1, const bool&               def = false, bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+int                to_int   (int idx = -1, const int&                def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+unsigned int       to_uint  (int idx = -1, const unsigned int&       def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+long               to_long  (int idx = -1, const long&               def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+unsigned long      to_ulong (int idx = -1, const unsigned long&      def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+long long          to_llong (int idx = -1, const long long&          def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+unsigned long long to_ullong(int idx = -1, const unsigned long long& def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+double             to_double(int idx = -1, const double&             def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+std::string        to_string(int idx = -1, const std::string&        def = "",    bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
 
 // To complex type
-template <typename T> to(int idx, bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+template <typename T> to(int idx = -1, bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
 ```
 
 Example:
