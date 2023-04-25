@@ -140,7 +140,7 @@ l.dostring("a = 1 b = true v={1,2}, v2={1,2.5}, v3={1,nil,3}, m={p1={1,2},p2={3,
 auto a = l.get<int>("a");          // 1
 auto as = l.get<std::string>("a"); // "1"
 auto b = l.get<bool>("b");         // true
-auto bs = l.get<std::string>("b"); // "" (and this conversion fails)
+auto bs = l.get<std::string>("b"); // "" (this conversion fails)
 
 auto v = l.get<std::vector<int>>("v");          // [1,2]
 auto vs = l.get<std::vector<std::string>>("v"); // ["1","2"]
