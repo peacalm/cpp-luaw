@@ -1174,7 +1174,7 @@ public:
 
 #define DEFINE_TO_SPECIALIZATIOIN(typename, type, default)           \
   template <>                                                        \
-  type lua_wrapper::to<type>(                                        \
+  inline type lua_wrapper::to<type>(                                 \
       int idx, bool disable_log, bool* failed, bool* exists) {       \
     return to_##typename(idx, default, disable_log, failed, exists); \
   }
@@ -1193,10 +1193,10 @@ DEFINE_TO_SPECIALIZATIOIN(double, double, false)
 // Avoid implicitly modifying number to string in stack, which may cause panic
 // while doing lua_next
 template <>
-std::string lua_wrapper::to<std::string>(int   idx,
-                                         bool  disable_log,
-                                         bool* failed,
-                                         bool* exists) {
+inline std::string lua_wrapper::to<std::string>(int   idx,
+                                                bool  disable_log,
+                                                bool* failed,
+                                                bool* exists) {
   if (exists) *exists = !isnoneornil(idx);
   if (isstring(idx)) {
     lua_pushvalue(L_, idx);  // make a copy, so, it's safe
