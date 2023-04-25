@@ -304,6 +304,7 @@ template <typename T> to(int idx, bool disable_log = false, bool* failed = nullp
 
 Example:
 ```C++
+peacalm::lua_wrapper l;
 l.dostring("g={a=1, gg={a=11,ggg={a='s'}}, list={1,2,3}}");
 
 int a = l.gseek("g").seek("a").to_int(); // 1
