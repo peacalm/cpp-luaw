@@ -268,6 +268,8 @@ auto si = l.eval<std::set<int>>("return {a, b, c}"); // {2,5,10}
 ```
 
 ### 6. Seek Fields then Convert to C++ Type
+
+#### 6.1 Seek Functions
 **Notice**: Caller is responsible for popping the stack after calling seek functions.
 
 Seek functions push the global value or field of a table onto stack:
@@ -288,6 +290,7 @@ self_t& seek(const std::string& name);
 self_t& seek(int n, int idx = -1);
 ```
 
+#### 6.2 Type Conversion Functions
 Type Conversion functions convert a value in Lua stack to C++ type:
 * @param [in] idx Index of Lua stack where the value in.
 * @param [in] def The default value returned if conversion fails.
@@ -310,8 +313,7 @@ std::string        to_string(int idx = -1, const std::string&        def = "",  
 ```
 
 Conversion to complex C++ type, no default value parameter:
-
-Parameters description like [1.2 Get Global Variables with Complex Type](https://github.com/peacalm/cpp-lua_wrapper#12-get-global-variables-with-complex-type)
+* Parameters description like [1.2 Get Global Variables with Complex Type](https://github.com/peacalm/cpp-lua_wrapper#12-get-global-variables-with-complex-type)
 ```C++
 // To complex type, without default value parameter
 template <typename T> T to(int idx = -1, bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
