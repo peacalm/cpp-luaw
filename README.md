@@ -272,19 +272,19 @@ auto si = l.eval<std::set<int>>("return {a, b, c}"); // {2,5,10}
 
 Seek functions push the global value or field of a table onto stack:
 ```C++
-/// Get a global value by name and push it onto the stack, or push a nil if
-/// the name does not exist.
+// Get a global value by name and push it onto the stack, or push a nil if
+// the name does not exist.
 self_t& gseek(const char* name);
 self_t& gseek(const std::string& name);
 
-/// Push t[name] onto the stack where t is the value at the given index `idx`,
-/// or push a nil if the operation fails.
+// Push t[name] onto the stack where t is the value at the given index `idx`,
+// or push a nil if the operation fails.
 self_t& seek(const char* name, int idx = -1);
 self_t& seek(const std::string& name);
 
-/// Push t[n] onto the stack where t is the value at the given index `idx`, or
-/// push a nil if the operation fails.
-/// Note that index of list in Lua starts from 1.
+// Push t[n] onto the stack where t is the value at the given index `idx`, or
+// push a nil if the operation fails.
+// Note that index of list in Lua starts from 1.
 self_t& seek(int n, int idx = -1);
 ```
 
