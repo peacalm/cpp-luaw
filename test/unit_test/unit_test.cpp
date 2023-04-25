@@ -1900,6 +1900,28 @@ TEST(lua_wrapper, eval_using_setted_global) {
   EXPECT_EQ(si, (std::set<int>{2, 5, 10}));
 }
 
+TEST(lua_wrapper, abs_index) {
+  lua_wrapper l;
+  EXPECT_EQ(l.gettop(), 0);
+  EXPECT_EQ(l.abs_index(0), 0);
+  EXPECT_EQ(l.abs_index(1), 1);
+  EXPECT_EQ(l.abs_index(2), 2);
+  EXPECT_EQ(l.abs_index(5), 5);
+  EXPECT_EQ(l.abs_index(-1), -1);
+  EXPECT_EQ(l.abs_index(-2), -2);
+  EXPECT_EQ(l.abs_index(-5), -5);
+
+  l.settop(3);
+  EXPECT_EQ(l.abs_index(0), 0);
+  EXPECT_EQ(l.abs_index(1), 1);
+  EXPECT_EQ(l.abs_index(2), 2);
+  EXPECT_EQ(l.abs_index(-1), 3);
+  EXPECT_EQ(l.abs_index(-2), 2);
+  EXPECT_EQ(l.abs_index(-3), 1);
+  EXPECT_EQ(l.abs_index(-4), -4);
+  EXPECT_EQ(l.abs_index(-5), -5);
+}
+
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
 
