@@ -309,7 +309,7 @@ double             to_double(int idx = -1, const double&             def = 0,   
 std::string        to_string(int idx = -1, const std::string&        def = "",    bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
 
 // To complex type
-template <typename T> to(int idx = -1, bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+template <typename T> T to(int idx = -1, bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
 ```
 
 Example:
