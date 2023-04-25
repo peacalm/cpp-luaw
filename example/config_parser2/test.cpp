@@ -70,6 +70,6 @@ mii_by_v = {1: 1, 2: 3, 3: 5, 4: 7}
 m = {a: 1, b: 2, c: 3, d: 4}
 m_c = 3
 g_flag = {bgcolor: red, star_color: yellow, star_num: 5, star_orientation: upper left}
-g_bigcities = {Beijing, Chongqing, Shanghai, Tianjin}
+g_bigcities = {Beijing, Guangzhou, Shanghai, Shenzhen}
 g_population = -1
 */
