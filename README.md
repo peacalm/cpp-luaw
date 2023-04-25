@@ -226,6 +226,10 @@ int dofile(const std::string& fname);
 
 ### 5. Evaluate a Lua Expression and Get the Result
 
+The expresion must have at least one returned value, if more than one returned,
+only the last one is used. Evaluate the expression then convert the returned 
+value to expected C++ type.
+
 In the following API, `@EXPR_TYPE@` could be `const char*` or `const std::string&`.
 
 For simple type, which have default value parameter:
