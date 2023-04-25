@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 This library is a simple wrapper of Lua which makes interaction between Lua and 
-C++ easier.
+C++ easier. It can be used as a config file parser or a dynamic expression evaluator.
 
 * Lua version >= 5.4
 * C++ version >= C++14
