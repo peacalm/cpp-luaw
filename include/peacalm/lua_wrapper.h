@@ -853,7 +853,7 @@ public:
  *
  * @param [in] path The first key in path should be a Lua global variable,
  * the last key in path should be a value which can convert to expected type,
- * internal keys in path should be Lua table.
+ * excpet for the last key, all other keys in path should be Lua table.
  * @param [in] def The default value returned if failed or target does not
  * exist.
  * @param [in] disable_log Whether print a log when exception occurs.
@@ -923,7 +923,7 @@ public:
    *
    * @param [in] path The first key in path should be a Lua global variable,
    * the last key in path should be a value which can convert to expected type,
-   * internal keys in path should be Lua table.
+   * excpet for the last key, all other keys in path should be Lua table.
    * @param [in] disable_log Whether print a log when exception occurs.
    * @param [out] failed Will be set whether the operation is failed if this
    * pointer is not nullptr. If T is a container type, it regards the operation

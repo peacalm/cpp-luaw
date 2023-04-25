@@ -168,7 +168,7 @@ In the following API, `@PATH_TYPE@` could be any of:
 
 * @param [in] path The first key in path should be a Lua global variable,
 the last key in path should be a value which can convert to expected type,
-internal keys in path should be Lua table.
+excpet for the last key, all other keys in path should be Lua table.
 
 #### 2.1 Get Fields with Simple Type
 ```C++
