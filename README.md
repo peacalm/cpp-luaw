@@ -228,7 +228,7 @@ int dofile(const std::string& fname);
 
 In the following API, `@EXPR_TYPE@` could be `const char*` or `const std::string&`.
 
-For simple type, which have default value parameter.
+For simple type, which have default value parameter:
 ```C++
 bool               eval_bool  (@EXPR_TYPE@ expr, const bool&               def = false, bool disable_log = false, bool* failed = nullptr);
 int                eval_int   (@EXPR_TYPE@ expr, const int&                def = 0,     bool disable_log = false, bool* failed = nullptr);
@@ -241,10 +241,22 @@ double             eval_double(@EXPR_TYPE@ expr, const double&             def =
 std::string        eval_string(@EXPR_TYPE@ expr, const std::string&        def = "",    bool disable_log = false, bool* failed = nullptr);
 ```
 
-For complex type, which do not have default value parameter.
+For complex type, which do not have default value parameter:
 ```C++
 template <typename T> T eval(@EXPR_TYPE@ expr, bool disable_log = false, bool* failed = nullptr);
 ```
+
+Example:
+```C++
+peacalm::lua_wrapper l;
+l.set_integer("a", 10);
+l.set_integer("b", 5);
+l.set_integer("c", 2);
+double ret = l.eval_double("return a^2 + b/c"); // 102.5
+std::string s = l.eval_string("if a > b + c then return 'good' else return 'bad' end"); // "good"
+auto si = l.eval<std::set<int>>("return {a, b, c}"); // {2,5,10}
+```
+
 
 ## Usage Examples
 
