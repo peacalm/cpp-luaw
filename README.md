@@ -104,8 +104,14 @@ bool b2 = l.get_bool("b2", false); // false
 bool b3 = l.get_bool("b2", true);  // true
 double c = l.get_double("c");      // 2.5
 std::string d = l.get_string("d"); // "good"
+
 bool dfailed, dexists;
-long dlong = l.get_long("d", -1, false, &dfailed, &dexists); // dlong == -1, dfailed == true, dexists == true
+long dlong = l.get_long("d", -1, false, &dfailed, &dexists);
+// dlong == -1, dfailed == true, dexists == true
+
+bool dfailed2, dexists2;
+long dlong2 = l.get<long>("d", false, &dfailed2, &dexists2);
+// dlong2 == 0, dfailed2 == true, dexists2 == true
 ```
 
 #### 1.2 Get Global Variables with Complex Type
