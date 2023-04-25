@@ -215,7 +215,7 @@ void set_string(@NAME_TYPE@ name, const std::string& value);
 Just a simple wrapper of raw Lua API, nothing more added.
 ```C++
 int loadstring(const char*        s);
-int loadstring(const std::string& s)l
+int loadstring(const std::string& s);
 int dostring(const char*        s);
 int dostring(const std::string& s);
 int loadfile(const char*        fname);
