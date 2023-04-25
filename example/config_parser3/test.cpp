@@ -35,41 +35,27 @@
 int main() {
   peacalm::lua_wrapper l;
 
-  int ret = l.dofile("conf.lua");
+  int ret = l.dofile("conf/knight.lua");
   if (ret != LUA_OK) {
     l.log_error_in_stack();
     return 0;
   }
 
-  int         a = l.get_int("a");
-  double      b = l.get_double("b");
-  long        c = l.get_llong("c");
-  std::string d = l.get_string("d");
+  auto name     = l.get_string("name");
+  auto country  = l.get_string("country");
+  auto birthday = l.get_string("birthday", "unknown");
+  auto power    = l.get_double("power");
+  auto lifetime = l.get_long("lifetime");
+  auto skills   = l.get<std::vector<std::string>>("skills");
 
-  auto v        = l.get<std::vector<int>>("v");
-  auto mii_by_v = l.get<std::map<int, int>>("v");
-
-  auto m   = l.get<std::map<std::string, int>>("m");
-  auto m_c = l.get_string({"m", "c"}, "nx");
-
-  auto g_flag   = l.get<std::map<std::string, std::string>>({"g", "flag"});
-  auto g_cities = l.get<std::set<std::string>>({"g", "cities"});
-  auto g_flag_star_num = l.get<int>({"g", "flag", "star_num"});
-  auto g_population    = l.get_llong({"g", "population"}, -1);
-
-  watch(a, b, c, d, v, mii_by_v, m, m_c, g_flag, g_cities, g_population);
+  watch(name, country, birthday, power, lifetime, skills);
+  return 0;
 }
-/*
-OUTPUT:
-
-a = 1
-b = 3.14159
-c = 1000000000123
-d = good
-v = [1, 3, 5, 7]
-mii_by_v = {1: 1, 2: 3, 3: 5, 4: 7}
-m = {a: 1, b: 2, c: 3, d: 4}
-m_c = 3
-g_flag = {bgcolor: red, star_color: yellow, star_num: 5, star_orientation: upper
-left} g_cities = {Beijing, Chongqing, Shanghai, Tianjin} g_population = -1
+/* OUTPUT:
+name = knight
+country = Spain
+birthday = 2000-1-1
+power = 80
+lifetime = 100
+skills = [horse riding, archery, sword]
 */
