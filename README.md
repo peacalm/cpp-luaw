@@ -331,53 +331,13 @@ l.settop(0);
 ```
 
 
-## Usage Examples
+### Custom Lua Wrapper: Expression Evaluator with Variable Provider
 
-### As a config file parser
-suppose config file is "conf.lua":
-```C++
-#include <iostream>
-#include <peacalm/lua_wrapper.h>
-int main() {
-  peacalm::lua_wrapper l;
+The class `custom_lua_wrapper` is derived from `lua_wrapper`, it can contain
+a variable provider, when a global variable used in some expression does not 
+exist in Lua, then it will seek the variable from the provider.
 
-  // equals to: l.dostring("a = 1 b = math.pi c = 10^12 + 123 d = 'good'");
-  l.dofile("conf.lua"); 
-
-  int a = l.get_int("a");
-  double b = l.get_double("b");
-  long c = l.get_llong("c");
-  std::string d = l.get_string("d");
-  std::cout << "a = " << a << std::endl;
-  std::cout << "b = " << b << std::endl;
-  std::cout << "c = " << c << std::endl;
-  std::cout << "d = " << d << std::endl;
-  std::cout << "nx = " << l.get_int("nx", -1) << std::endl;
-}
-```
-Output:
-```txt
-a = 1
-b = 3.14159
-c = 1000000000123
-d = good
-nx = -1
-```
-
-### As a dynamic expression evaluator
-```C++
-peacalm::lua_wrapper l;
-l.set_integer("a", 10);
-l.set_integer("b", 5);
-l.set_integer("c", 2);
-std::string expr = "return a^2 + b/c";
-double ret = l.eval_double(expr);
-std::cout << "ret = " << ret << std::endl; // 102.5
-std::string s = l.eval_string("if a > b + c then return 'good' else return 'bad' end");
-std::cout << "s = " << s << std::endl; // good
-```
-
-### With variable provider
+Example:
 ```C++
 struct provider {
   bool provide(lua_State *L, const char *vname) {
