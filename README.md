@@ -198,6 +198,54 @@ l.get<int>({"p", "z"});    // 0
 l.get<std::vector<int>>({"m", "p2"}); // [3,4]
 ```
 
+### 3. Set Global Variables to Lua
+
+In the following API, `@NAME_TYPE@` could be `const char*` or `const std::string&`.
+
+```C++
+void set_integer(@NAME_TYPE@ name, long long value);
+void set_number(@NAME_TYPE@ name, double value);
+void set_boolean(@NAME_TYPE@ name, bool value);
+void set_nil(@NAME_TYPE@ name);
+void set_string(@NAME_TYPE@ name, const char* value);
+void set_string(@NAME_TYPE@ name, const std::string& value);
+```
+
+### 4. Execute Lua Scripts (File or String)
+Just a simple wrapper of raw Lua API, nothing more added.
+```C++
+int loadstring(const char*        s);
+int loadstring(const std::string& s)l
+int dostring(const char*        s);
+int dostring(const std::string& s);
+int loadfile(const char*        fname);
+int loadfile(const std::string& fname);
+int dofile(const char*        fname);
+int dofile(const std::string& fname);
+```
+
+### 5. Evaluator a Lua Expression and Get the Result
+
+In the following API, `@EXPR_TYPE@` could be `const char*` or `const std::string&`.
+
+For simple type, which have default value parameter.
+```C++
+bool               eval_bool  (@EXPR_TYPE@ expr, const bool&               def = false, bool disable_log = false, bool* failed = nullptr);
+int                eval_int   (@EXPR_TYPE@ expr, const int&                def = 0,     bool disable_log = false, bool* failed = nullptr);
+unsigned int       eval_uint  (@EXPR_TYPE@ expr, const unsigned int&       def = 0,     bool disable_log = false, bool* failed = nullptr);
+long               eval_long  (@EXPR_TYPE@ expr, const long&               def = 0,     bool disable_log = false, bool* failed = nullptr);
+unsigned long      eval_ulong (@EXPR_TYPE@ expr, const unsigned long&      def = 0,     bool disable_log = false, bool* failed = nullptr);
+long long          eval_llong (@EXPR_TYPE@ expr, const long long&          def = 0,     bool disable_log = false, bool* failed = nullptr);
+unsigned long long eval_ullong(@EXPR_TYPE@ expr, const unsigned long long& def = 0,     bool disable_log = false, bool* failed = nullptr);
+double             eval_double(@EXPR_TYPE@ expr, const double&             def = 0,     bool disable_log = false, bool* failed = nullptr);
+std::string        eval_string(@EXPR_TYPE@ expr, const std::string&        def = "",    bool disable_log = false, bool* failed = nullptr);
+```
+
+For complex type, which do not have default value parameter.
+```C++
+template <typename T> T eval(@EXPR_TYPE@ expr, bool disable_log = false, bool* failed = nullptr);
+```
+
 ## Usage Examples
 
 ### As a config file parser
