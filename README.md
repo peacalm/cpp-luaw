@@ -117,7 +117,7 @@ long dlong2 = l.get<long>("d", false, &dfailed2, &dexists2);
 #### 1.2 Get Global Variables with Complex Type
 
 This version of API support get container types from Lua, 
-and it doesn't support parameter default value.
+and it doesn't support the parameter default value.
 When getting a container type and the variable exists, the result will contain 
 elements who are successfully converted, and discard who are not or who are nil.
 Regard the operation failed if any element failed.
