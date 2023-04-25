@@ -681,6 +681,7 @@ public:
 
   /// Push t[n] onto the stack where t is the value at the given index `idx`, or
   /// push a nil if the operation fails.
+  /// Note that index of list in Lua starts from 1.
   self_t& seek(int n, int idx = -1) {
     if (gettop() > 0 && istable(idx)) {
       lua_geti(L_, idx, n);

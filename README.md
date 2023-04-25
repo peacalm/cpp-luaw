@@ -257,6 +257,74 @@ std::string s = l.eval_string("if a > b + c then return 'good' else return 'bad'
 auto si = l.eval<std::set<int>>("return {a, b, c}"); // {2,5,10}
 ```
 
+### 6. Seek Fields then Convert to C++ Type
+**Notice**: Caller is responsible for popping the stack after calling seek functions.
+
+Seek functions push the global value or field of a table onto stack:
+```C++
+/// Get a global value by name and push it onto the stack, or push a nil if
+/// the name does not exist.
+self_t& gseek(const char* name);
+self_t& gseek(const std::string& name);
+
+/// Push t[name] onto the stack where t is the value at the given index `idx`,
+/// or push a nil if the operation fails.
+self_t& seek(const char* name, int idx = -1);
+self_t& seek(const std::string& name);
+
+/// Push t[n] onto the stack where t is the value at the given index `idx`, or
+/// push a nil if the operation fails.
+/// Note that index of list in Lua starts from 1.
+self_t& seek(int n, int idx = -1);
+```
+
+Type Conversion functions convert a value in Lua stack to C++ type:
+* @param [in] idx Index of Lua stack where the in.
+* @param [in] def The default value returned if convert failed.
+* @param [in] disable_log Whether print a log when exception occurs.
+* @param [out] failed Will be set whether the convertion is failed if this 
+pointer is not nullptr.
+* @param [out] exists Will be set whether the value at given index exists if 
+this pointer is not nullptr. Regard none and nil as not exists.
+```C++
+// To simple type
+bool               to_bool  (int idx, const bool&               def = false, bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+int                to_int   (int idx, const int&                def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+unsigned int       to_uint  (int idx, const unsigned int&       def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+long               to_long  (int idx, const long&               def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+unsigned long      to_ulong (int idx, const unsigned long&      def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+long long          to_llong (int idx, const long long&          def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+unsigned long long to_ullong(int idx, const unsigned long long& def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+double             to_double(int idx, const double&             def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+std::string        to_string(int idx, const std::string&        def = "",    bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+
+// To complex type
+template <typename T> to(int idx, bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+```
+
+Example:
+```C++
+l.dostring("g={a=1, gg={a=11,ggg={a='s'}}, list={1,2,3}}");
+
+int a = l.gseek("g").seek("a").to_int(); // 1
+std::cout << l.gettop() << std::endl;    // 2
+
+// g.a on top
+l.to<int>(); // 1
+
+l.pop(); // now currently g on top
+l.seek("gg").seek("a").to<int>(); // 11
+
+l.settop(0); // clear stack
+// Note that list index starts from 1 in Lua
+l.gseek("g").seek("list").seek(2).to_int(); // 2
+// Start with gseek, ignore existing values on stack
+l.gseek("g").seek("gg").seek("ggg").seek("a").to_string(); // s
+std::cout << l.gettop() << std::endl; // 7, 3 for first line, 4 for second
+
+l.settop(0);
+```
+
 
 ## Usage Examples
 
