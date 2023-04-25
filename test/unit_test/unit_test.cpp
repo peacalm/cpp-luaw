@@ -641,7 +641,8 @@ TEST(lua_wrapper, set_and_get) {
   EXPECT_EQ(l.get_uint("imax"), UINT_MAX);
   l.set_integer("imin", LLONG_MIN);
   EXPECT_EQ(l.get_llong("imin"), LLONG_MIN);
-  EXPECT_EQ(l.get_ullong("imin"), LLONG_MAX + 1);
+  EXPECT_EQ(l.get_ullong("imin"),
+            static_cast<unsigned long long>(LLONG_MAX) + 1ull);
   EXPECT_EQ(l.get_int("imin"), 0);
   EXPECT_EQ(l.get_uint("imin"), 0);
   l.set_integer("n1", -1);
