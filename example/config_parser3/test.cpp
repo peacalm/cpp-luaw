@@ -35,7 +35,7 @@
 int main() {
   peacalm::lua_wrapper l;
 
-  int ret = l.dofile("conf/knight.lua");
+  int ret = l.dofile("./conf/knight.lua");
   if (ret != LUA_OK) {
     l.log_error_in_stack();
     return 0;
