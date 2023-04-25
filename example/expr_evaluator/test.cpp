@@ -28,4 +28,6 @@ int main() {
   std::string s =
       l.eval_string("if a > b + c then return 'good' else return 'bad' end");
   std::cout << "s = " << s << std::endl;  // good
+
+  auto si = l.eval<std::set<int>>("return {a, b, c}");  // {2,5,10}
 }
