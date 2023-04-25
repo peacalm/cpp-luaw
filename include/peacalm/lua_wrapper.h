@@ -305,7 +305,9 @@ public:
   void       L(lua_State* L) { L_ = L; }
 
   /// Convert given index to absolute index of stack
-  int abs_index(int idx) { return idx >= 0 ? idx : gettop() + idx + 1; }
+  int abs_index(int idx) {
+    return idx < 0 && -idx <= gettop() ? gettop() + idx + 1 : idx;
+  }
 
   void pop(int n = 1) { lua_pop(L_, n); }
   int  gettop() const { return lua_gettop(L_); }
@@ -1158,8 +1160,7 @@ public:
 
   void log_type_convert_error(int idx, const char* to) {
     std::cerr << "Lua: Can't convert to " << to << " by ";
-    if (isnumber(idx) || isstring(idx) || isboolean(idx) || isnil(idx) ||
-        isinteger(idx)) {
+    if (isnumber(idx) || isstring(idx) || isboolean(idx) || isinteger(idx)) {
       std::cerr << type_name(idx) << ": ";
     }
     if (isstring(idx)) {
