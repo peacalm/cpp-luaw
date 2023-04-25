@@ -307,8 +307,12 @@ long long          to_llong (int idx = -1, const long long&          def = 0,   
 unsigned long long to_ullong(int idx = -1, const unsigned long long& def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
 double             to_double(int idx = -1, const double&             def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
 std::string        to_string(int idx = -1, const std::string&        def = "",    bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+```
 
-// To complex type
+Conversion to complex C++ type, no default value parameter:
+Parameters description like [1.2 Get Global Variables with Complex Type](https://github.com/peacalm/cpp-lua_wrapper#12-get-global-variables-with-complex-type)
+```C++
+// To complex type, without default value parameter
 template <typename T> T to(int idx = -1, bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
 ```
 
