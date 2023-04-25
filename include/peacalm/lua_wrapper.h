@@ -487,7 +487,7 @@ public:
    * @param [in] disable_log Whether print a log when exception occurs.
    * @param [out] failed Will be set whether the operation is failed if this
    * pointer is not nullptr. If T is a container type, it regards the operation
-   * as failed if any element converts failed.
+   * as failed if any element failed.
    * @param [out] exists Will be set whether the value at given index exists if
    * this pointer is not nullptr. Regard none and nil as not exists.
    * @return Return the value on given index in type T if conversion succeeds,
@@ -819,7 +819,7 @@ public:
    * @param [in] disable_log Whether print a log when exception occurs.
    * @param [out] failed Will be set whether the operation is failed if this
    * pointer is not nullptr. If T is a container type, it regards the operation
-   * as failed if any element converts failed.
+   * as failed if any element failed.
    * @param [out] exists Set whether the variable exists. Regard none and nil as
    * not exists.
    * @return Return the value with given name in type T if conversion succeeds,
@@ -859,7 +859,7 @@ public:
  * @param [in] disable_log Whether print a log when exception occurs.
  * @param [out] failed Will be set whether the operation is failed if this
  * pointer is not nullptr. If T is a container type, it regards the operation
- * as failed if any element converts failed.
+ * as failed if any element failed.
  * @param [out] exists Set whether the variable exists. Regard none and nil as
  * not exists.
  *
@@ -927,7 +927,7 @@ public:
    * @param [in] disable_log Whether print a log when exception occurs.
    * @param [out] failed Will be set whether the operation is failed if this
    * pointer is not nullptr. If T is a container type, it regards the operation
-   * as failed if any element converts failed.
+   * as failed if any element failed.
    * @param [out] exists Set whether the variable exists. Regard none and nil as
    * not exists.
    *
@@ -1117,7 +1117,7 @@ public:
    * @param [in] disable_log Whether print a log when exception occurs.
    * @param [out] failed Will be set whether the operation is failed if this
    * pointer is not nullptr. If T is a container type, it regards the operation
-   * as failed if any element converts failed.
+   * as failed if any element failed.
    * @return The expression's result in type T.
    */
   template <typename T>

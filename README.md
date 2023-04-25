@@ -128,7 +128,7 @@ std::unordered_set, std::map and std::unordered_map.
 Note that here const char* is not supported, which is unsafe.
 * @param [out] failed Will be set whether the operation is failed if this
 pointer is not nullptr. If T is a container type, it regards the operation
-as failed if any element converts failed.
+as failed if any element failed.
 * @return Return the value with given name in type T if conversion succeeds,
 otherwise, if T is a simple type (e.g. bool, int, double, std::string, etc), 
 return initial value of T(i.e. by statement `T{}`), if T is a container
