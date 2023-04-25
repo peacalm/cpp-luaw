@@ -224,7 +224,7 @@ int dofile(const char*        fname);
 int dofile(const std::string& fname);
 ```
 
-### 5. Evaluator a Lua Expression and Get the Result
+### 5. Evaluate a Lua Expression and Get the Result
 
 In the following API, `@EXPR_TYPE@` could be `const char*` or `const std::string&`.
 
