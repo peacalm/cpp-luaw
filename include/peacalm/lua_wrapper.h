@@ -227,6 +227,10 @@ public:
 
   lua_wrapper(const opt& o = opt{}) { init(o); }
   lua_wrapper(lua_State* L) { init(opt{}.use_state(L)); }
+  lua_wrapper(const lua_wrapper&)            = delete;
+  lua_wrapper(lua_wrapper&&)                 = delete;
+  lua_wrapper& operator=(const lua_wrapper&) = delete;
+  lua_wrapper& operator=(lua_wrapper&&)      = delete;
   ~lua_wrapper() { close(); }
 
   void init(const opt& o = opt{}) {
