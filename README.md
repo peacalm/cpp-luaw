@@ -65,7 +65,7 @@ Examples:
 ### 1. Get Global Variables From Lua
 
 In the following API, `@NAME_TYPE@` could be `const char*` or `const std::string&`,
-They are overloaded.
+they are overloaded.
 
 #### 1.1 Get Global Variables with Simple Type
 
