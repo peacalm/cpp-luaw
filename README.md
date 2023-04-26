@@ -324,27 +324,28 @@ Example:
 peacalm::lua_wrapper l;
 l.dostring("g={a=1, gg={a=11,ggg={a='s'}}, list={1,2,3}, m={{a=1},{a=2}}}");
 
-int a = l.gseek("g").seek("a").to_int(); // 1
+int a = l.gseek("g").seek("a").to_int(); // g.a : 1
 std::cout << l.gettop() << std::endl;    // 2
 
 // g.a on top
 l.to<int>(); // 1
+l.to<std::string>(); // "1"
 
 l.pop(); // Now g on top of stack
-l.seek("gg").seek("a").to<int>(); // 11
+l.seek("gg").seek("a").to<int>(); // g.gg.a : 11
 
 l.settop(0); // Clear stack
 // Note that list index starts from 1 in Lua
-l.gseek("g").seek("list").seek(2).to_int(); // 2
+l.gseek("g").seek("list").seek(3).to_int(); // g.list[3] : 3
 // Start with gseek, ignore existing values on stack
-l.gseek("g").seek("gg").seek("ggg").seek("a").to_string(); // s
-std::cout << l.gettop() << std::endl; // 7, 3 for first line, 4 for second
+l.gseek("g").seek("gg").seek("ggg").seek("a").to_string(); // g.gg.ggg.a : s
+std::cout << l.gettop() << std::endl; // 7. 3 for first line, 4 for second
 
 l.pop(); // Now ggg on top of stack
-l.to<std::unordered_map<std::string, std::string>>(); // {"a":"s"}
+l.to<std::unordered_map<std::string, std::string>>(); // g.gg.ggg : {"a":"s"}
 
 l.settop(0);
-l.gseek("g").seek("m").seek(2).seek("a").to_int(); // 2
+l.gseek("g").seek("m").seek(2).seek("a").to_int(); // g.m[2].a : 2
 
 l.settop(0);
 ```
