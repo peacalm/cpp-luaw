@@ -1,4 +1,4 @@
-dofile "./conf/base.lua"
+require "conf.base"
 
 name = "knight"
 country = "Spain"
