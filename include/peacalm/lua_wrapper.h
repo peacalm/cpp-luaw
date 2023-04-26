@@ -1223,8 +1223,8 @@ template <typename T>
 struct __is_ptr<T*> : std::true_type {};
 template <typename T>
 struct __is_ptr<std::shared_ptr<T>> : std::true_type {};
-template <typename T>
-struct __is_ptr<std::unique_ptr<T>> : std::true_type {};
+template <typename T, typename D>
+struct __is_ptr<std::unique_ptr<T, D>> : std::true_type {};
 template <typename T>
 struct is_ptr : __is_ptr<typename std::decay<T>::type> {};
 }  // namespace lua_wrapper_internal
