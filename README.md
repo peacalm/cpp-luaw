@@ -6,16 +6,16 @@
 This library is a simple wrapper of Lua which makes interaction between Lua and 
 C++ easier. It can be used as a config file parser or a dynamic expression evaluator.
 
-The lib depends only on Lua:
-* Lua version >= 5.4
-* C++ version >= C++14
-
 Features:
 * Get values from Lua to C++
 * Set values from C++ to Lua
 * Evaluate Lua expression in C++ to get values
 * If a variable provider is provided, it can automatically seek variabls from 
 provider while evaluate expressions.
+
+The lib depends only on Lua:
+* Lua version >= 5.4
+* C++ version >= C++14
 
 ## Value Conversions
 
