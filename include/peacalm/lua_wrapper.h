@@ -1229,21 +1229,32 @@ template <typename T>
 struct is_ptr : __is_ptr<typename std::decay<T>::type> {};
 }  // namespace lua_wrapper_internal
 
-// VariableProviderPointerType should be a raw pointer type or std::shared_ptr
-// or std::unique_ptr. The underlying provider type should implement a member
-// function:
-//     bool provide(lua_State* L, const char* vname);
-// and in this function, should push a value whose name is vname on the stack of
-// L then return true. Otherwise return false if vname is illegal or vname
-// doesn't have a correct value.
+/**
+ * @brief A Lua wrapper with custom variable provider.
+ *
+ * Derived from lua_wrapper, it can contain a user defined variable provider.
+ * When a global variable used in some expression does not exist in Lua,
+ * then it will seek the variable from the provider.
+ *
+ * The underlying provider type should implement a member function:
+ *
+ * * `bool provide(lua_State* L, const char* vname);`
+ *
+ * In this member function, it should push a value whose name is vname onto the
+ * stack of L then return true. Otherwise return false if vname is illegal or
+ * vname doesn't have a correct value.
+ *
+ * @tparam VariableProviderPointerType Should be a raw pointer type or
+ * std::shared_ptr or std::unique_ptr.
+ */
 template <typename VariableProviderPointerType>
 class custom_lua_wrapper : public lua_wrapper {
   using base_t     = lua_wrapper;
   using provider_t = VariableProviderPointerType;
   static_assert(lua_wrapper_internal::is_ptr<provider_t>::value,
                 "VariableProviderPointerType should be pointer type");
-  using pointer_t = custom_lua_wrapper*;
-  provider_t provider_;
+  using pointer_t      = custom_lua_wrapper*;
+  provider_t provider_ = nullptr;
 
 public:
   template <typename... Args>

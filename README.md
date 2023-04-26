@@ -347,11 +347,27 @@ l.settop(0);
 ```
 
 
-### Custom Lua Wrapper: Expression Evaluator with Variable Provider
+### 7. Lua Wrapper with Custom Variable Provider
+
+```C++
+template <typename VariableProviderPointerType>
+class custom_lua_wrapper;
+```
 
 The class `custom_lua_wrapper` is derived from `lua_wrapper`, it can contain
-a variable provider, when a global variable used in some expression does not 
+a user defined variable provider.
+When a global variable used in some expression does not 
 exist in Lua, then it will seek the variable from the provider.
+
+The template parameter `VariableProviderPointerType` could 
+be either a raw pointer type or a smart pointer type, i.e. std::shared_ptr or 
+std::unique_ptr.
+The underlying provider type should implement a member function:
+* `bool provide(lua_State* L, const char* vname);`
+
+In this member function, it should push a value whose name is vname onto the 
+stack of L then return true. Otherwise return false if vname is illegal or 
+vname doesn't have a correct value.
 
 Example:
 ```C++
