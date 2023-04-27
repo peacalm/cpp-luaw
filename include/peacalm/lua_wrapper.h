@@ -1272,7 +1272,7 @@ public:
   provider_t&       provider() { return provider_; }
 
   bool provide(lua_State* L, const char* var_name) {
-    return provider()->provide(L, var_name);
+    return provider() && provider()->provide(L, var_name);
   }
 
 private:
@@ -1291,9 +1291,23 @@ private:
     const char* name = lua_tostring(L, 2);
     lua_getfield(L, LUA_REGISTRYINDEX, "this");
     pointer_t p = (pointer_t)lua_touserdata(L, -1);
-    if (!p || !p->provide(L, name)) {
-      lua_pushfstring(L, "Not found: %s", name);
+    if (!p) {
+      lua_pushstring(L, "Pointer 'this' not found");
       lua_error(L);
+    } else if (!p->provider()) {
+      lua_pushstring(L, "Need install provider");
+      lua_error(L);
+    } else {
+      int sz = lua_gettop(L);
+      if (!p->provide(L, name)) {
+        lua_pushfstring(L, "Provide failed: %s", name);
+        lua_error(L);
+      }
+      int diff = lua_gettop(L) - sz;
+      if (diff != 1) {
+        lua_pushfstring(L, "Should push exactly one value, given %d", diff);
+        lua_error(L);
+      }
     }
     return 1;
   }
