@@ -715,7 +715,9 @@ public:
     }
     return *this;
   }
-  self_t& seek(const std::string& name) { return seek(name.c_str()); }
+  self_t& seek(const std::string& name, int idx = -1) {
+    return seek(name.c_str(), idx);
+  }
 
   /// Push t[n] onto the stack where t is the value at the given index `idx`, or
   /// push a nil if the operation fails. Note that index of list in Lua starts

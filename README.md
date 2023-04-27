@@ -221,7 +221,7 @@ self_t& gseek(const std::string& name);
 // Push t[name] onto the stack where t is the value at the given index `idx`,
 // or push a nil if the operation fails.
 self_t& seek(const char* name, int idx = -1);
-self_t& seek(const std::string& name);
+self_t& seek(const std::string& name, int idx = -1);
 
 // Push t[n] onto the stack where t is the value at the given index `idx`, or
 // push a nil if the operation fails.
