@@ -1307,11 +1307,11 @@ public:
   const provider_t& provider() const { return provider_; }
   provider_t&       provider() { return provider_; }
 
+private:
   bool provide(lua_State* L, const char* var_name) {
     return provider() && provider()->provide(L, var_name);
   }
 
-private:
   void _G_setmetateble() {
     lua_getglobal(L(), "_G");
     if (lua_getmetatable(L(), -1) == 0) { luaL_newmetatable(L(), "_G_mt"); }
