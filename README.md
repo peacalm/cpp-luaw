@@ -215,18 +215,18 @@ The seek functions push the global value or field of a table onto stack:
 ```C++
 // Get a global value by name and push it onto the stack, or push a nil if
 // the name does not exist.
-self_t& gseek(const char* name);
-self_t& gseek(const std::string& name);
+lua_wrapper& gseek(const char* name);
+lua_wrapper& gseek(const std::string& name);
 
 // Push t[name] onto the stack where t is the value at the given index `idx`,
 // or push a nil if the operation fails.
-self_t& seek(const char* name, int idx = -1);
-self_t& seek(const std::string& name, int idx = -1);
+lua_wrapper& seek(const char* name, int idx = -1);
+lua_wrapper& seek(const std::string& name, int idx = -1);
 
 // Push t[n] onto the stack where t is the value at the given index `idx`, or
 // push a nil if the operation fails.
 // Note that index of list in Lua starts from 1.
-self_t& seek(int n, int idx = -1);
+lua_wrapper& seek(int n, int idx = -1);
 ```
 
 #### 3.2 The Type Conversion Functions
