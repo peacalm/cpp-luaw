@@ -1067,7 +1067,8 @@ public:
   /**
    * @brief Evaluate a Lua expression and get the result in simple C++ type.
    *
-   * @param [in] expr Lua expression, which must have a return value.
+   * @param [in] expr Lua expression, which must have a return value. Only the
+   * first one is used if multiple values returned.
    * @param [in] def The default value returned if failed.
    * @param [in] disable_log Whether print a log when exception occurs.
    * @param [out] failed Will be set whether the operation is failed if this
@@ -1094,7 +1095,7 @@ public:
       if (!disable_log) log_error("No return");                     \
       return def;                                                   \
     }                                                               \
-    type ret = to_##typename(-1, def, disable_log, failed);         \
+    type ret = to_##typename(sz + 1, def, disable_log, failed);     \
     settop(sz);                                                     \
     return ret;                                                     \
   }                                                                 \
@@ -1134,7 +1135,7 @@ public:
       if (!disable_log) log_error("No return");
       return def;
     }
-    return to_c_str(-1, def, disable_log, failed);
+    return to_c_str(sz + 1, def, disable_log, failed);
   }
   const char* eval_c_str(const std::string& expr,
                          const char*        def         = "",
@@ -1151,7 +1152,8 @@ public:
    * @tparam T The result type user expected. T can be any type composited by
    * bool, integer types, double, std::string, std::vector, std::set,
    * std::unordered_set, std::map, std::unordered_map, std::pair.
-   * @param [in] expr Lua expression, which must have a return value.
+   * @param [in] expr Lua expression, which must have a return value. Only the
+   * first one is used if multiple values returned.
    * @param [in] disable_log Whether print a log when exception occurs.
    * @param [out] failed Will be set whether the operation is failed if this
    * pointer is not nullptr. If T is a container type, it regards the operation
@@ -1173,7 +1175,7 @@ public:
       if (!disable_log) log_error("No return");
       return T{};
     }
-    auto ret = to<T>(-1, disable_log, failed);
+    auto ret = to<T>(sz + 1, disable_log, failed);
     settop(sz);
     return ret;
   }

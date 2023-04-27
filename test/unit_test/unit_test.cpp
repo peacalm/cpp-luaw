@@ -850,7 +850,9 @@ TEST(lua_wrapper, eval) {
 
 TEST(lua_wrapper, eval_multi_ret) {
   lua_wrapper l;
-  EXPECT_EQ(l.eval_int("return 1,2,3"), 3);
+  EXPECT_EQ(l.eval_int("return 1,2,3"), 1);
+  EXPECT_EQ(l.eval<long>("return 1,2,3"), 1);
+  EXPECT_EQ(l.eval<std::string>("return 1,2,3"), "1");
 }
 
 struct vprovider {
