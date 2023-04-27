@@ -233,7 +233,7 @@ int dofile(const std::string& fname);
 
 ### 5. Evaluate a Lua Expression and Get the Result
 
-The expresion must have at least one returned value, if more than one returned,
+The expresion must have a return value, if more than one returned,
 only the first one is used. Evaluate the expression then convert the returned 
 value to expected C++ type.
 
