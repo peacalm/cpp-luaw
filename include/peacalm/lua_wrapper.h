@@ -488,7 +488,7 @@ public:
    *
    * @tparam T The result type user expected. T can be any type composited by
    * bool, integer types, double, std::string, std::vector, std::set,
-   * std::unordered_set, std::map and std::unordered_map.
+   * std::unordered_set, std::map, std::unordered_map, std::pair.
    * @param [in] idx value's index in stack.
    * @param [in] disable_log Whether print a log when exception occurs.
    * @param [out] failed Will be set whether the operation is failed if this
@@ -521,6 +521,38 @@ public:
      bool  disable_log = false,
      bool* failed      = nullptr,
      bool* exists      = nullptr);
+
+  // To std::pair by (t[1],t[2]) where t should be a table
+  template <typename T>
+  std::enable_if_t<std::is_same<T,
+                                std::pair<typename T::first_type,
+                                          typename T::second_type>>::value,
+                   T>
+  to(int   idx         = -1,
+     bool  disable_log = false,
+     bool* failed      = nullptr,
+     bool* exists      = nullptr) {
+    if (exists) *exists = !isnoneornil(idx);
+    if (isnoneornil(idx)) {
+      if (failed) *failed = false;
+      return T{};
+    }
+    if (!istable(idx)) {
+      if (failed) *failed = true;
+      if (!disable_log) log_type_convert_error(idx, "pair");
+      return T{};
+    }
+    // Allow elements do not exist, {} means a pair with initial values
+    bool ffailed, sfailed;
+    lua_geti(L_, idx, 1);
+    auto first = to<typename T::first_type>(-1, disable_log, &ffailed);
+    pop();
+    lua_geti(L_, idx, 2);
+    auto second = to<typename T::second_type>(-1, disable_log, &sfailed);
+    pop();
+    if (failed) *failed = (ffailed || sfailed);
+    return T{first, second};
+  }
 
   // To std::vector
   // NOTICE: Discard nil in list! e.g. {1,2,nil,4} -> vector<int>{1,2,4}
@@ -819,8 +851,8 @@ public:
    *
    * @tparam T The result type user expected. T can be any type composited by
    * bool, integer types, double, std::string, std::vector, std::set,
-   * std::unordered_set, std::map and std::unordered_map. Note that here const
-   * char* is not supported, which is unsafe.
+   * std::unordered_set, std::map, std::unordered_map, std::pair. Note that here
+   * const char* is not supported, which is unsafe.
    * @param [in] name The variable's name.
    * @param [in] disable_log Whether print a log when exception occurs.
    * @param [out] failed Will be set whether the operation is failed if this
@@ -1118,7 +1150,7 @@ public:
    *
    * @tparam T The result type user expected. T can be any type composited by
    * bool, integer types, double, std::string, std::vector, std::set,
-   * std::unordered_set, std::map and std::unordered_map.
+   * std::unordered_set, std::map, std::unordered_map, std::pair.
    * @param [in] expr Lua expression, which must have a return value.
    * @param [in] disable_log Whether print a log when exception occurs.
    * @param [out] failed Will be set whether the operation is failed if this

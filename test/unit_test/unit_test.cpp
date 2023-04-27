@@ -1212,6 +1212,52 @@ TEST(lua_wrapper, template_type_conversion) {
   }
   l.settop(0);
 
+  // pair
+  {
+    EXPECT_EQ((l.to<std::pair<int, int>>()), (std::pair<int, int>{}));
+    const char *expr = "t={1,2,3,4,x=1,y=2}";
+    l.dostring(expr);
+    l.getglobal("t");
+    EXPECT_EQ((l.to<std::pair<int, int>>()), (std::pair<int, int>{1, 2}));
+    EXPECT_EQ(l.gettop(), 1);
+
+    l.dostring("t[1] = 2 t[2] = 3.5");
+    EXPECT_EQ(l.gettop(), 1);
+    EXPECT_EQ((l.to<std::pair<int, int>>()), (std::pair<int, int>{2, 3}));
+    EXPECT_EQ((l.to<std::pair<int, double>>()),
+              (std::pair<int, double>{2, 3.5}));
+    EXPECT_EQ((l.to<std::pair<bool, double>>()),
+              (std::pair<bool, double>{true, 3.5}));
+    EXPECT_EQ((l.to<std::pair<std::string, double>>()),
+              (std::pair<std::string, double>{"2", 3.5}));
+
+    l.dostring("t[1] = nil t[2] = 3.5");
+    EXPECT_EQ((l.to<std::pair<std::string, double>>()),
+              (std::pair<std::string, double>{"", 3.5}));
+    l.dostring("t[1] = nil t[2] = nil");
+    EXPECT_EQ((l.to<std::pair<std::string, double>>()),
+              (std::pair<std::string, double>{"", 0}));
+    EXPECT_EQ((l.to<std::pair<bool, double>>()), (std::pair<bool, double>{}));
+
+    l.dostring("t[1] = true t[2] = {1,2}");
+    EXPECT_EQ((l.to<std::pair<bool, std::pair<int, int>>>()),
+              (std::pair<bool, std::pair<int, int>>{true, {1, 2}}));
+
+    l.dostring("t[1] = true t[2] = 2.5 t = {} ");
+    EXPECT_EQ((l.to<std::pair<bool, double>>()),
+              (std::pair<bool, double>{true, 2.5}));
+    EXPECT_EQ((l.to<std::pair<long, double>>()),
+              (std::pair<long, double>{1, 2.5}));
+    EXPECT_EQ(l.gettop(), 1);
+
+    l.getglobal("t");
+    EXPECT_EQ((l.to<std::pair<bool, double>>()), (std::pair<bool, double>{}));
+    EXPECT_EQ((l.to<std::pair<long, double>>()), (std::pair<long, double>{}));
+    EXPECT_EQ(l.gettop(), 2);
+
+    l.settop(0);
+  }
+
   // vector
   {
     const char *expr = "t={1,2,3,4}";
@@ -1498,12 +1544,16 @@ TEST(lua_wrapper, template_type_conversion) {
     const char *expr = "m={a={1,3}, b={2,4}}";
     l.dostring(expr);
     lua_getglobal(l.L(), "m");
-    int  sz = l.gettop();
-    auto m  = l.to<std::map<std::string, std::vector<int>>>(-1);
-    watch(expr, m);
+    int  sz   = l.gettop();
+    auto m    = l.to<std::map<std::string, std::vector<int>>>(-1);
+    auto mpii = l.to<std::map<std::string, std::pair<int, int>>>(-1);
+    watch(expr, m, mpii);
     EXPECT_EQ(m,
               (std::map<std::string, std::vector<int>>{{"a", {1, 3}},
                                                        {"b", {2, 4}}}));
+    EXPECT_EQ(mpii,
+              (std::map<std::string, std::pair<int, int>>{{"a", {1, 3}},
+                                                          {"b", {2, 4}}}));
     EXPECT_EQ(l.gettop(), sz);
   }
   {
@@ -1541,6 +1591,18 @@ TEST(lua_wrapper, template_type_conversion) {
               (type{{"a", {{"X", 1}, {"Y", 3}}}, {"b", {{"X", 2}, {"Y", 4}}}}));
     EXPECT_EQ(l.gettop(), sz);
   }
+  {
+    const char *expr = "p={{X=1,Y=3}, {X=2,Y=4}}";
+    l.dostring(expr);
+    lua_getglobal(l.L(), "p");
+    int sz     = l.gettop();
+    using type = std::pair<std::unordered_map<std::string, int>,
+                           std::map<std::string, int>>;
+    auto m     = l.to<type>(-1);
+    watch(expr, m);
+    EXPECT_EQ(m, (type{{{"X", 1}, {"Y", 3}}, {{"X", 2}, {"Y", 4}}}));
+    EXPECT_EQ(l.gettop(), sz);
+  }
 }
 
 TEST(lua_wrapper, template_get) {
@@ -1553,6 +1615,8 @@ TEST(lua_wrapper, template_get) {
   EXPECT_EQ(l.get<long>("a", false, &failed, &exists), 1);
   EXPECT_FALSE(failed);
   EXPECT_TRUE(exists);
+
+  EXPECT_EQ((l.get<std::pair<long, long>>("b")), (std::pair<long, long>{1, 2}));
 
   EXPECT_EQ(l.get<std::vector<int>>("b"), (std::vector<int>{1, 2}));
   EXPECT_EQ(l.get<std::vector<int>>("b", false, &failed, &exists),
@@ -1705,6 +1769,12 @@ TEST(lua_wrapper, template_eval) {
     auto        v    = l.eval<std::unordered_map<double, int>>(expr);
     watch(expr, v);
     EXPECT_EQ(v, (std::unordered_map<double, int>{{2.2, 2}, {2.6, 3}}));
+  }
+  {
+    const char *expr = "return {false, true}";
+    auto        v    = l.eval<std::pair<bool, bool>>(expr);
+    watch(expr, v);
+    EXPECT_EQ(v, (std::pair<bool, bool>{false, true}));
   }
 }
 

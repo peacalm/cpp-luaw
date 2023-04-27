@@ -125,7 +125,7 @@ Regard the operation failed if any element failed.
 
 * @tparam T The result type user expected. T can be any type composited by 
 bool, integer types, double, std::string, std::vector, std::set, 
-std::unordered_set, std::map and std::unordered_map. 
+std::unordered_set, std::map, std::unordered_map, std::pair. 
 Note that here const char* is not supported, which is unsafe.
 * @param [out] failed Will be set whether the operation is failed if this
 pointer is not nullptr. If T is a container type, it regards the operation
