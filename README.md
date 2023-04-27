@@ -205,75 +205,13 @@ l.get<int>({"p", "z"});    // 0
 l.get<std::vector<int>>({"m", "p2"}); // [3,4]
 ```
 
-### 3. Set Global Variables to Lua
+### 3. Seek Fields then Convert to C++ Type
 
-In the following API, `@NAME_TYPE@` could be `const char*` or `const std::string&`.
+#### 3.1 The Seek Functions
+**Notice**: Caller is responsible for popping the stack after calling the seek 
+functions.
 
-```C++
-void set_integer(@NAME_TYPE@ name, long long value);
-void set_number(@NAME_TYPE@ name, double value);
-void set_boolean(@NAME_TYPE@ name, bool value);
-void set_nil(@NAME_TYPE@ name);
-void set_string(@NAME_TYPE@ name, const char* value);
-void set_string(@NAME_TYPE@ name, const std::string& value);
-```
-
-### 4. Execute Lua Scripts (File or String)
-Just a simple wrapper of raw Lua API, nothing more added.
-```C++
-int loadstring(const char*        s);
-int loadstring(const std::string& s);
-int dostring(const char*        s);
-int dostring(const std::string& s);
-int loadfile(const char*        fname);
-int loadfile(const std::string& fname);
-int dofile(const char*        fname);
-int dofile(const std::string& fname);
-```
-
-### 5. Evaluate a Lua Expression and Get the Result
-
-The expresion must have a return value, if more than one returned,
-only the first one is used. Evaluate the expression then convert the returned 
-value to expected C++ type.
-
-In the following API, `@EXPR_TYPE@` could be `const char*` or `const std::string&`.
-
-For simple type, which have default value parameter:
-```C++
-bool               eval_bool  (@EXPR_TYPE@ expr, const bool&               def = false, bool disable_log = false, bool* failed = nullptr);
-int                eval_int   (@EXPR_TYPE@ expr, const int&                def = 0,     bool disable_log = false, bool* failed = nullptr);
-unsigned int       eval_uint  (@EXPR_TYPE@ expr, const unsigned int&       def = 0,     bool disable_log = false, bool* failed = nullptr);
-long               eval_long  (@EXPR_TYPE@ expr, const long&               def = 0,     bool disable_log = false, bool* failed = nullptr);
-unsigned long      eval_ulong (@EXPR_TYPE@ expr, const unsigned long&      def = 0,     bool disable_log = false, bool* failed = nullptr);
-long long          eval_llong (@EXPR_TYPE@ expr, const long long&          def = 0,     bool disable_log = false, bool* failed = nullptr);
-unsigned long long eval_ullong(@EXPR_TYPE@ expr, const unsigned long long& def = 0,     bool disable_log = false, bool* failed = nullptr);
-double             eval_double(@EXPR_TYPE@ expr, const double&             def = 0,     bool disable_log = false, bool* failed = nullptr);
-std::string        eval_string(@EXPR_TYPE@ expr, const std::string&        def = "",    bool disable_log = false, bool* failed = nullptr);
-```
-
-For complex type, which do not have default value parameter:
-```C++
-template <typename T> T eval(@EXPR_TYPE@ expr, bool disable_log = false, bool* failed = nullptr);
-```
-
-Example:
-```C++
-peacalm::lua_wrapper l;
-l.set_integer("a", 10);
-l.set_integer("b", 5);
-l.set_integer("c", 2);
-double ret = l.eval_double("return a^2 + b/c"); // 102.5
-std::string s = l.eval_string("if a > b + c then return 'good' else return 'bad' end"); // "good"
-auto si = l.eval<std::set<int>>("return {a, b, c}"); // {2,5,10}
-```
-
-### 6. Seek Fields then Convert to C++ Type
-
-#### 6.1 Seek Functions
-**Notice**: Caller is responsible for popping the stack after calling seek functions.
-
-Seek functions push the global value or field of a table onto stack:
+The seek functions push the global value or field of a table onto stack:
 ```C++
 // Get a global value by name and push it onto the stack, or push a nil if
 // the name does not exist.
@@ -291,7 +229,7 @@ self_t& seek(const std::string& name);
 self_t& seek(int n, int idx = -1);
 ```
 
-#### 6.2 Type Conversion Functions
+#### 3.2 The Type Conversion Functions
 Type Conversion functions convert a value in Lua stack to C++ type:
 * @param [in] idx Index of Lua stack where the value in.
 * @param [in] def The default value returned if conversion fails.
@@ -351,6 +289,69 @@ l.gseek("g").seek("m").seek(2).seek("a").to_int(); // g.m[2].a : 2
 l.settop(0);
 ```
 
+
+### 4. Set Global Variables to Lua
+
+In the following API, `@NAME_TYPE@` could be `const char*` or `const std::string&`.
+
+```C++
+void set_integer(@NAME_TYPE@ name, long long value);
+void set_number(@NAME_TYPE@ name, double value);
+void set_boolean(@NAME_TYPE@ name, bool value);
+void set_nil(@NAME_TYPE@ name);
+void set_string(@NAME_TYPE@ name, const char* value);
+void set_string(@NAME_TYPE@ name, const std::string& value);
+```
+
+### 5. Execute Lua Scripts (File or String)
+Just a simple wrapper of raw Lua API, nothing more added.
+```C++
+int loadstring(const char*        s);
+int loadstring(const std::string& s);
+int dostring(const char*        s);
+int dostring(const std::string& s);
+int loadfile(const char*        fname);
+int loadfile(const std::string& fname);
+int dofile(const char*        fname);
+int dofile(const std::string& fname);
+```
+
+### 6. Evaluate a Lua Expression and Get the Result
+
+The expresion must have a return value, if more than one returned,
+only the first one is used. Evaluate the expression then convert the returned 
+value to expected C++ type.
+
+In the following API, `@EXPR_TYPE@` could be `const char*` or `const std::string&`.
+
+For simple type, which have default value parameter:
+```C++
+bool               eval_bool  (@EXPR_TYPE@ expr, const bool&               def = false, bool disable_log = false, bool* failed = nullptr);
+int                eval_int   (@EXPR_TYPE@ expr, const int&                def = 0,     bool disable_log = false, bool* failed = nullptr);
+unsigned int       eval_uint  (@EXPR_TYPE@ expr, const unsigned int&       def = 0,     bool disable_log = false, bool* failed = nullptr);
+long               eval_long  (@EXPR_TYPE@ expr, const long&               def = 0,     bool disable_log = false, bool* failed = nullptr);
+unsigned long      eval_ulong (@EXPR_TYPE@ expr, const unsigned long&      def = 0,     bool disable_log = false, bool* failed = nullptr);
+long long          eval_llong (@EXPR_TYPE@ expr, const long long&          def = 0,     bool disable_log = false, bool* failed = nullptr);
+unsigned long long eval_ullong(@EXPR_TYPE@ expr, const unsigned long long& def = 0,     bool disable_log = false, bool* failed = nullptr);
+double             eval_double(@EXPR_TYPE@ expr, const double&             def = 0,     bool disable_log = false, bool* failed = nullptr);
+std::string        eval_string(@EXPR_TYPE@ expr, const std::string&        def = "",    bool disable_log = false, bool* failed = nullptr);
+```
+
+For complex type, which do not have default value parameter:
+```C++
+template <typename T> T eval(@EXPR_TYPE@ expr, bool disable_log = false, bool* failed = nullptr);
+```
+
+Example:
+```C++
+peacalm::lua_wrapper l;
+l.set_integer("a", 10);
+l.set_integer("b", 5);
+l.set_integer("c", 2);
+double ret = l.eval_double("return a^2 + b/c"); // 102.5
+std::string s = l.eval_string("if a > b + c then return 'good' else return 'bad' end"); // "good"
+auto si = l.eval<std::set<int>>("return {a, b, c}"); // {2,5,10}
+```
 
 ### 7. Lua Wrapper with Custom Variable Provider
 
