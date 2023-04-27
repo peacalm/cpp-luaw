@@ -13,8 +13,8 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-#ifndef LUA_WRAPPER_H_
-#define LUA_WRAPPER_H_
+#ifndef PEACALM_LUA_WRAPPER_H_
+#define PEACALM_LUA_WRAPPER_H_
 
 #include <cassert>
 #include <cstring>
@@ -1599,4 +1599,4 @@ private:
 
 }  // namespace peacalm
 
-#endif  // LUA_WRAPPER_H_
+#endif  // PEACALM_LUA_WRAPPER_H_
