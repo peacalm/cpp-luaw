@@ -230,7 +230,7 @@ lua_wrapper& seek(int n, int idx = -1);
 ```
 
 #### 3.2 The Type Conversion Functions
-Type Conversion functions convert a value in Lua stack to C++ type.
+Type conversion functions convert a value in Lua stack to C++ type.
 
 ##### 3.2.1 To Simple Type
 * @param [in] idx Index of Lua stack where the value in.
