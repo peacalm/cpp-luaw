@@ -319,6 +319,26 @@ int loadfile(const std::string& fname);
 int dofile(const char*        fname);
 int dofile(const std::string& fname);
 ```
+Example:
+```C++
+int main() {
+  peacalm::lua_wrapper l;
+  if (l.dofile("conf.lua") != LUA_OK) {
+    l.log_error_in_stack();
+    return 1;
+  }
+  // ...
+
+  std::string expr = "a = 1 b = 2";
+  if (l.dostring(expr) != LUA_OK) {
+    l.log_error_in_stack();
+    return 1;
+  }
+  // ...
+
+  return 0;
+}
+```
 
 ### 6. Evaluate a Lua Expression and Get the Result
 
