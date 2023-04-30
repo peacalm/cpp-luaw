@@ -19,7 +19,10 @@
 int main() {
   peacalm::lua_wrapper l;
 
-  l.dostring("a = 1 b = math.pi c = 10^12 + 123 d = 'good'");
+  if (l.dostring("a = 1 b = math.pi c = 10^12 + 123 d = 'good'") != LUA_OK) {
+    l.log_error_in_stack();
+    return 1;
+  }
 
   int         a = l.get_int("a");
   double      b = l.get_double("b");

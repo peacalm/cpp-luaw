@@ -38,7 +38,7 @@ int main() {
   int ret = l.dofile("./conf/knight.lua");
   if (ret != LUA_OK) {
     l.log_error_in_stack();
-    return 0;
+    return 1;
   }
 
   auto name     = l.get_string("name");
