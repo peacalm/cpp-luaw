@@ -305,6 +305,14 @@ public:
     lua_register(L_, "COUNTER0", luafunc::COUNTER0);
   }
 
+  /// Release the ownership of contained Lua State.
+  /// The caller is responsible for closing the Lua State.
+  lua_State* release() {
+    lua_State* ret = L_;
+    L_             = nullptr;
+    return ret;
+  }
+
   lua_State* L() const { return L_; }
   void       L(lua_State* L) { L_ = L; }
 
