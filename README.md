@@ -213,8 +213,8 @@ functions.
 
 The seek functions push the global value or field of a table onto stack:
 ```C++
-// Get a global value by name and push it onto the stack, or push a nil if
-// the name does not exist.
+// Global Seek: Get a global value by name and push it onto the stack, or 
+// push a nil if the name does not exist.
 lua_wrapper& gseek(const char* name);
 lua_wrapper& gseek(const std::string& name);
 
@@ -227,6 +227,11 @@ lua_wrapper& seek(const std::string& name, int idx = -1);
 // push a nil if the operation fails.
 // Note that index of list in Lua starts from 1.
 lua_wrapper& seek(int n, int idx = -1);
+
+// Long Seek: Call gseek() for the first parameter, then call seek() for the 
+// rest parameters.
+template <typename T, typename... Ts>
+lua_wrapper& lseek(const T& t, const Ts&... ts);
 ```
 
 #### 3.2 The Type Conversion Functions
@@ -289,6 +294,8 @@ l.to<std::unordered_map<std::string, std::string>>(); // g.gg.ggg : {"a":"s"}
 
 l.settop(0);
 l.gseek("g").seek("m").seek(2).seek("a").to_int(); // g.m[2].a : 2
+// Another way of writing
+l.lseek("g", "m", 2, "a").to_int(); // g.m[2].a : 2
 
 l.settop(0);
 ```

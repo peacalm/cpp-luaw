@@ -705,8 +705,8 @@ public:
 
   ///////////////////////// seek fields ////////////////////////////////////////
 
-  /// Get a global value by name and push it onto the stack, or push a nil if
-  /// the name does not exist.
+  /// Global Seek: Get a global value by name and push it onto the stack, or
+  /// push a nil if the name does not exist.
   self_t& gseek(const char* name) {
     getglobal(name);
     return *this;
@@ -739,6 +739,25 @@ public:
     return *this;
   }
 
+  /// Long Seek: Call gseek() for the first parameter, then call seek() for the
+  /// rest parameters.
+  template <typename T, typename... Ts>
+  self_t& lseek(const T& t, const Ts&... ts) {
+    gseek(t);
+    __lseek(ts...);
+    return *this;
+  }
+
+private:
+  void __lseek() {}
+
+  template <typename T, typename... Ts>
+  void __lseek(const T& t, const Ts&... ts) {
+    seek(t);
+    __lseek(ts...);
+  }
+
+public:
   ///////////////////////// set global variables ///////////////////////////////
 
   void set_integer(const char* name, long long value) {

@@ -1835,6 +1835,16 @@ TEST(lua_wrapper, seek) {
   EXPECT_EQ(l.to_uint(), 3);
 
   l.settop(0);
+  EXPECT_EQ(l.lseek("g", "gg", "a").to_int(), 11);
+  EXPECT_EQ(l.lseek("g", "list", 2).to_int(), 2);
+  EXPECT_EQ(l.gettop(), 6);
+
+  l.dostring("a = 1 b = 2");
+  EXPECT_EQ(l.lseek("a").to_long(), 1);
+  EXPECT_EQ(l.gseek("b").to_long(), 2);
+  EXPECT_EQ(l.gettop(), 8);
+
+  l.settop(0);
   l.dostring("g={{1,2,3.0}, {'a', 'b', 'c'}, m={{a=1},{a=2}} }");
   EXPECT_EQ(l.gseek("g").seek(1).seek(1).to_int(), 1);
   EXPECT_EQ(l.gettop(), 3);
@@ -1852,7 +1862,15 @@ TEST(lua_wrapper, seek) {
   EXPECT_EQ(l.gettop(), 4);
 
   l.settop(0);
+  EXPECT_EQ(l.lseek("g", "m", 2, "a").to_int(), 2);
+  EXPECT_EQ(l.gettop(), 4);
+  EXPECT_EQ(l.lseek("g", "m", 2, "a").to_int(), 2);
+  EXPECT_EQ(l.gettop(), 8);
+
+  l.settop(0);
   EXPECT_EQ(l.gseek("g").seek(1).to<std::vector<int>>(),
+            (std::vector<int>{1, 2, 3}));
+  EXPECT_EQ(l.lseek("g", 1).to<std::vector<int>>(),
             (std::vector<int>{1, 2, 3}));
   l.settop(0);
   EXPECT_EQ(l.gseek("g").seek(1).to<std::vector<std::string>>(),
