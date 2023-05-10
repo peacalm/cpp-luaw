@@ -854,8 +854,8 @@ public:
   DEFINE_GLOBAL_GET(string, std::string, "")
 #undef DEFINE_GLOBAL_GET
 
-  // NO POP! Cause the c_str body is in stack
-  // Leave the duty of popping stack to caller
+  // NO POP! Because the c_str body is in stack.
+  // Caller is responsible for popping stack.
   // You'd better use get_string unless you know the difference.
   const char* get_c_str(const char* name,
                         const char* def         = "",
