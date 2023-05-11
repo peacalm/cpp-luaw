@@ -1051,7 +1051,7 @@ private:
     }
     int  sz = gettop();
     auto it = b;
-    gseek(tocstr(*it++));
+    gseek(*it++);
     if (it == e) {
       auto ret = to<T>(-1, disable_log, failed, exists);
       settop(sz);
@@ -1071,7 +1071,7 @@ private:
         settop(sz);
         return T{};
       }
-      seek(tocstr(*it++));
+      seek(*it++);
     }
     auto ret = to<T>(-1, disable_log, failed, exists);
     settop(sz);
@@ -1092,9 +1092,6 @@ private:
     if (tfailed || !texists) return def;
     return ret;
   }
-
-  const char* tocstr(const char* s) { return s; }
-  const char* tocstr(const std::string& s) { return s.c_str(); }
 
 public:
   //////////////////////// evaluate expression /////////////////////////////////
