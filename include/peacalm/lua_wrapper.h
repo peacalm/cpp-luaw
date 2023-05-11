@@ -232,11 +232,21 @@ public:
   };
 
   lua_wrapper(const opt& o = opt{}) { init(o); }
-  lua_wrapper(lua_State* L) { init(opt{}.use_state(L)); }
-  lua_wrapper(const lua_wrapper&)            = delete;
-  lua_wrapper(lua_wrapper&&)                 = delete;
+  lua_wrapper(lua_State* L) : L_(L) {}
+  lua_wrapper(const lua_wrapper&) = delete;
+  lua_wrapper(lua_wrapper&& l) : L_(l.release()) {}
   lua_wrapper& operator=(const lua_wrapper&) = delete;
-  lua_wrapper& operator=(lua_wrapper&&)      = delete;
+  lua_wrapper& operator=(lua_wrapper&& r) {
+    if (this == &r) {
+      // do nothing
+    } else if (L_ == r.L()) {
+      r.L(nullptr);
+    } else {
+      close();
+      L(r.release());
+    }
+    return *this;
+  }
   ~lua_wrapper() { close(); }
 
   void init(const opt& o = opt{}) {

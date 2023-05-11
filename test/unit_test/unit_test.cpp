@@ -2076,6 +2076,80 @@ TEST(lua_wrapper, abs_index) {
   EXPECT_EQ(l.abs_index(-5), -5);
 }
 
+TEST(lua_wrapper, release_and_move_ctor_and_move_assign) {
+  // release
+  {
+    lua_wrapper l;
+    lua_State  *L = l.release();
+    EXPECT_TRUE(L);
+    EXPECT_FALSE(l.L());
+    lua_close(L);
+  }
+  // move ctor
+  {
+    lua_wrapper a;
+    auto        al = a.L();
+    lua_wrapper b(std::move(a));
+    EXPECT_FALSE(a.L());
+    EXPECT_EQ(al, b.L());
+    b.dostring("print('b is moved from a!')");
+  }
+  {
+    lua_wrapper a(nullptr);
+    auto        al = a.L();
+    lua_wrapper b(std::move(a));
+    EXPECT_FALSE(a.L());
+    EXPECT_FALSE(b.L());
+  }
+  // move assign
+  {
+    lua_wrapper a, b;
+    auto        al = a.L();
+    auto        bl = b.L();
+    // normal assignment
+    b = std::move(a);
+    EXPECT_FALSE(a.L());
+    EXPECT_TRUE(b.L());
+    EXPECT_EQ(al, b.L());
+    b.dostring("print('b is move assigned from a!')");
+  }
+  {
+    lua_wrapper a;
+    auto        al = a.L();
+    // self assignment
+    a = std::move(a);
+    EXPECT_TRUE(a.L());
+    EXPECT_EQ(al, a.L());
+    a.dostring("print('self assignment: a is not changed!')");
+  }
+  {
+    auto L = luaL_newstate();
+    luaL_openlibs(L);
+    // wrapper of same L
+    lua_wrapper a(L), b(L);
+    b = std::move(a);
+    EXPECT_FALSE(a.L());
+    EXPECT_TRUE(b.L());
+    EXPECT_EQ(L, b.L());
+    b.dostring("print('wrapper of same L: b is not changed!')");
+  }
+  {
+    lua_wrapper a(nullptr), b;
+    b = std::move(a);
+    EXPECT_FALSE(a.L());
+    EXPECT_FALSE(b.L());
+  }
+  {
+    lua_wrapper a, b(nullptr);
+    auto        al = a.L();
+    b              = std::move(a);
+    EXPECT_FALSE(a.L());
+    EXPECT_TRUE(b.L());
+    EXPECT_EQ(al, b.L());
+    b.dostring("print('b is move assigned from a!')");
+  }
+}
+
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
 
