@@ -261,7 +261,7 @@ std::string        to_string(int idx = -1, const std::string&        def = "",  
 ##### 3.2.2 To Complex Type
 Conversion to complex C++ type.
 Note that there are no default value parameters in this function:
-* Parameters description like [1.2 Get Global Variables with Complex Type](https://github.com/peacalm/cpp-lua_wrapper#12-get-global-variables-with-complex-type)
+* @sa [1.2 Get Global Variables with Complex Type](https://github.com/peacalm/cpp-lua_wrapper#12-get-global-variables-with-complex-type)
 ```C++
 // To complex type, without default value parameter
 template <typename T> T to(int idx = -1, bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
