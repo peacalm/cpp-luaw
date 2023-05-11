@@ -171,23 +171,23 @@ class lua_wrapper {
 public:
   // Initialization options for lua_wrapper
   class opt {
-    enum libinit : char { ignore = 0, load = 1, preload = 2 };
+    enum libopt : char { ignore = 0, load = 1, preload = 2 };
 
   public:
     opt() {}
     // Ignore all standard libs
     opt& ignore_libs() {
-      linit_ = ignore;
+      libopt_ = ignore;
       return *this;
     }
     // Load all standard libs
     opt& load_libs() {
-      linit_ = load;
+      libopt_ = load;
       return *this;
     }
     // Preload all standard libs
     opt& preload_libs() {
-      linit_ = preload;
+      libopt_ = preload;
       return *this;
     }
 
@@ -223,7 +223,7 @@ public:
     }
 
   private:
-    libinit               linit_  = load;
+    libopt                libopt_ = load;
     bool                  exfunc_ = true;
     lua_State*            L_      = nullptr;
     std::vector<luaL_Reg> libs_load_;
@@ -256,9 +256,9 @@ public:
       L_ = luaL_newstate();
     }
 
-    if (o.linit_ == opt::libinit::load) {
+    if (o.libopt_ == opt::libopt::load) {
       luaL_openlibs(L_);
-    } else if (o.linit_ == opt::libinit::preload) {
+    } else if (o.libopt_ == opt::libopt::preload) {
       preload_libs();
     }
 
