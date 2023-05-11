@@ -124,9 +124,7 @@ TEST(custom_lua_wrapper, re_init_custom_load_eval) {
   for (int i = 0; i < rep; ++i) {
     custom_lua_wrapper<std::unique_ptr<provider>> l(
         lua_wrapper::opt{}.ignore_libs().custom_load(
-            std::initializer_list<luaL_Reg>{{LUA_GNAME, luaopen_base},
-                                            {NULL, NULL}}
-                .begin()));
+            {{LUA_GNAME, luaopen_base}}));
     l.provider(std::make_unique<provider>(false));
     ret = l.eval_double(expr);
   }

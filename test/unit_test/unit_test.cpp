@@ -1091,30 +1091,22 @@ TEST(lua_wrapper, opt) {
   }
   {
     lua_wrapper l(
-        lua_wrapper::opt().custom_load(std::initializer_list<luaL_Reg>{
-            {LUA_OSLIBNAME, luaopen_os},
-            {NULL, NULL}}.begin()));
+        lua_wrapper::opt().custom_load({{LUA_OSLIBNAME, luaopen_os}}));
     EXPECT_EQ(l.gettop(), 0);
     EXPECT_GT(l.eval_int("return os.time()"), 0);
   }
   {
     lua_wrapper l(
-        lua_wrapper::opt().custom_preload(std::initializer_list<luaL_Reg>{
-            {LUA_OSLIBNAME, luaopen_os},
-            {NULL, NULL}}.begin()));
+        lua_wrapper::opt().custom_preload({{LUA_OSLIBNAME, luaopen_os}}));
     EXPECT_EQ(l.gettop(), 0);
     EXPECT_GT(l.eval_int("os=require 'os'; return os.time()"), 0);
   }
   {
     lua_wrapper l(lua_wrapper::opt()
-                      .custom_load(std::initializer_list<luaL_Reg>{
-                          {LUA_GNAME, luaopen_base},
-                          {LUA_OSLIBNAME, luaopen_os},
-                          {NULL, NULL}}.begin())
-                      .custom_preload(std::initializer_list<luaL_Reg>{
-                          {LUA_MATHLIBNAME, luaopen_math},
-                          {LUA_STRLIBNAME, luaopen_string},
-                          {NULL, NULL}}.begin()));
+                      .custom_load({{LUA_GNAME, luaopen_base},
+                                    {LUA_OSLIBNAME, luaopen_os}})
+                      .custom_preload({{LUA_MATHLIBNAME, luaopen_math},
+                                       {LUA_STRLIBNAME, luaopen_string}}));
     EXPECT_EQ(l.gettop(), 0);
     EXPECT_GE(l.eval_int("m = require 'math' return m.sqrt(os.time())"), 40990);
   }

@@ -202,26 +202,32 @@ public:
       return *this;
     }
 
-    // Load libs specified by `l`
-    // `l` must point to a luaL_Reg array which ends with {NULL, NULL}
-    opt& custom_load(const luaL_Reg* l) {
-      lload_ = l;
+    // Load user specified libs
+    opt& custom_load(const std::vector<luaL_Reg>& l) {
+      libs_load_ = l;
+      return *this;
+    }
+    opt& custom_load(std::vector<luaL_Reg>&& l) {
+      libs_load_ = std::move(l);
       return *this;
     }
 
-    // Preload libs specified by `l`
-    // `l` must point to a luaL_Reg array which ends with {NULL, NULL}
-    opt& custom_preload(const luaL_Reg* l) {
-      lpreload_ = l;
+    // Preload user specified libs
+    opt& custom_preload(const std::vector<luaL_Reg>& l) {
+      libs_preload_ = l;
+      return *this;
+    }
+    opt& custom_preload(std::vector<luaL_Reg>&& l) {
+      libs_preload_ = std::move(l);
       return *this;
     }
 
   private:
-    libinit         linit_    = load;
-    bool            exfunc_   = true;
-    lua_State*      L_        = nullptr;
-    const luaL_Reg* lload_    = nullptr;
-    const luaL_Reg* lpreload_ = nullptr;
+    libinit               linit_  = load;
+    bool                  exfunc_ = true;
+    lua_State*            L_      = nullptr;
+    std::vector<luaL_Reg> libs_load_;
+    std::vector<luaL_Reg> libs_preload_;
     friend class lua_wrapper;
   };
 
@@ -248,19 +254,19 @@ public:
 
     if (o.exfunc_) { register_functions(); }
 
-    if (o.lload_) {
-      for (const luaL_Reg* p = o.lload_; p->func; ++p) {
-        luaL_requiref(L_, p->name, p->func, 1);
+    if (!o.libs_load_.empty()) {
+      for (const luaL_Reg& l : o.libs_load_) {
+        luaL_requiref(L_, l.name, l.func, 1);
         pop();
       }
     }
 
-    if (o.lpreload_) {
+    if (!o.libs_preload_.empty()) {
       lua_getglobal(L_, LUA_LOADLIBNAME);
       lua_getfield(L_, -1, "preload");
-      for (const luaL_Reg* p = o.lpreload_; p->func; ++p) {
-        lua_pushcfunction(L_, p->func);
-        lua_setfield(L_, -2, p->name);
+      for (const luaL_Reg& l : o.libs_preload_) {
+        lua_pushcfunction(L_, l.func);
+        lua_setfield(L_, -2, l.name);
       }
       pop(2);
     }
