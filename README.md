@@ -194,13 +194,13 @@ Example:
 peacalm::lua_wrapper l;
 l.dostring("a = 1 p={x=10,y=20} m={p1={1,2},p2={3,4}}");
 l.get_int({"a"});      // 1
-l.get_int({"ax"}, -1); // -1
+l.get_int({"ax"}, -1); // -1 (return user given default value)
 l.get<int>({"a"});     // 1
-l.get<int>({"ax"});    // 0
+l.get<int>({"ax"});    // 0  (return given type's initial value)
 
 l.get<int>({"p", "x"});    // 10
-l.get_int({"p", "z"}, 30); // 30
-l.get<int>({"p", "z"});    // 0
+l.get_int({"p", "z"}, 30); // 30 (return user given default value)
+l.get<int>({"p", "z"});    // 0  (return given type's initial value)
 
 l.get<std::vector<int>>({"m", "p2"}); // [3,4]
 ```
