@@ -1090,20 +1090,22 @@ TEST(lua_wrapper, opt) {
     EXPECT_EQ(l.gettop(), 0);
   }
   {
-    lua_wrapper l(
-        lua_wrapper::opt().custom_load({{LUA_OSLIBNAME, luaopen_os}}));
+    lua_wrapper l(lua_wrapper::opt().ignore_libs().custom_load(
+        {{LUA_OSLIBNAME, luaopen_os}}));
     EXPECT_EQ(l.gettop(), 0);
     EXPECT_GT(l.eval_int("return os.time()"), 0);
   }
   {
-    lua_wrapper l(
-        lua_wrapper::opt().custom_preload({{LUA_OSLIBNAME, luaopen_os}}));
+    lua_wrapper l(lua_wrapper::opt().ignore_libs().custom_preload(
+        {{LUA_OSLIBNAME, luaopen_os}}));
     EXPECT_EQ(l.gettop(), 0);
     EXPECT_GT(l.eval_int("os=require 'os'; return os.time()"), 0);
   }
   {
     lua_wrapper l(lua_wrapper::opt()
+                      .ignore_libs()
                       .custom_load({{LUA_GNAME, luaopen_base},
+                                    {LUA_LOADLIBNAME, luaopen_package},
                                     {LUA_OSLIBNAME, luaopen_os}})
                       .custom_preload({{LUA_MATHLIBNAME, luaopen_math},
                                        {LUA_STRLIBNAME, luaopen_string}}));

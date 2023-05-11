@@ -272,13 +272,15 @@ public:
     }
 
     if (!o.libs_preload_.empty()) {
-      lua_getglobal(L_, LUA_LOADLIBNAME);
+      // Should load base and package first for any preload.
+      luaL_requiref(L_, LUA_GNAME, luaopen_base, 1);
+      luaL_requiref(L_, LUA_LOADLIBNAME, luaopen_package, 1);
       lua_getfield(L_, -1, "preload");
       for (const luaL_Reg& l : o.libs_preload_) {
         lua_pushcfunction(L_, l.func);
         lua_setfield(L_, -2, l.name);
       }
-      pop(2);
+      pop(3);
     }
   }
 
@@ -295,6 +297,7 @@ public:
   }
 
   void preload_libs() {
+    // Should load base and package first for any preload.
     luaL_requiref(L_, LUA_GNAME, luaopen_base, 1);
     luaL_requiref(L_, LUA_LOADLIBNAME, luaopen_package, 1);
     lua_getfield(L_, -1, "preload");
