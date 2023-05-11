@@ -714,7 +714,11 @@ public:
   /// Global Seek: Get a global value by name and push it onto the stack, or
   /// push a nil if the name does not exist.
   self_t& gseek(const char* name) {
-    getglobal(name);
+    if (name) {
+      getglobal(name);
+    } else {
+      lua_pushnil(L_);
+    }
     return *this;
   }
   self_t& gseek(const std::string& name) { return gseek(name.c_str()); }
@@ -722,7 +726,7 @@ public:
   /// Push t[name] onto the stack where t is the value at the given index `idx`,
   /// or push a nil if the operation fails.
   self_t& seek(const char* name, int idx = -1) {
-    if (gettop() > 0 && istable(idx)) {
+    if (gettop() > 0 && istable(idx) && name) {
       lua_getfield(L_, idx, name);
     } else {
       lua_pushnil(L_);

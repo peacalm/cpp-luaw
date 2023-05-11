@@ -1881,6 +1881,19 @@ TEST(lua_wrapper, seek) {
   l.pop();
 
   l.settop(0);
+
+  // nullptr
+  l.gseek(nullptr);
+  EXPECT_EQ(l.to_int(), 0);
+  l.seek(nullptr);
+  EXPECT_EQ(l.to_int(), 0);
+  l.gseek(std::string{});
+  EXPECT_EQ(l.to_int(), 0);
+  l.gseek("g");
+  l.seek(nullptr);
+  EXPECT_EQ(l.to_int(), 0);
+
+  l.settop(0);
 }
 
 TEST(lua_wrapper, recursive_get) {
