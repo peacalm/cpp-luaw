@@ -1349,6 +1349,8 @@ public:
     _G_setmetateble();
   }
 
+  // TODO: move ctor, move assign
+
   void              provider(const provider_t& p) { provider_ = p; }
   void              provider(provider_t&& p) { provider_ = std::move(p); }
   const provider_t& provider() const { return provider_; }
@@ -1361,7 +1363,7 @@ private:
 
   void _G_setmetateble() {
     lua_getglobal(L(), "_G");
-    if (lua_getmetatable(L(), -1) == 0) { luaL_newmetatable(L(), "_G_mt"); }
+    if (lua_getmetatable(L(), -1) == 0) { lua_newtable(L()); }
     lua_pushcfunction(L(), _G__index);
     lua_setfield(L(), -2, "__index");
     lua_setmetatable(L(), -2);
