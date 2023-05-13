@@ -299,11 +299,11 @@ l.to<std::unordered_map<std::string, std::string>>(); // g.gg.ggg : {"a":"s"}
 l.settop(0);
 
 // The followings are equivalent ways of writing:
-l.gseek("g").seek("m").seek(2).seek("a").to_int(); // g.m[2].a : 2
+l.gseek("g").seek("m").seek(2).seek("a").to_int();            // g.m[2].a : 2
 l.gseek_env().seek("g").seek("m").seek(2).seek("a").to_int(); // g.m[2].a : 2
 l.gseek("_G").seek("g").seek("m").seek(2).seek("a").to_int(); // g.m[2].a : 2
-l.lseek("g", "m", 2, "a").to_int();       // g.m[2].a : 2
-l.lseek("_G", "g", "m", 2, "a").to_int(); // g.m[2].a : 2
+l.lseek("g", "m", 2, "a").to_int();                           // g.m[2].a : 2
+l.lseek("_G", "g", "m", 2, "a").to_int();                     // g.m[2].a : 2
 
 // Don't forget to clear the stack at last.
 l.settop(0);
