@@ -1867,6 +1867,14 @@ TEST(lua_wrapper, seek) {
   EXPECT_EQ(l.gettop(), 10);
   EXPECT_EQ(l.lseek("_G", "g", "m", 2, "a").to_int(), 2);
   EXPECT_EQ(l.gettop(), 15);
+  l.settop(0);
+  EXPECT_EQ(l.lseek("_G", "_G", "_G", "g", "m", 2, "a").to_int(), 2);
+  EXPECT_EQ(l.gettop(), 7);
+  l.settop(0);
+  EXPECT_EQ(
+      l.gseek("_G").seek("_G").seek("g").seek("m").seek(2).seek("a").to_int(),
+      2);
+  EXPECT_EQ(l.gettop(), 6);
 
   l.settop(0);
   EXPECT_EQ(l.gseek("g").seek(1).to<std::vector<int>>(),
