@@ -213,6 +213,10 @@ functions.
 
 The seek functions push the global value or field of a table onto stack:
 ```C++
+// Push the global environment onto the stack.
+// Equivalent to gseek("_G") if "_G" is not modified.
+lua_wrapper& gseek_env();
+
 // Global Seek: Get a global value by name and push it onto the stack, or 
 // push a nil if the name does not exist.
 lua_wrapper& gseek(const char* name);
@@ -283,20 +287,25 @@ l.pop(); // Now g on top of stack
 l.seek("gg").seek("a").to<int>(); // g.gg.a : 11
 
 l.settop(0); // Clear stack
+
 // Note that list index starts from 1 in Lua
 l.gseek("g").seek("list").seek(3).to_int(); // g.list[3] : 3
-// Start with gseek, ignore existing values on stack
+// Start with gseek, ignore existing values in stack
 l.gseek("g").seek("gg").seek("ggg").seek("a").to_string(); // g.gg.ggg.a : s
-std::cout << l.gettop() << std::endl; // 7. 3 for first line, 4 for second
+std::cout << l.gettop() << std::endl; // 7 (3 for first line, 4 for second)
 
 l.pop(); // Now ggg on top of stack
 l.to<std::unordered_map<std::string, std::string>>(); // g.gg.ggg : {"a":"s"}
-
 l.settop(0);
-l.gseek("g").seek("m").seek(2).seek("a").to_int(); // g.m[2].a : 2
-// Another way of writing
-l.lseek("g", "m", 2, "a").to_int(); // g.m[2].a : 2
 
+// The followings are equivalent ways of writing:
+l.gseek("g").seek("m").seek(2).seek("a").to_int(); // g.m[2].a : 2
+l.gseek_env().seek("g").seek("m").seek(2).seek("a").to_int(); // g.m[2].a : 2
+l.gseek("_G").seek("g").seek("m").seek(2).seek("a").to_int(); // g.m[2].a : 2
+l.lseek("g", "m", 2, "a").to_int();       // g.m[2].a : 2
+l.lseek("_G", "g", "m", 2, "a").to_int(); // g.m[2].a : 2
+
+// Don't forget to clear the stack at last.
 l.settop(0);
 ```
 

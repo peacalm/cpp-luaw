@@ -37,7 +37,7 @@ namespace peacalm {
 namespace luafunc {
 // Useful Lua functions extended for Lua
 
-// Short writting for if-elseif-else statement.
+// Short writing for if-elseif-else statement.
 // The number of arguments should be odd and at least 3.
 // Usage: IF(expr1, result_if_expr1_is_true,
 //           expr2, result_if_expr2_is_true,
@@ -724,6 +724,13 @@ public:
 
   ///////////////////////// seek fields ////////////////////////////////////////
 
+  /// Push the global environment onto the stack.
+  /// Equivalent to gseek("_G") if "_G" is not modified.
+  self_t& gseek_env() {
+    lua_pushglobaltable(L_);
+    return *this;
+  }
+
   /// Global Seek: Get a global value by name and push it onto the stack, or
   /// push a nil if the name does not exist.
   self_t& gseek(const char* name) {
@@ -1346,7 +1353,7 @@ class custom_lua_wrapper : public lua_wrapper {
 public:
   template <typename... Args>
   custom_lua_wrapper(Args&&... args) : base_t(std::forward<Args>(args)...) {
-    _G_setmetateble();
+    set_globale_metateble();
   }
 
   // TODO: move ctor, move assign
@@ -1361,8 +1368,8 @@ private:
     return provider() && provider()->provide(L, var_name);
   }
 
-  void _G_setmetateble() {
-    lua_getglobal(L(), "_G");
+  void set_globale_metateble() {
+    lua_pushglobaltable(L());
     if (lua_getmetatable(L(), -1) == 0) { lua_newtable(L()); }
     lua_pushcfunction(L(), _G__index);
     lua_setfield(L(), -2, "__index");
