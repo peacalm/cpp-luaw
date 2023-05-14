@@ -16,10 +16,14 @@
 #ifndef PEACALM_LUA_WRAPPER_H_
 #define PEACALM_LUA_WRAPPER_H_
 
+#include <array>
 #include <cassert>
 #include <cstring>
+#include <deque>
+#include <forward_list>
 #include <initializer_list>
 #include <iostream>
+#include <list>
 #include <map>
 #include <memory>
 #include <set>
@@ -166,6 +170,10 @@ inline int COUNTER0(lua_State* L) {
 
 class lua_wrapper {
   using self_t = lua_wrapper;
+
+  template <typename T, typename = void>
+  struct pusher;
+
   lua_State* L_;
 
 public:
@@ -792,6 +800,14 @@ private:
   }
 
 public:
+  ///////////////////////// push variables ///////////////////////////////
+
+  /// Push a value onto stack.
+  template <typename T>
+  void push(T&& t) {
+    pusher<std::decay_t<T>>::push(*this, std::forward<T>(t));
+  }
+
   ///////////////////////// set global variables ///////////////////////////////
 
   void set_integer(const char* name, long long value) {
@@ -1319,6 +1335,187 @@ inline std::string lua_wrapper::to<std::string>(int   idx,
   if (!disable_log) log_type_convert_error(idx, "string");
   return "";
 }
+
+//////////////////// push impl ////////////////////////////////////////////////
+
+template <typename T, typename>
+struct lua_wrapper::pusher {
+  // template <typename Y>
+  // static void push(lua_wrapper& l, Y&& v) {
+  //   // TODO
+  // }
+};
+
+// bool
+template <>
+struct lua_wrapper::pusher<bool> {
+  static void push(lua_wrapper& l, bool v) { lua_pushboolean(l.L(), v); }
+};
+
+// integer types
+template <typename IntType>
+struct lua_wrapper::pusher<IntType,
+                           std::enable_if_t<std::is_integral<IntType>::value>> {
+  static void push(lua_wrapper& l, IntType v) { lua_pushinteger(l.L(), v); }
+};
+
+// float number types
+template <typename FloatType>
+struct lua_wrapper::pusher<
+    FloatType,
+    std::enable_if_t<std::is_floating_point<FloatType>::value>> {
+  static void push(lua_wrapper& l, FloatType v) { lua_pushnumber(l.L(), v); }
+};
+
+// std::string
+template <>
+struct lua_wrapper::pusher<std::string> {
+  static void push(lua_wrapper& l, const std::string& v) {
+    lua_pushstring(l.L(), v.c_str());
+  }
+};
+
+// const char*
+template <>
+struct lua_wrapper::pusher<const char*> {
+  static void push(lua_wrapper& l, const char* v) { lua_pushstring(l.L(), v); }
+};
+
+// const char array
+template <size_t N>
+struct lua_wrapper::pusher<const char[N]> {
+  static void push(lua_wrapper& l, const char* v) { lua_pushstring(l.L(), v); }
+};
+
+// nullptr
+template <>
+struct lua_wrapper::pusher<std::nullptr_t> {
+  static void push(lua_wrapper& l, std::nullptr_t) { lua_pushnil(l.L()); }
+};
+
+// std::pair
+template <typename T, typename U>
+struct lua_wrapper::pusher<std::pair<T, U>> {
+  static void push(lua_wrapper& l, const std::pair<T, U>& p) {
+    lua_newtable(l.L());
+    l.push(p.first);
+    lua_rawseti(l.L(), -2, 1);
+    l.push(p.second);
+    lua_rawseti(l.L(), -2, 2);
+  }
+};
+
+// Implementation for all list like containers
+template <typename Container>
+static void __push_list(lua_wrapper& l, const Container& v) {
+  lua_newtable(l.L());
+  int cnt = 0;
+  for (auto b = v.begin(), e = v.end(); b != e; ++b) {
+    l.push(*b);
+    lua_rawseti(l.L(), -2, ++cnt);
+  }
+}
+
+// std::array
+template <typename T, std::size_t N>
+struct lua_wrapper::pusher<std::array<T, N>> {
+  static void push(lua_wrapper& l, const std::array<T, N>& v) {
+    __push_list(l, v);
+  }
+};
+
+// std::vector
+template <typename T, typename Allocator>
+struct lua_wrapper::pusher<std::vector<T, Allocator>> {
+  static void push(lua_wrapper& l, const std::vector<T, Allocator>& v) {
+    __push_list(l, v);
+  }
+};
+
+// std::deque
+template <typename T, typename Allocator>
+struct lua_wrapper::pusher<std::deque<T, Allocator>> {
+  static void push(lua_wrapper& l, const std::deque<T, Allocator>& v) {
+    __push_list(l, v);
+  }
+};
+
+// std::forward_list
+template <typename T, typename Allocator>
+struct lua_wrapper::pusher<std::forward_list<T, Allocator>> {
+  static void push(lua_wrapper& l, const std::forward_list<T, Allocator>& v) {
+    __push_list(l, v);
+  }
+};
+
+// std::list
+template <typename T, typename Allocator>
+struct lua_wrapper::pusher<std::list<T, Allocator>> {
+  static void push(lua_wrapper& l, const std::list<T, Allocator>& v) {
+    __push_list(l, v);
+  }
+};
+
+// Implementation for all set like containers
+// Make a Key-True table in Lua to represent set
+template <typename Container>
+static void __push_set(lua_wrapper& l, const Container& v) {
+  lua_newtable(l.L());
+  int cnt = 0;
+  for (auto b = v.begin(), e = v.end(); b != e; ++b) {
+    l.push(*b);
+    lua_pushboolean(l.L(), 1);
+    lua_rawset(l.L(), -3);
+  }
+}
+
+// std::set
+template <typename Key, typename Compare, typename Allocator>
+struct lua_wrapper::pusher<std::set<Key, Compare, Allocator>> {
+  static void push(lua_wrapper& l, const std::set<Key, Compare, Allocator>& v) {
+    __push_set(l, v);
+  }
+};
+
+// std::unordered_set
+template <typename Key, typename Hash, typename KeyEqual, typename Allocator>
+struct lua_wrapper::pusher<std::unordered_set<Key, Hash, KeyEqual, Allocator>> {
+  static void push(
+      lua_wrapper&                                              l,
+      const std::unordered_set<Key, Hash, KeyEqual, Allocator>& v) {
+    __push_set(l, v);
+  }
+};
+
+// Implementation for all map like containers
+template <typename Container>
+static void __push_map(lua_wrapper& l, const Container& v) {
+  lua_newtable(l.L());
+  int cnt = 0;
+  for (auto b = v.begin(), e = v.end(); b != e; ++b) {
+    l.push(b->first);
+    l.push(b->second);
+    lua_rawset(l.L(), -3);
+  }
+}
+
+// std::map
+template <typename Key, typename Compare, typename Allocator>
+struct lua_wrapper::pusher<std::map<Key, Compare, Allocator>> {
+  static void push(lua_wrapper& l, const std::map<Key, Compare, Allocator>& v) {
+    __push_map(l, v);
+  }
+};
+
+// std::unordered_map
+template <typename Key, typename Hash, typename KeyEqual, typename Allocator>
+struct lua_wrapper::pusher<std::unordered_map<Key, Hash, KeyEqual, Allocator>> {
+  static void push(
+      lua_wrapper&                                              l,
+      const std::unordered_map<Key, Hash, KeyEqual, Allocator>& v) {
+    __push_map(l, v);
+  }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 
