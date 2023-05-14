@@ -469,14 +469,16 @@ public:
     return def;                                                \
   }
 
+  DEFINE_TYPE_CONVERSION(bool, bool, false)
   DEFINE_TYPE_CONVERSION(int, int, 0)
   DEFINE_TYPE_CONVERSION(uint, unsigned int, 0)
   DEFINE_TYPE_CONVERSION(long, long, 0)
   DEFINE_TYPE_CONVERSION(ulong, unsigned long, 0)
   DEFINE_TYPE_CONVERSION(llong, long long, 0)
   DEFINE_TYPE_CONVERSION(ullong, unsigned long long, 0)
-  DEFINE_TYPE_CONVERSION(bool, bool, false)
+  DEFINE_TYPE_CONVERSION(float, float, 0)
   DEFINE_TYPE_CONVERSION(double, double, 0)
+  DEFINE_TYPE_CONVERSION(ldouble, double, 0)
 #undef DEFINE_TYPE_CONVERSION
 
   // NOTICE: Lua will implicitly convert number to string
@@ -514,8 +516,8 @@ public:
    * @brief Convert a value in Lua stack to complex C++ type.
    *
    * @tparam T The result type user expected. T can be any type composited by
-   * bool, integer types, double, std::string, std::vector, std::set,
-   * std::unordered_set, std::map, std::unordered_map, std::pair.
+   * bool, integer types, float number types, std::string, std::vector,
+   * std::set, std::unordered_set, std::map, std::unordered_map, std::pair.
    * @param [in] idx value's index in stack.
    * @param [in] disable_log Whether print a log when exception occurs.
    * @param [out] failed Will be set whether the operation is failed if this
@@ -542,7 +544,9 @@ public:
           std::is_same<T, unsigned long>::value ||
           std::is_same<T, long long>::value ||
           std::is_same<T, unsigned long long>::value ||
-          std::is_same<T, double>::value || std::is_same<T, std::string>::value,
+          std::is_same<T, float>::value || std::is_same<T, double>::value ||
+          std::is_same<T, long double>::value ||
+          std::is_same<T, std::string>::value,
       T>
   to(int   idx         = -1,
      bool  disable_log = false,
@@ -873,14 +877,16 @@ public:
     return get_##typename(name.c_str(), def, disable_log, failed, exists); \
   }
 
+  DEFINE_GLOBAL_GET(bool, bool, false)
   DEFINE_GLOBAL_GET(int, int, 0)
   DEFINE_GLOBAL_GET(uint, unsigned int, 0)
   DEFINE_GLOBAL_GET(long, long, 0)
   DEFINE_GLOBAL_GET(ulong, unsigned long, 0)
   DEFINE_GLOBAL_GET(llong, long long, 0)
   DEFINE_GLOBAL_GET(ullong, unsigned long long, 0)
-  DEFINE_GLOBAL_GET(bool, bool, false)
+  DEFINE_GLOBAL_GET(float, float, 0)
   DEFINE_GLOBAL_GET(double, double, 0)
+  DEFINE_GLOBAL_GET(ldouble, long double, 0)
   DEFINE_GLOBAL_GET(string, std::string, "")
 #undef DEFINE_GLOBAL_GET
 
@@ -909,9 +915,9 @@ public:
    * @brief Get a global variable in Lua and convert it to complex C++ type.
    *
    * @tparam T The result type user expected. T can be any type composited by
-   * bool, integer types, double, std::string, std::vector, std::set,
-   * std::unordered_set, std::map, std::unordered_map, std::pair. Note that here
-   * const char* is not supported, which is unsafe.
+   * bool, integer types, float number types, std::string, std::vector,
+   * std::set, std::unordered_set, std::map, std::unordered_map, std::pair. Note
+   * that here const char* is not supported, which is unsafe.
    * @param [in] name The variable's name.
    * @param [in] disable_log Whether print a log when exception occurs.
    * @param [out] failed Will be set whether the operation is failed if this
@@ -996,14 +1002,16 @@ public:
         path.begin(), path.end(), def, disable_log, failed, exists);           \
   }
 
+  DEFINE_RECURSIVE_GET_SIMPLE_TYPE(bool, bool, false)
   DEFINE_RECURSIVE_GET_SIMPLE_TYPE(int, int, 0)
   DEFINE_RECURSIVE_GET_SIMPLE_TYPE(uint, unsigned int, 0)
   DEFINE_RECURSIVE_GET_SIMPLE_TYPE(long, long, 0)
   DEFINE_RECURSIVE_GET_SIMPLE_TYPE(ulong, unsigned long, 0)
   DEFINE_RECURSIVE_GET_SIMPLE_TYPE(llong, long long, 0)
   DEFINE_RECURSIVE_GET_SIMPLE_TYPE(ullong, unsigned long long, 0)
-  DEFINE_RECURSIVE_GET_SIMPLE_TYPE(bool, bool, false)
+  DEFINE_RECURSIVE_GET_SIMPLE_TYPE(float, float, 0)
   DEFINE_RECURSIVE_GET_SIMPLE_TYPE(double, double, 0)
+  DEFINE_RECURSIVE_GET_SIMPLE_TYPE(ldouble, long double, 0)
   DEFINE_RECURSIVE_GET_SIMPLE_TYPE(string, std::string, "")
 #undef DEFINE_RECURSIVE_GET_SIMPLE_TYPE
 
@@ -1162,14 +1170,16 @@ public:
     return eval_##typename(expr.c_str(), def, disable_log, failed); \
   }
 
+  DEFINE_EVAL(bool, bool, false)
   DEFINE_EVAL(int, int, 0)
   DEFINE_EVAL(uint, unsigned int, 0)
   DEFINE_EVAL(long, long, 0)
   DEFINE_EVAL(ulong, unsigned long, 0)
   DEFINE_EVAL(llong, long long, 0)
   DEFINE_EVAL(ullong, unsigned long long, 0)
-  DEFINE_EVAL(bool, bool, false)
+  DEFINE_EVAL(float, float, 0)
   DEFINE_EVAL(double, double, 0)
+  DEFINE_EVAL(ldouble, long double, 0)
   DEFINE_EVAL(string, std::string, "")
 #undef DEFINE_EVAL
 
@@ -1206,7 +1216,7 @@ public:
    * @brief Evaluate a Lua expression and get result in complex C++ type.
    *
    * @tparam T The result type user expected. T can be any type composited by
-   * bool, integer types, double, std::string, std::vector, std::set,
+   * bool, integer types, float number type, std::string, std::vector, std::set,
    * std::unordered_set, std::map, std::unordered_map, std::pair.
    * @param [in] expr Lua expression, which must have a return value. Only the
    * first one is used if multiple values returned.
@@ -1280,7 +1290,9 @@ DEFINE_TO_SPECIALIZATIOIN(long, long, 0)
 DEFINE_TO_SPECIALIZATIOIN(ulong, unsigned long, 0)
 DEFINE_TO_SPECIALIZATIOIN(llong, long long, 0)
 DEFINE_TO_SPECIALIZATIOIN(ullong, unsigned long long, 0)
-DEFINE_TO_SPECIALIZATIOIN(double, double, false)
+DEFINE_TO_SPECIALIZATIOIN(float, float, 0)
+DEFINE_TO_SPECIALIZATIOIN(double, double, 0)
+DEFINE_TO_SPECIALIZATIOIN(ldouble, long double, 0)
 #undef DEFINE_TO_SPECIALIZATIOIN
 
 // A safe implementation of tostring
@@ -1457,12 +1469,16 @@ public:
     return this->auto_eval_##typename(expr.c_str(), def, disable_log, failed); \
   }
 
+  DEFINE_EVAL(bool, bool, false)
   DEFINE_EVAL(int, int, 0)
   DEFINE_EVAL(uint, unsigned int, 0)
+  DEFINE_EVAL(long, long long, 0)
+  DEFINE_EVAL(ulong, unsigned long long, 0)
   DEFINE_EVAL(llong, long long, 0)
   DEFINE_EVAL(ullong, unsigned long long, 0)
-  DEFINE_EVAL(bool, bool, false)
+  DEFINE_EVAL(float, float, 0)
   DEFINE_EVAL(double, double, 0)
+  DEFINE_EVAL(ldouble, long double, 0)
   DEFINE_EVAL(string, std::string, "")
 #undef DEFINE_EVAL
 

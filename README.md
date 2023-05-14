@@ -81,15 +81,17 @@ not exists.
 succeeded.
 
 ```C++
-bool               get_bool  (@NAME_TYPE@ name, const bool&               def = false, bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-int                get_int   (@NAME_TYPE@ name, const int&                def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-unsigned int       get_uint  (@NAME_TYPE@ name, const unsigned int&       def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-long               get_long  (@NAME_TYPE@ name, const long&               def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-unsigned long      get_ulong (@NAME_TYPE@ name, const unsigned long&      def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-long long          get_llong (@NAME_TYPE@ name, const long long&          def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-unsigned long long get_ullong(@NAME_TYPE@ name, const unsigned long long& def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-double             get_double(@NAME_TYPE@ name, const double&             def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-std::string        get_string(@NAME_TYPE@ name, const std::string&        def = "",    bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+bool               get_bool   (@NAME_TYPE@ name, const bool&               def = false, bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+int                get_int    (@NAME_TYPE@ name, const int&                def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+unsigned int       get_uint   (@NAME_TYPE@ name, const unsigned int&       def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+long               get_long   (@NAME_TYPE@ name, const long&               def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+unsigned long      get_ulong  (@NAME_TYPE@ name, const unsigned long&      def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+long long          get_llong  (@NAME_TYPE@ name, const long long&          def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+unsigned long long get_ullong (@NAME_TYPE@ name, const unsigned long long& def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+float              get_float  (@NAME_TYPE@ name, const float&              def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+double             get_double (@NAME_TYPE@ name, const double&             def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+long double        get_ldouble(@NAME_TYPE@ name, const long double&        def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+std::string        get_string (@NAME_TYPE@ name, const std::string&        def = "",    bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
 
 // Caller is responsible for popping the stack after calling this API. You'd better use get_string unless you know the difference.
 const char*        get_c_str (@NAME_TYPE@ name, const char*                def = "",    bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
@@ -124,7 +126,7 @@ elements who are successfully converted, and discard who are not or who are nil.
 Regard the operation failed if any element failed.
 
 * @tparam T The result type user expected. T can be any type composited by 
-bool, integer types, double, std::string, std::vector, std::set, 
+bool, integer types, float number types, std::string, std::vector, std::set, 
 std::unordered_set, std::map, std::unordered_map, std::pair. 
 Note that here const char* is not supported, which is unsafe.
 * @param [out] failed Will be set whether the operation is failed if this
@@ -173,15 +175,17 @@ excpet for the last key, all other keys in path should be Lua table.
 
 #### 2.1 Get Fields with Simple Type
 ```C++
-bool               get_bool  (@PATH_TYPE@ path, const bool&               def = false, bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-int                get_int   (@PATH_TYPE@ path, const int&                def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-unsigned int       get_uint  (@PATH_TYPE@ path, const unsigned int&       def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-long               get_long  (@PATH_TYPE@ path, const long&               def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-unsigned long      get_ulong (@PATH_TYPE@ path, const unsigned long&      def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-long long          get_llong (@PATH_TYPE@ path, const long long&          def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-unsigned long long get_ullong(@PATH_TYPE@ path, const unsigned long long& def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-double             get_double(@PATH_TYPE@ path, const double&             def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-std::string        get_string(@PATH_TYPE@ path, const std::string&        def = "",    bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+bool               get_bool   (@PATH_TYPE@ path, const bool&               def = false, bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+int                get_int    (@PATH_TYPE@ path, const int&                def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+unsigned int       get_uint   (@PATH_TYPE@ path, const unsigned int&       def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+long               get_long   (@PATH_TYPE@ path, const long&               def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+unsigned long      get_ulong  (@PATH_TYPE@ path, const unsigned long&      def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+long long          get_llong  (@PATH_TYPE@ path, const long long&          def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+unsigned long long get_ullong (@PATH_TYPE@ path, const unsigned long long& def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+float              get_float  (@PATH_TYPE@ path, const float&              def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+double             get_double (@PATH_TYPE@ path, const double&             def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+long double        get_ldouble(@PATH_TYPE@ path, const long double&        def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+std::string        get_string (@PATH_TYPE@ path, const std::string&        def = "",    bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
 ```
 
 #### 2.2 Get Fields with Complex Type
@@ -251,15 +255,17 @@ pointer is not nullptr.
 this pointer is not nullptr. Regard none and nil as not exists.
 ```C++
 // To simple type
-bool               to_bool  (int idx = -1, const bool&               def = false, bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-int                to_int   (int idx = -1, const int&                def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-unsigned int       to_uint  (int idx = -1, const unsigned int&       def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-long               to_long  (int idx = -1, const long&               def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-unsigned long      to_ulong (int idx = -1, const unsigned long&      def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-long long          to_llong (int idx = -1, const long long&          def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-unsigned long long to_ullong(int idx = -1, const unsigned long long& def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-double             to_double(int idx = -1, const double&             def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
-std::string        to_string(int idx = -1, const std::string&        def = "",    bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+bool               to_bool   (int idx = -1, const bool&               def = false, bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+int                to_int    (int idx = -1, const int&                def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+unsigned int       to_uint   (int idx = -1, const unsigned int&       def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+long               to_long   (int idx = -1, const long&               def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+unsigned long      to_ulong  (int idx = -1, const unsigned long&      def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+long long          to_llong  (int idx = -1, const long long&          def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+unsigned long long to_ullong (int idx = -1, const unsigned long long& def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+float              to_float  (int idx = -1, const float&              def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+double             to_double (int idx = -1, const double&             def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+long double        to_ldouble(int idx = -1, const long double&        def = 0,     bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
+std::string        to_string (int idx = -1, const std::string&        def = "",    bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
 ```
 
 ##### 3.2.2 To Complex Type
@@ -366,15 +372,17 @@ In the following API, `@EXPR_TYPE@` could be `const char*` or `const std::string
 
 For simple type, which have default value parameter:
 ```C++
-bool               eval_bool  (@EXPR_TYPE@ expr, const bool&               def = false, bool disable_log = false, bool* failed = nullptr);
-int                eval_int   (@EXPR_TYPE@ expr, const int&                def = 0,     bool disable_log = false, bool* failed = nullptr);
-unsigned int       eval_uint  (@EXPR_TYPE@ expr, const unsigned int&       def = 0,     bool disable_log = false, bool* failed = nullptr);
-long               eval_long  (@EXPR_TYPE@ expr, const long&               def = 0,     bool disable_log = false, bool* failed = nullptr);
-unsigned long      eval_ulong (@EXPR_TYPE@ expr, const unsigned long&      def = 0,     bool disable_log = false, bool* failed = nullptr);
-long long          eval_llong (@EXPR_TYPE@ expr, const long long&          def = 0,     bool disable_log = false, bool* failed = nullptr);
-unsigned long long eval_ullong(@EXPR_TYPE@ expr, const unsigned long long& def = 0,     bool disable_log = false, bool* failed = nullptr);
-double             eval_double(@EXPR_TYPE@ expr, const double&             def = 0,     bool disable_log = false, bool* failed = nullptr);
-std::string        eval_string(@EXPR_TYPE@ expr, const std::string&        def = "",    bool disable_log = false, bool* failed = nullptr);
+bool               eval_bool   (@EXPR_TYPE@ expr, const bool&               def = false, bool disable_log = false, bool* failed = nullptr);
+int                eval_int    (@EXPR_TYPE@ expr, const int&                def = 0,     bool disable_log = false, bool* failed = nullptr);
+unsigned int       eval_uint   (@EXPR_TYPE@ expr, const unsigned int&       def = 0,     bool disable_log = false, bool* failed = nullptr);
+long               eval_long   (@EXPR_TYPE@ expr, const long&               def = 0,     bool disable_log = false, bool* failed = nullptr);
+unsigned long      eval_ulong  (@EXPR_TYPE@ expr, const unsigned long&      def = 0,     bool disable_log = false, bool* failed = nullptr);
+long long          eval_llong  (@EXPR_TYPE@ expr, const long long&          def = 0,     bool disable_log = false, bool* failed = nullptr);
+unsigned long long eval_ullong (@EXPR_TYPE@ expr, const unsigned long long& def = 0,     bool disable_log = false, bool* failed = nullptr);
+float              eval_float  (@EXPR_TYPE@ expr, const float&              def = 0,     bool disable_log = false, bool* failed = nullptr);
+double             eval_double (@EXPR_TYPE@ expr, const double&             def = 0,     bool disable_log = false, bool* failed = nullptr);
+long double        eval_ldouble(@EXPR_TYPE@ expr, const long double&        def = 0,     bool disable_log = false, bool* failed = nullptr);
+std::string        eval_string (@EXPR_TYPE@ expr, const std::string&        def = "",    bool disable_log = false, bool* failed = nullptr);
 ```
 
 For complex type, which do not have default value parameter:
