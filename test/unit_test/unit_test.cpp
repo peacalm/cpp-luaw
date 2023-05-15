@@ -2422,6 +2422,44 @@ TEST(lua_wrapper, push) {
   }
 }
 
+TEST(lua_wrapper, set) {
+  lua_wrapper l;
+  l.set("a", 1);
+  EXPECT_EQ(l.get<int>("a"), 1);
+
+  l.set("a", nullptr);
+  l.gseek("a");
+  EXPECT_TRUE(l.isnil());
+
+  bool failed, exists;
+  int  a = l.get_int("a", -1, false, &failed, &exists);
+  EXPECT_EQ(a, -1);
+  EXPECT_FALSE(failed);
+  EXPECT_FALSE(exists);
+
+  {
+    // Note: C++ std::set -> Lua Key-True table
+    auto x = std::set<int>{1, 2, 3};
+    l.set("x", x);
+    EXPECT_EQ((l.get<std::map<int, bool>>("x")),
+              (std::map<int, bool>{{1, true}, {2, true}, {3, true}}));
+  }
+  {
+    auto x = std::map<std::string, std::vector<int>>{{"odd", {1, 3, 5, 7}},
+                                                     {"even", {2, 4, 6, 8}}};
+    l.set("x", x);
+    EXPECT_EQ(l.get<decltype(x)>("x"), x);
+  }
+  {
+    auto x =
+        std::make_pair(std::vector<std::vector<double>>{{1.1, 2.2}, {0.1, 0.2}},
+                       std::map<std::string, std::vector<int>>{
+                           {"odd", {1, 3, 5, 7}}, {"even", {2, 4, 6, 8}}});
+    l.set("x", x);
+    EXPECT_EQ(l.get<decltype(x)>("x"), x);
+  }
+}
+
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
 

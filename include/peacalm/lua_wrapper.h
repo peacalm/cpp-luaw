@@ -804,12 +804,28 @@ public:
 
   /// Push a value onto stack.
   template <typename T>
-  void push(T&& t) {
-    pusher<std::decay_t<T>>::push(*this, std::forward<T>(t));
+  void push(T&& value) {
+    pusher<std::decay_t<T>>::push(*this, std::forward<T>(value));
   }
 
   ///////////////////////// set global variables ///////////////////////////////
 
+  /**
+   * @brief Set a global variable to Lua.
+   *
+   * set(name, nullptr) means set nil to 'name'.
+   */
+  template <typename T>
+  void set(const char* name, T&& value) {
+    push(std::forward<T>(value));
+    lua_setglobal(L_, name);
+  }
+  template <typename T>
+  void set(const std::string& name, T&& value) {
+    set(name.c_str(), std::forward<T>(value));
+  }
+
+  // set for simple types
   void set_integer(const char* name, long long value) {
     lua_pushinteger(L_, value);
     lua_setglobal(L_, name);
