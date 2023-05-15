@@ -168,7 +168,7 @@ TEST(type_conversions, simple_types) {
   EXPECT_EQ(lua_tointeger(l.L(), -1), 0);
   EXPECT_EQ(lua_tonumber(l.L(), -1), 0);
   EXPECT_EQ(strcmp(lua_tostring(l.L(), -1), "0.0"), 0);
-  std::cout << "We convert number to bool, string. 0 to false! 0 to '0.0'"
+  std::cout << "We convert number to bool, string. 0 to false! 0 to '0.0'!"
             << std::endl;
   EXPECT_EQ(l.to_bool(-1), false);  // integer 0 to false
   EXPECT_EQ(l.to_int(-1), 0);
