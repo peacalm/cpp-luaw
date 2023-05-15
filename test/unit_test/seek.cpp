@@ -14,7 +14,7 @@
 
 #include "main.h"
 
-TEST(lua_wrapper, seek) {
+TEST(seek, seek) {
   lua_wrapper l;
   l.gseek("g");
   EXPECT_EQ(l.gettop(), 1);

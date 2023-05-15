@@ -14,7 +14,7 @@
 
 #include "main.h"
 
-TEST(lua_wrapper, eval) {
+TEST(eval, eval) {
   lua_wrapper l;
 
   // Error! Lua returns '', C++ returns default and prints an error log
@@ -64,14 +64,14 @@ TEST(lua_wrapper, eval) {
   EXPECT_EQ(l.gettop(), 0);
 }
 
-TEST(lua_wrapper, eval_multi_ret) {
+TEST(eval, eval_multi_ret) {
   lua_wrapper l;
   EXPECT_EQ(l.eval_int("return 1,2,3"), 1);
   EXPECT_EQ(l.eval<long>("return 1,2,3"), 1);
   EXPECT_EQ(l.eval<std::string>("return 1,2,3"), "1");
 }
 
-TEST(lua_wrapper, template_eval) {
+TEST(eval, template_eval) {
   lua_wrapper l;
   {
     const char *expr = "return {1,2,3}";
@@ -99,7 +99,7 @@ TEST(lua_wrapper, template_eval) {
   }
 }
 
-TEST(lua_wrapper, eval_using_setted_global) {
+TEST(eval, eval_using_setted_global) {
   lua_wrapper l;
   l.set_integer("a", 10);
   l.set_integer("b", 5);

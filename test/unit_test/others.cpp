@@ -14,7 +14,7 @@
 
 #include "main.h"
 
-TEST(lua_wrapper, abs_index) {
+TEST(others, abs_index) {
   lua_wrapper l;
   EXPECT_EQ(l.gettop(), 0);
   EXPECT_EQ(l.abs_index(0), 0);

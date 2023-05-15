@@ -14,7 +14,7 @@
 
 #include "main.h"
 
-TEST(lua_wrapper, opt) {
+TEST(constructions, opt) {
   {
     lua_wrapper l;
     EXPECT_EQ(l.gettop(), 0);
@@ -60,7 +60,7 @@ TEST(lua_wrapper, opt) {
   }
 }
 
-TEST(lua_wrapper, reset) {
+TEST(constructions, reset) {
   lua_wrapper l;
 
   l.set_boolean("b", true);
@@ -75,7 +75,7 @@ TEST(lua_wrapper, reset) {
   EXPECT_EQ(l.get_string("s"), "");
 }
 
-TEST(lua_wrapper, release_and_move_ctor_and_move_assign) {
+TEST(constructions, release_and_move_ctor_and_move_assign) {
   // release
   {
     lua_wrapper l;

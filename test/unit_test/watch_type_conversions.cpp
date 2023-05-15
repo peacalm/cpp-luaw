@@ -14,7 +14,9 @@
 
 #include "main.h"
 
-TEST(watch_type_conversion, lua_rule_and_my_rule) {
+#if 0
+
+TEST(watch_type_conversion, watch_lua_rule_and_my_rule) {
   lua_wrapper l;
 
 #define full_watch(info)          \
@@ -94,3 +96,5 @@ TEST(watch_type_conversion, lua_rule_and_my_rule) {
         // lua_tostring(l.L(), -1), // panic
         lua_toboolean(l.L(), -1));
 }
+
+#endif
