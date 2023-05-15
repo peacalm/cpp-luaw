@@ -26,7 +26,7 @@ if (NOT LUA_FOUND)
     message(FATAL_ERROR "Lua not found! Please install it first.")
 endif()
 
-file(GLOB SOURCE_FILES "unit_test.cpp")
+file(GLOB SOURCE_FILES "*.cpp")
 SET(TARGET "unit_test")
 
 add_executable(${TARGET} ${SOURCE_FILES})
