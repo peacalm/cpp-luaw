@@ -1354,6 +1354,142 @@ inline std::string lua_wrapper::to<std::string>(int   idx,
 
 //////////////////// push impl ////////////////////////////////////////////////
 
+namespace lua_wrapper_detail {
+
+// void_t is defined in std since c++17
+template <typename T>
+using void_t = void;
+
+// is_stdfunction
+
+template <typename T>
+struct is_stdfunction : std::false_type {};
+
+template <typename Return, typename... Args>
+struct is_stdfunction<std::function<Return(Args...)>> : std::true_type {};
+
+template <typename Return, typename... Args>
+struct is_stdfunction<std::function<Return(Args..., ...)>> : std::true_type {};
+
+template <typename T>
+struct decay_is_stdfunction : is_stdfunction<std::decay_t<T>> {};
+
+// Get a C function pointer type by a member function pointer type
+
+template <typename T>
+struct detect_cfunction {
+  using type = void;
+};
+
+template <typename Object, typename Return, typename... Args>
+struct detect_cfunction<Return (Object::*)(Args...)> {
+  using type = Return (*)(Args...);
+};
+
+template <typename Object, typename Return, typename... Args>
+struct detect_cfunction<Return (Object::*)(Args...) const> {
+  using type = Return (*)(Args...);
+};
+
+template <typename Object, typename Return, typename... Args>
+struct detect_cfunction<Return (Object::*)(Args..., ...)> {
+  using type = Return (*)(Args..., ...);
+};
+
+template <typename Object, typename Return, typename... Args>
+struct detect_cfunction<Return (Object::*)(Args..., ...) const> {
+  using type = Return (*)(Args..., ...);
+};
+
+template <typename T>
+using detect_cfunction_t = typename detect_cfunction<T>::type;
+
+// Detect type of callee, which is a pointer to member function operator()
+
+template <typename T, typename = void>
+struct detect_callee {
+  using type = void;
+};
+
+template <typename T>
+struct detect_callee<T, void_t<decltype(&T::operator())>> {
+  using type = decltype(&T::operator());
+};
+
+template <typename T>
+using detect_callee_t = typename detect_callee<T>::type;
+
+// Detect C function style callee type
+
+template <typename T>
+using detect_c_callee_t = detect_cfunction_t<detect_callee_t<T>>;
+
+// Detect whether T maybe a captureless and non-generic lambda
+
+template <typename T>
+struct maybe_lambda
+    : std::integral_constant<
+          bool,
+          !std::is_same<T, void>::value &&
+              std::is_convertible<T, detect_c_callee_t<T>>::value> {};
+
+// Detect whether decay_t<T> maybe a captureless and non-generic lambda
+
+template <typename T>
+struct decay_maybe_lambda : maybe_lambda<std::decay_t<T>> {};
+
+// Whether T has a non-template member operator()
+
+template <typename T, typename = void>
+struct is_callable_class : std::false_type {};
+
+template <typename T>
+struct is_callable_class<T, void_t<decltype(&T::operator())>> : std::true_type {
+};
+
+// whether T is C function
+
+template <typename T>
+struct is_cfunction : std::false_type {};
+
+template <typename Return, typename... Args>
+struct is_cfunction<Return(Args...)> : std::true_type {};
+
+template <typename Return, typename... Args>
+struct is_cfunction<Return(Args..., ...)> : std::true_type {};
+
+// whether T is C function pointer
+
+template <typename T>
+struct is_cfunction_pointer
+    : std::integral_constant<
+          bool,
+          std::is_pointer<T>::value &&
+              is_cfunction<std::remove_pointer_t<std::remove_cv_t<T>>>::value> {
+};
+
+// Whether T is C style callable: C function or C function pointer
+
+template <typename T>
+struct is_callable_c
+    : std::integral_constant<bool,
+                             is_cfunction<T>::value ||
+                                 is_cfunction_pointer<T>::value> {};
+
+// whether T is callable
+
+template <typename T>
+struct is_callable : std::integral_constant<bool,
+                                            is_callable_class<T>::value ||
+                                                is_callable_c<T>::value> {};
+
+// whether decay_t<T> is callable
+
+template <typename T>
+struct decay_is_callable : is_callable<std::decay_t<T>> {};
+
+}  // namespace lua_wrapper_detail
+
 template <typename T, typename>
 struct lua_wrapper::pusher {
   // template <typename Y>
