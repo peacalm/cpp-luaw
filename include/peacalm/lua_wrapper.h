@@ -808,6 +808,12 @@ public:
     pusher<std::decay_t<T>>::push(*this, std::forward<T>(value));
   }
 
+  /// Push with an user given hint type.
+  template <typename Hint, typename T>
+  std::enable_if_t<!std::is_same<Hint, T>::value> push(T&& value) {
+    pusher<std::decay_t<Hint>>::push(*this, std::forward<T>(value));
+  }
+
   ///////////////////////// set global variables ///////////////////////////////
 
   /**
