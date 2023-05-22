@@ -821,6 +821,31 @@ public:
     pusher<std::decay_t<Hint>>::push(*this, std::forward<T>(value));
   }
 
+  ///////////////////////// touch table ////////////////////////////////////////
+
+  /// Push the table with given name onto stack. If not exists, make one.
+  void gtouchtb(const char* name) {
+    lua_getglobal(L_, name);
+    if (istable()) return;
+    pop();
+    lua_newtable(L_);
+    lua_setglobal(L_, name);
+    lua_getglobal(L_, name);
+  }
+
+  /// Push the table t[name] onto stack, where t is a table at given index.
+  /// If it is not a table, make one.
+  void touchtb(const char* name, int idx = -1) {
+    int aidx = abs_index(idx);
+    assert(istable(aidx));
+    lua_getfield(L_, aidx, name);
+    if (istable()) return;
+    pop();
+    lua_newtable(L_);
+    lua_setfield(L_, aidx, name);
+    lua_getfield(L_, aidx, name);
+  }
+
   ///////////////////////// set global variables ///////////////////////////////
 
   /**
