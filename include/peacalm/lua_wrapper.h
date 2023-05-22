@@ -169,14 +169,21 @@ inline int COUNTER0(lua_State* L) {
 }  // namespace luafunc
 
 class lua_wrapper {
-  using self_t = lua_wrapper;
+  using self_t          = lua_wrapper;
+  using lua_cfunction_t = lua_CFunction;  // int (*)(lua_State *L)
 
   template <typename T, typename = void>
   struct pusher;
+  template <typename T, typename = void>
+  struct convertor;
 
   lua_State* L_;
 
 public:
+  struct custom_tag {};
+  struct function_tag {};
+  struct metatable_tag {};
+
   // Initialization options for lua_wrapper
   class opt {
     enum libopt : char { ignore = 0, load = 1, preload = 2 };
