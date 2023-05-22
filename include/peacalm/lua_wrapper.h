@@ -1703,7 +1703,7 @@ struct lua_wrapper::pusher<std::unordered_map<Key, Hash, KeyEqual, Allocator>> {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-namespace lua_wrapper_internal {
+namespace lua_wrapper_detail {
 template <typename T>
 struct __is_ptr : std::false_type {};
 template <typename T>
@@ -1714,7 +1714,7 @@ template <typename T, typename D>
 struct __is_ptr<std::unique_ptr<T, D>> : std::true_type {};
 template <typename T>
 struct is_ptr : __is_ptr<typename std::decay<T>::type> {};
-}  // namespace lua_wrapper_internal
+}  // namespace lua_wrapper_detail
 
 /**
  * @brief A Lua wrapper with custom variable provider.
@@ -1738,7 +1738,7 @@ template <typename VariableProviderPointerType>
 class custom_lua_wrapper : public lua_wrapper {
   using base_t     = lua_wrapper;
   using provider_t = VariableProviderPointerType;
-  static_assert(lua_wrapper_internal::is_ptr<provider_t>::value,
+  static_assert(lua_wrapper_detail::is_ptr<provider_t>::value,
                 "VariableProviderPointerType should be pointer type");
   using pointer_t      = custom_lua_wrapper*;
   provider_t provider_ = nullptr;
@@ -2074,7 +2074,7 @@ public:
   provider_t&       provider() { return provider_; }
 
   void provide(const std::vector<std::string>& vars) {
-    __provide(vars, lua_wrapper_internal::is_ptr<provider_t>{});
+    __provide(vars, lua_wrapper_detail::is_ptr<provider_t>{});
   }
 
 private:
