@@ -1571,12 +1571,6 @@ struct lua_wrapper::pusher<const char*> {
   static void push(lua_wrapper& l, const char* v) { lua_pushstring(l.L(), v); }
 };
 
-// const char array
-template <size_t N>
-struct lua_wrapper::pusher<const char[N]> {
-  static void push(lua_wrapper& l, const char* v) { lua_pushstring(l.L(), v); }
-};
-
 // nullptr
 template <>
 struct lua_wrapper::pusher<std::nullptr_t> {
