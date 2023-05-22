@@ -1503,8 +1503,7 @@ struct is_cfunction_pointer
     : std::integral_constant<
           bool,
           std::is_pointer<T>::value &&
-              is_cfunction<std::remove_pointer_t<std::remove_cv_t<T>>>::value> {
-};
+              is_cfunction<std::remove_pointer_t<T>>::value> {};
 
 // Whether T is C style callable: C function or C function pointer
 
