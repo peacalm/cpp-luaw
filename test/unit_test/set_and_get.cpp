@@ -471,4 +471,14 @@ TEST(set_and_get, template_set) {
     l.set("x", x);
     EXPECT_EQ(l.get<decltype(x)>("x"), x);
   }
+  {
+    auto x = std::vector<int>{1, 2, 3};
+    l.set<decltype(x)>("x", x);
+    EXPECT_EQ(l.get<decltype(x)>("x"), x);
+  }
+  {
+    const auto x = std::vector<int>{1, 2, 3};
+    l.set<std::vector<int>>("x", x);
+    EXPECT_EQ(l.get<std::vector<int>>("x"), x);
+  }
 }

@@ -679,6 +679,19 @@ public:
     set(name.c_str(), std::forward<T>(value));
   }
 
+  /// Set a global variable with an user given hint type.
+  template <typename Hint, typename T>
+  std::enable_if_t<!std::is_same<Hint, T>::value> set(const char* name,
+                                                      T&&         value) {
+    push<Hint>(std::forward<T>(value));
+    lua_setglobal(L_, name);
+  }
+  template <typename Hint, typename T>
+  std::enable_if_t<!std::is_same<Hint, T>::value> set(const std::string& name,
+                                                      T&& value) {
+    set<Hint>(name.c_str(), std::forward<T>(value));
+  }
+
   // set for simple types
   void set_integer(const char* name, long long value) {
     lua_pushinteger(L_, value);
