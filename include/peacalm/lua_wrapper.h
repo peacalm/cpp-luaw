@@ -642,7 +642,7 @@ public:
   /// Push the table with given name onto stack. If not exists, make one.
   self_t& gtouchtb(const char* name) {
     lua_getglobal(L_, name);
-    if (istable()) return;
+    if (istable()) return *this;
     pop();
     lua_newtable(L_);
     lua_setglobal(L_, name);
@@ -657,7 +657,7 @@ public:
     int aidx = abs_index(idx);
     assert(istable(aidx));
     lua_getfield(L_, aidx, name);
-    if (istable()) return;
+    if (istable()) return *this;
     pop();
     lua_newtable(L_);
     lua_setfield(L_, aidx, name);
@@ -674,7 +674,7 @@ public:
     int aidx = abs_index(idx);
     assert(istable(aidx));
     lua_geti(L_, aidx, n);
-    if (istable()) return;
+    if (istable()) return *this;
     pop();
     lua_newtable(L_);
     lua_seti(L_, aidx, n);
