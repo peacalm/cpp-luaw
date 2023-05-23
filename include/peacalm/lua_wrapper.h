@@ -554,8 +554,9 @@ public:
        bool  disable_log = false,
        bool* failed      = nullptr,
        bool* exists      = nullptr) {
-    // THINK: should use convertor<std::decay_t<T>>?
-    return convertor<T>::to(*this, idx, disable_log, failed, exists);
+    static_assert(!std::is_reference<T>::value, "Should not return reference");
+    return convertor<std::decay_t<T>>::to(
+        *this, idx, disable_log, failed, exists);
   }
 
   ///////////////////////// seek fields ////////////////////////////////////////
