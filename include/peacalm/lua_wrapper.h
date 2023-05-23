@@ -682,6 +682,25 @@ public:
     return *this;
   }
 
+  /// Long touchtb: Call gtouchtb() for the first parameter, then call touchtb()
+  /// for the rest parameters.
+  template <typename T, typename... Ts>
+  self_t& ltouchtb(const T& t, const Ts&... ts) {
+    gtouchtb(t);
+    __ltouchtb(ts...);
+    return *this;
+  }
+
+private:
+  void __ltouchtb() {}
+
+  template <typename T, typename... Ts>
+  void __ltouchtb(const T& t, const Ts&... ts) {
+    touchtb(t);
+    __ltouchtb(ts...);
+  }
+
+public:
   ///////////////////////// set global variables ///////////////////////////////
 
   /**
