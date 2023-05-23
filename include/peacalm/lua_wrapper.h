@@ -533,6 +533,7 @@ public:
    * @tparam T The result type user expected. T can be any type composited by
    * bool, integer types, float number types, std::string, std::vector,
    * std::set, std::unordered_set, std::map, std::unordered_map, std::pair.
+   * Note that c_str "const char*" is not supported.
    * @param [in] idx value's index in stack.
    * @param [in] disable_log Whether print a log when exception occurs.
    * @param [out] failed Will be set whether the operation is failed if this
@@ -546,200 +547,14 @@ public:
    * type, the result will contain all non-nil elements whose conversion
    * succeeded and discard elements who are nil or elements whose conversion
    * failed.
-   *
-   * @{
    */
-
-  // To simple types except of to c_str which is unsafe
   template <typename T>
-  std::enable_if_t<
-      std::is_same<T, bool>::value || std::is_same<T, int>::value ||
-          std::is_same<T, unsigned int>::value ||
-          std::is_same<T, long>::value ||
-          std::is_same<T, unsigned long>::value ||
-          std::is_same<T, long long>::value ||
-          std::is_same<T, unsigned long long>::value ||
-          std::is_same<T, float>::value || std::is_same<T, double>::value ||
-          std::is_same<T, long double>::value ||
-          std::is_same<T, std::string>::value,
-      T>
-  to(int   idx         = -1,
-     bool  disable_log = false,
-     bool* failed      = nullptr,
-     bool* exists      = nullptr);
-
-  // To std::pair by (t[1],t[2]) where t should be a table
-  template <typename T>
-  std::enable_if_t<std::is_same<T,
-                                std::pair<typename T::first_type,
-                                          typename T::second_type>>::value,
-                   T>
-  to(int   idx         = -1,
-     bool  disable_log = false,
-     bool* failed      = nullptr,
-     bool* exists      = nullptr) {
-    if (exists) *exists = !isnoneornil(idx);
-    if (isnoneornil(idx)) {
-      if (failed) *failed = false;
-      return T{};
-    }
-    if (!istable(idx)) {
-      if (failed) *failed = true;
-      if (!disable_log) log_type_convert_error(idx, "pair");
-      return T{};
-    }
-    // Allow elements do not exist, {} means a pair with initial values
-    bool ffailed, sfailed;
-    lua_geti(L_, idx, 1);
-    auto first = to<typename T::first_type>(-1, disable_log, &ffailed);
-    pop();
-    lua_geti(L_, idx, 2);
-    auto second = to<typename T::second_type>(-1, disable_log, &sfailed);
-    pop();
-    if (failed) *failed = (ffailed || sfailed);
-    return T{first, second};
+  T to(int   idx         = -1,
+       bool  disable_log = false,
+       bool* failed      = nullptr,
+       bool* exists      = nullptr) {
+    return convertor<T>::to(*this, idx, disable_log, failed, exists);
   }
-
-  // To std::vector
-  // NOTICE: Discard nil in list! e.g. {1,2,nil,4} -> vector<int>{1,2,4}
-  template <typename T>
-  std::enable_if_t<std::is_same<T,
-                                std::vector<typename T::value_type,
-                                            typename T::allocator_type>>::value,
-                   T>
-  to(int   idx         = -1,
-     bool  disable_log = false,
-     bool* failed      = nullptr,
-     bool* exists      = nullptr) {
-    if (exists) *exists = !isnoneornil(idx);
-    if (isnoneornil(idx)) {
-      if (failed) *failed = false;
-      return T{};
-    }
-    if (!istable(idx)) {
-      if (failed) *failed = true;
-      if (!disable_log) log_type_convert_error(idx, "vector");
-      return T{};
-    }
-    T ret;
-    if (failed) *failed = false;
-    int sz = luaL_len(L_, idx);
-    ret.reserve(sz);
-    for (int i = 1; i <= sz; ++i) {
-      lua_geti(L_, idx, i);
-      bool subfailed, subexists;
-      auto subret =
-          to<typename T::value_type>(-1, disable_log, &subfailed, &subexists);
-      // Only add elements exist and conversion succeeded
-      if (!subfailed && subexists) ret.push_back(std::move(subret));
-      if (subfailed && failed) *failed = true;
-      pop();
-    }
-    return ret;
-  }
-
-  // To std::set
-  template <typename T>
-  std::enable_if_t<std::is_same<T,
-                                std::set<typename T::key_type,
-                                         typename T::key_compare,
-                                         typename T::allocator_type>>::value,
-                   T>
-  to(int   idx         = -1,
-     bool  disable_log = false,
-     bool* failed      = nullptr,
-     bool* exists      = nullptr) {
-    auto v = to<std::vector<typename T::key_type, typename T::allocator_type>>(
-        idx, disable_log, failed, exists);
-    return T(v.begin(), v.end());
-  }
-
-  // To std::unordered_set
-  template <typename T>
-  std::enable_if_t<
-      std::is_same<T,
-                   std::unordered_set<typename T::key_type,
-                                      typename T::hasher,
-                                      typename T::key_equal,
-                                      typename T::allocator_type>>::value,
-      T>
-  to(int   idx         = -1,
-     bool  disable_log = false,
-     bool* failed      = nullptr,
-     bool* exists      = nullptr) {
-    auto v = to<std::vector<typename T::key_type, typename T::allocator_type>>(
-        idx, disable_log, failed, exists);
-    return T(v.begin(), v.end());
-  }
-
-  // To std::map
-  template <typename T>
-  std::enable_if_t<std::is_same<T,
-                                std::map<typename T::key_type,
-                                         typename T::mapped_type,
-                                         typename T::key_compare,
-                                         typename T::allocator_type>>::value,
-                   T>
-  to(int   idx         = -1,
-     bool  disable_log = false,
-     bool* failed      = nullptr,
-     bool* exists      = nullptr) {
-    return tom<T>(idx, disable_log, failed, exists, "map");
-  }
-
-  // To std::unordered_map
-  template <typename T>
-  std::enable_if_t<
-      std::is_same<T,
-                   std::unordered_map<typename T::key_type,
-                                      typename T::mapped_type,
-                                      typename T::hasher,
-                                      typename T::key_equal,
-                                      typename T::allocator_type>>::value,
-      T>
-  to(int   idx         = -1,
-     bool  disable_log = false,
-     bool* failed      = nullptr,
-     bool* exists      = nullptr) {
-    return tom<T>(idx, disable_log, failed, exists, "unordered_map");
-  }
-
-  // Implementation of to map or to unordered_map
-  template <typename T>
-  T tom(int         idx         = -1,
-        bool        disable_log = false,
-        bool*       failed      = nullptr,
-        bool*       exists      = nullptr,
-        const char* tname       = "map") {
-    if (exists) *exists = !isnoneornil(idx);
-    if (isnoneornil(idx)) {
-      if (failed) *failed = false;
-      return T{};
-    }
-    if (!istable(idx)) {
-      if (failed) *failed = true;
-      if (!disable_log) log_type_convert_error(idx, tname);
-      return T{};
-    }
-    T ret;
-    if (failed) *failed = false;
-    int absidx = abs_index(idx);
-    lua_pushnil(L_);
-    while (lua_next(L_, absidx) != 0) {
-      bool kfailed, kexists, vfailed, vexists;
-      auto key = to<typename T::key_type>(-2, disable_log, &kfailed, &kexists);
-      if (!kfailed && kexists) {
-        auto val =
-            to<typename T::mapped_type>(-1, disable_log, &vfailed, &vexists);
-        if (!vfailed && vexists) ret.insert({std::move(key), std::move(val)});
-      }
-      if ((kfailed || vfailed) && failed) *failed = true;
-      pop();
-    }
-    return ret;
-  }
-
-  /** @} */
 
   ///////////////////////// seek fields ////////////////////////////////////////
 
@@ -1346,50 +1161,6 @@ public:
   }
 };
 
-#define DEFINE_TO_SPECIALIZATIOIN(typename, type, default)           \
-  template <>                                                        \
-  inline type lua_wrapper::to<type>(                                 \
-      int idx, bool disable_log, bool* failed, bool* exists) {       \
-    return to_##typename(idx, default, disable_log, failed, exists); \
-  }
-
-DEFINE_TO_SPECIALIZATIOIN(bool, bool, false)
-DEFINE_TO_SPECIALIZATIOIN(int, int, 0)
-DEFINE_TO_SPECIALIZATIOIN(uint, unsigned int, 0)
-DEFINE_TO_SPECIALIZATIOIN(long, long, 0)
-DEFINE_TO_SPECIALIZATIOIN(ulong, unsigned long, 0)
-DEFINE_TO_SPECIALIZATIOIN(llong, long long, 0)
-DEFINE_TO_SPECIALIZATIOIN(ullong, unsigned long long, 0)
-DEFINE_TO_SPECIALIZATIOIN(float, float, 0)
-DEFINE_TO_SPECIALIZATIOIN(double, double, 0)
-DEFINE_TO_SPECIALIZATIOIN(ldouble, long double, 0)
-#undef DEFINE_TO_SPECIALIZATIOIN
-
-// A safe implementation of tostring
-// Avoid implicitly modifying number to string in stack, which may cause panic
-// while doing lua_next
-template <>
-inline std::string lua_wrapper::to<std::string>(int   idx,
-                                                bool  disable_log,
-                                                bool* failed,
-                                                bool* exists) {
-  if (exists) *exists = !isnoneornil(idx);
-  if (isstring(idx)) {
-    lua_pushvalue(L_, idx);  // make a copy, so, it's safe
-    std::string ret = lua_tostring(L_, -1);
-    pop();
-    if (failed) *failed = false;
-    return ret;
-  }
-  if (isnoneornil(idx)) {
-    if (failed) *failed = false;
-    return "";
-  }
-  if (failed) *failed = true;
-  if (!disable_log) log_type_convert_error(idx, "string");
-  return "";
-}
-
 //////////////////// push impl ////////////////////////////////////////////////
 
 namespace lua_wrapper_detail {
@@ -1697,6 +1468,262 @@ struct lua_wrapper::pusher<std::unordered_map<Key, Hash, KeyEqual, Allocator>> {
       lua_wrapper&                                              l,
       const std::unordered_map<Key, Hash, KeyEqual, Allocator>& v) {
     __push_map(l, v);
+  }
+};
+
+//////////////////// convertor impl ////////////////////////////////////////////
+
+template <typename T, typename>
+struct lua_wrapper::convertor {
+  // empty
+};
+
+// to bool
+template <>
+struct lua_wrapper::convertor<bool> {
+  static bool to(lua_wrapper& l,
+                 int          idx         = -1,
+                 bool         disable_log = false,
+                 bool*        failed      = nullptr,
+                 bool*        exists      = nullptr) {
+    return l.to_bool(idx, bool{}, disable_log, failed, exists);
+  }
+};
+
+// to integers
+template <typename T>
+struct lua_wrapper::convertor<T, std::enable_if_t<std::is_integral<T>::value>> {
+  static T to(lua_wrapper& l,
+              int          idx         = -1,
+              bool         disable_log = false,
+              bool*        failed      = nullptr,
+              bool*        exists      = nullptr) {
+    auto ret = l.to_llong(idx, 0, disable_log, failed, exists);
+    return static_cast<T>(ret);
+  }
+};
+
+// to float numbers
+template <>
+struct lua_wrapper::convertor<float> {
+  static float to(lua_wrapper& l,
+                  int          idx         = -1,
+                  bool         disable_log = false,
+                  bool*        failed      = nullptr,
+                  bool*        exists      = nullptr) {
+    return l.to_float(idx, float{}, disable_log, failed, exists);
+  }
+};
+template <>
+struct lua_wrapper::convertor<double> {
+  static double to(lua_wrapper& l,
+                   int          idx         = -1,
+                   bool         disable_log = false,
+                   bool*        failed      = nullptr,
+                   bool*        exists      = nullptr) {
+    return l.to_double(idx, double{}, disable_log, failed, exists);
+  }
+};
+template <>
+struct lua_wrapper::convertor<long double> {
+  static long double to(lua_wrapper& l,
+                        int          idx         = -1,
+                        bool         disable_log = false,
+                        bool*        failed      = nullptr,
+                        bool*        exists      = nullptr) {
+    return l.to_ldouble(idx, (long double){}, disable_log, failed, exists);
+  }
+};
+
+// to std::string, safe implementation
+// To avoid implicitly modifying number to string in stack, which may cause
+// panic while doing lua_next, we copy the value first before call lua_tostring.
+template <>
+struct lua_wrapper::convertor<std::string> {
+  static std::string to(lua_wrapper& l,
+                        int          idx         = -1,
+                        bool         disable_log = false,
+                        bool*        failed      = nullptr,
+                        bool*        exists      = nullptr) {
+    if (exists) *exists = !l.isnoneornil(idx);
+    if (l.isstring(idx)) {
+      lua_pushvalue(l.L(), idx);  // make a copy, so, it's safe
+      std::string ret = lua_tostring(l.L(), -1);
+      l.pop();
+      if (failed) *failed = false;
+      return ret;
+    }
+    if (l.isnoneornil(idx)) {
+      if (failed) *failed = false;
+      return "";
+    }
+    if (failed) *failed = true;
+    if (!disable_log) l.log_type_convert_error(idx, "string");
+    return "";
+  }
+};
+
+// to std::pair by (t[1],t[2]) where t should be a table
+template <typename T, typename U>
+struct lua_wrapper::convertor<std::pair<T, U>> {
+  using result_t = std::pair<T, U>;
+  static result_t to(lua_wrapper& l,
+                     int          idx         = -1,
+                     bool         disable_log = false,
+                     bool*        failed      = nullptr,
+                     bool*        exists      = nullptr) {
+    if (exists) *exists = !l.isnoneornil(idx);
+    if (l.isnoneornil(idx)) {
+      if (failed) *failed = false;
+      return result_t{};
+    }
+    if (!l.istable(idx)) {
+      if (failed) *failed = true;
+      if (!disable_log) l.log_type_convert_error(idx, "pair");
+      return result_t{};
+    }
+    // Allow elements do not exist, {} means a pair with initial values
+    bool ffailed, sfailed;
+    lua_geti(l.L(), idx, 1);
+    auto first = lua_wrapper::convertor<T>::to(l, -1, disable_log, &ffailed);
+    l.pop();
+    lua_geti(l.L(), idx, 2);
+    auto second = lua_wrapper::convertor<U>::to(l, -1, disable_log, &sfailed);
+    l.pop();
+    if (failed) *failed = (ffailed || sfailed);
+    return result_t{first, second};
+  }
+};
+
+// to std::vector
+// NOTICE: Discard nil in list! e.g. {1,2,nil,4} -> vector<int>{1,2,4}
+template <typename T, typename Allocator>
+struct lua_wrapper::convertor<std::vector<T, Allocator>> {
+  using result_t = std::vector<T, Allocator>;
+  static result_t to(lua_wrapper& l,
+                     int          idx         = -1,
+                     bool         disable_log = false,
+                     bool*        failed      = nullptr,
+                     bool*        exists      = nullptr) {
+    if (exists) *exists = !l.isnoneornil(idx);
+    if (l.isnoneornil(idx)) {
+      if (failed) *failed = false;
+      return result_t{};
+    }
+    if (!l.istable(idx)) {
+      if (failed) *failed = true;
+      if (!disable_log) l.log_type_convert_error(idx, "vector");
+      return result_t{};
+    }
+    result_t ret;
+    if (failed) *failed = false;
+    int sz = luaL_len(l.L(), idx);
+    ret.reserve(sz);
+    for (int i = 1; i <= sz; ++i) {
+      lua_geti(l.L(), idx, i);
+      bool subfailed, subexists;
+      auto subret = lua_wrapper::convertor<T>::to(
+          l, -1, disable_log, &subfailed, &subexists);
+      // Only add elements exist and conversion succeeded
+      if (!subfailed && subexists) ret.push_back(std::move(subret));
+      if (subfailed && failed) *failed = true;
+      l.pop();
+    }
+    return ret;
+  }
+};
+
+// to std::set
+template <typename Key, typename Compare, typename Allocator>
+struct lua_wrapper::convertor<std::set<Key, Compare, Allocator>> {
+  using result_t = std::set<Key, Compare, Allocator>;
+  static result_t to(lua_wrapper& l,
+                     int          idx         = -1,
+                     bool         disable_log = false,
+                     bool*        failed      = nullptr,
+                     bool*        exists      = nullptr) {
+    auto v =
+        l.to<std::vector<Key, Allocator>>(idx, disable_log, failed, exists);
+    return result_t(v.begin(), v.end());
+  }
+};
+
+// to std::unordered_set
+template <typename Key, typename Hash, typename KeyEqual, typename Allocator>
+struct lua_wrapper::convertor<
+    std::unordered_set<Key, Hash, KeyEqual, Allocator>> {
+  using result_t = std::unordered_set<Key, Hash, KeyEqual, Allocator>;
+  static result_t to(lua_wrapper& l,
+                     int          idx         = -1,
+                     bool         disable_log = false,
+                     bool*        failed      = nullptr,
+                     bool*        exists      = nullptr) {
+    auto v =
+        l.to<std::vector<Key, Allocator>>(idx, disable_log, failed, exists);
+    return result_t(v.begin(), v.end());
+  }
+};
+
+template <typename T>
+T __tom(lua_wrapper& l,
+        int          idx         = -1,
+        bool         disable_log = false,
+        bool*        failed      = nullptr,
+        bool*        exists      = nullptr,
+        const char*  tname       = "map") {
+  if (exists) *exists = !l.isnoneornil(idx);
+  if (l.isnoneornil(idx)) {
+    if (failed) *failed = false;
+    return T{};
+  }
+  if (!l.istable(idx)) {
+    if (failed) *failed = true;
+    if (!disable_log) l.log_type_convert_error(idx, tname);
+    return T{};
+  }
+  T ret;
+  if (failed) *failed = false;
+  int absidx = l.abs_index(idx);
+  lua_pushnil(l.L());
+  while (lua_next(l.L(), absidx) != 0) {
+    bool kfailed, kexists, vfailed, vexists;
+    auto key = l.to<typename T::key_type>(-2, disable_log, &kfailed, &kexists);
+    if (!kfailed && kexists) {
+      auto val =
+          l.to<typename T::mapped_type>(-1, disable_log, &vfailed, &vexists);
+      if (!vfailed && vexists) ret.insert({std::move(key), std::move(val)});
+    }
+    if ((kfailed || vfailed) && failed) *failed = true;
+    l.pop();
+  }
+  return ret;
+}
+
+// to std::map
+template <typename Key, typename Compare, typename Allocator>
+struct lua_wrapper::convertor<std::map<Key, Compare, Allocator>> {
+  using result_t = std::map<Key, Compare, Allocator>;
+  static result_t to(lua_wrapper& l,
+                     int          idx         = -1,
+                     bool         disable_log = false,
+                     bool*        failed      = nullptr,
+                     bool*        exists      = nullptr) {
+    return __tom<result_t>(l, idx, disable_log, failed, exists, "map");
+  }
+};
+
+// to std::unordered_map
+template <typename Key, typename Hash, typename KeyEqual, typename Allocator>
+struct lua_wrapper::convertor<
+    std::unordered_map<Key, Hash, KeyEqual, Allocator>> {
+  using result_t = std::unordered_map<Key, Hash, KeyEqual, Allocator>;
+  static result_t to(lua_wrapper& l,
+                     int          idx         = -1,
+                     bool         disable_log = false,
+                     bool*        failed      = nullptr,
+                     bool*        exists      = nullptr) {
+    return __tom<result_t>(
+        l, idx, disable_log, failed, exists, "unordered_map");
   }
 };
 
