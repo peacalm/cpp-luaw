@@ -640,18 +640,20 @@ public:
   ///////////////////////// touch table ////////////////////////////////////////
 
   /// Push the table with given name onto stack. If not exists, make one.
-  void gtouchtb(const char* name) {
+  self_t& gtouchtb(const char* name) {
     lua_getglobal(L_, name);
     if (istable()) return;
     pop();
     lua_newtable(L_);
     lua_setglobal(L_, name);
     lua_getglobal(L_, name);
+    return *this;
   }
+  self_t& gtouchtb(const std::string& name) { return gtouchtb(name.c_str()); }
 
   /// Push the table t[name] onto stack, where t is a table at given index.
-  /// If it is not a table, make one.
-  void touchtb(const char* name, int idx = -1) {
+  /// If t[name] is not a table, make a new one.
+  self_t& touchtb(const char* name, int idx = -1) {
     int aidx = abs_index(idx);
     assert(istable(aidx));
     lua_getfield(L_, aidx, name);
@@ -660,6 +662,24 @@ public:
     lua_newtable(L_);
     lua_setfield(L_, aidx, name);
     lua_getfield(L_, aidx, name);
+    return *this;
+  }
+  self_t& touchtb(const std::string& name, int idx = -1) {
+    return touchtb(name.c_str(), idx);
+  }
+
+  /// Push the table t[n] onto stack, where t is a table at given index.
+  /// If t[n] is not a table, make a new one.
+  self_t& touchtb(int n, int idx = -1) {
+    int aidx = abs_index(idx);
+    assert(istable(aidx));
+    lua_geti(L_, aidx, n);
+    if (istable()) return;
+    pop();
+    lua_newtable(L_);
+    lua_seti(L_, aidx, n);
+    lua_geti(L_, aidx, n);
+    return *this;
   }
 
   ///////////////////////// set global variables ///////////////////////////////
