@@ -554,6 +554,7 @@ public:
        bool  disable_log = false,
        bool* failed      = nullptr,
        bool* exists      = nullptr) {
+    // THINK: should use convertor<std::decay_t<T>>?
     return convertor<T>::to(*this, idx, disable_log, failed, exists);
   }
 
