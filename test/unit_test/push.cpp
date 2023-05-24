@@ -268,3 +268,37 @@ TEST(push, push) {
                                   {1, "one"}, {2, "two"}, {3, "three"}})));
   }
 }
+
+void func(int) {}
+
+TEST(push, function) {
+  lua_wrapper l;
+
+  l.push(func);
+  l.push(&func);
+  l.push<lua_wrapper::function_tag>(func);
+  l.push<lua_wrapper::function_tag>(&func);
+  l.push<void(int)>(func);
+  l.push<void(int)>(&func);
+
+  // l.push<void (*)(int)>(func); // error with G++?
+  // l.push<void (*)(int)>(&func);
+
+  std::function<void(int)> f = func;
+  l.push(f);
+  l.push(std::move(f));
+  l.push<lua_wrapper::function_tag>(f);
+  l.push<lua_wrapper::function_tag>(std::move(f));
+
+  auto l1 = [](int i) {};
+  l.push(l1);
+  l.push([](int i) {});
+  l.push<void(int)>([](int i) {});
+  l.push<lua_wrapper::function_tag>([](int i) {});
+
+  auto l2 = [](auto x) { return x; };
+  l.push<int(int)>(l2);
+  l.push<double(double)>(l2);
+  l.push<int(double)>(l2);
+  l.push<double(int)>(l2);
+}

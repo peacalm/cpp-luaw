@@ -1353,12 +1353,202 @@ struct decay_is_callable : is_callable<std::decay_t<T>> {};
 
 }  // namespace lua_wrapper_detail
 
+// primary pusher. guess whether it may be a lambda, push as function if true,
+// otherwise push as an user defined custom object.
 template <typename T, typename>
 struct lua_wrapper::pusher {
+  template <typename Y>
+  static void push(lua_wrapper& l, Y&& v) {
+    using Tag =
+        std::conditional_t<lua_wrapper_detail::decay_maybe_lambda<Y>::value,
+                           function_tag,
+                           custom_tag>;
+    lua_wrapper::pusher<Tag>::push(l, std::forward<Y>(v));
+  }
+};
+
+// custom_tag: push as an user defined custom type
+template <>
+struct lua_wrapper::pusher<lua_wrapper::custom_tag> {
+  // TODO:
   // template <typename Y>
-  // static void push(lua_wrapper& l, Y&& v) {
-  //   // TODO
-  // }
+  // static void push(lua_wrapper& l, Y&& v) {}
+};
+
+// function_tag: push as a function
+template <>
+struct lua_wrapper::pusher<lua_wrapper::function_tag> {
+  template <typename F>
+  static void push(lua_wrapper& l, F&& f) {
+    using DecayF = std::decay_t<F>;
+    static_assert(lua_wrapper_detail::is_callable<DecayF>::value,
+                  "Should push a callable value");
+
+    // C function pointer type
+    using CFunctionPtr =
+        std::conditional_t<lua_wrapper_detail::is_callable_class<DecayF>::value,
+                           lua_wrapper_detail::detect_c_callee_t<DecayF>,
+                           DecayF>;
+    static_assert(lua_wrapper_detail::is_cfunction_pointer<CFunctionPtr>::value,
+                  "Should get a C function pointer type");
+    lua_wrapper::pusher<CFunctionPtr>::push(l, std::forward<F>(f));
+  }
+};
+
+// std::function
+template <typename Return, typename... Args>
+struct lua_wrapper::pusher<std::function<Return(Args...)>> {
+  template <typename F>
+  static void push(lua_wrapper& l, F&& f) {
+    using CFunctionPtr = Return (*)(Args...);
+    lua_wrapper::pusher<CFunctionPtr>::push(l, std::forward<F>(f));
+  }
+};
+
+// C funtion, also implementation for functions
+template <typename Return, typename... Args>
+struct lua_wrapper::pusher<Return (*)(Args...)> {
+  // function object with non-trivially destructor
+  template <typename F>
+  static std::enable_if_t<
+      !std::is_trivially_destructible<std::decay_t<F>>::value>
+  push(lua_wrapper& l, F&& f) {
+    using SolidF = std::remove_reference_t<F>;
+
+    auto __call = [](lua_State* L) -> int {
+      assert(lua_gettop(L) >= 1);
+      assert(lua_isuserdata(L, 1));
+      auto callee = static_cast<SolidF*>(lua_touserdata(L, 1));
+      assert(callee);
+      lua_wrapper l(L);
+      int         ret_num = callback(l, *callee, 2, std::is_void<Return>{});
+      l.release();
+      return ret_num;
+    };
+
+    auto __gc = [](lua_State* L) -> int {
+      assert(lua_gettop(L) == 1);
+      assert(lua_isuserdata(L, 1));
+      auto fptr = static_cast<SolidF*>(lua_touserdata(L, 1));
+      assert(fptr);
+      fptr->~SolidF();
+      return 0;
+    };
+
+    // object
+    auto faddr = static_cast<SolidF*>(lua_newuserdata(l.L(), sizeof(f)));
+    new (faddr) SolidF(std::forward<F>(f));
+
+    // build metatable
+    lua_newtable(l.L());
+
+    lua_pushcfunction(l.L(), __call);
+    lua_setfield(l.L(), -2, "__call");
+
+    lua_pushcfunction(l.L(), __gc);
+    lua_setfield(l.L(), -2, "__gc");
+
+    lua_setmetatable(l.L(), -2);
+  }
+
+  // function object with trivially destructor
+  template <typename F>
+  static std::enable_if_t<
+      std::is_trivially_destructible<std::decay_t<F>>::value>
+  push(lua_wrapper& l, F&& f) {
+    using SolidF = std::remove_reference_t<F>;
+
+    auto closure = [](lua_State* L) -> int {
+      auto callee =
+          static_cast<SolidF*>(lua_touserdata(L, lua_upvalueindex(1)));
+      assert(callee);
+      lua_wrapper l(L);
+      int         ret_num = callback(l, *callee, 1, std::is_void<Return>{});
+      l.release();
+      return ret_num;
+    };
+
+    auto faddr = static_cast<SolidF*>(lua_newuserdata(l.L(), sizeof(f)));
+    new (faddr) SolidF(std::forward<F>(f));
+
+    lua_pushcclosure(l.L(), closure, 1);
+  }
+
+  // function pointer
+  static void push(lua_wrapper& l, Return (*f)(Args...)) {
+    auto closure = [](lua_State* L) -> int {
+      auto callee = reinterpret_cast<Return (*)(Args...)>(
+          lua_touserdata(L, lua_upvalueindex(1)));
+      assert(callee);
+      lua_wrapper l(L);
+      int         ret_num = callback(l, callee, 1, std::is_void<Return>{});
+      l.release();
+      return ret_num;
+    };
+    lua_pushlightuserdata(l.L(), reinterpret_cast<void*>(f));
+    lua_pushcclosure(l.L(), closure, 1);
+  }
+
+private:
+  template <typename>
+  struct wrap {};
+
+  template <typename Callee, typename FirstArg, typename... RestArgs>
+  struct bind {
+    Callee   c;
+    FirstArg f;
+    bind(Callee&& cc, FirstArg&& ff)
+        : c(std::forward<Callee>(cc)), f(std::forward<FirstArg>(ff)) {}
+
+    Return operator()(RestArgs&&... args) {
+      return c(std::move(f), std::forward<RestArgs>(args)...);
+    }
+  };
+
+  // Return is void
+  template <typename Callee>
+  static int callback(lua_wrapper& l,
+                      Callee&&     c,
+                      int          start_idx,
+                      std::true_type) {
+    do_call(l, std::forward<Callee>(c), start_idx, 1, wrap<Args>{}...);
+    return 0;
+  }
+
+  // Return is not void
+  template <typename Callee>
+  static int callback(lua_wrapper& l,
+                      Callee&&     c,
+                      int          start_idx,
+                      std::false_type) {
+    auto ret =
+        do_call(l, std::forward<Callee>(c), start_idx, 1, wrap<Args>{}...);
+    l.push(ret);
+    return 1;
+  }
+
+  template <typename Callee, typename FirstArg, typename... RestArgs>
+  static Return do_call(lua_wrapper&   l,
+                        Callee&&       c,
+                        int            i,
+                        int            counter,
+                        wrap<FirstArg> farg,
+                        wrap<RestArgs>... args) {
+    bool failed, exists;
+    auto param = l.to<FirstArg>(i, false, &failed, &exists);
+    if (failed) {
+      lua_pushfstring(l.L(), "The %dth argument conversion failed", counter);
+      lua_error(l.L());
+    }
+    bind<Callee, FirstArg, RestArgs...> b(std::forward<Callee>(c),
+                                          std::move(param));
+    return do_call(l, std::move(b), i + 1, counter + 1, args...);
+  }
+
+  template <typename Callee>
+  static Return do_call(lua_wrapper& l, Callee&& c, int i, int counter) {
+    return c();
+  }
 };
 
 // bool
