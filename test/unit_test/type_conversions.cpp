@@ -952,5 +952,15 @@ TEST(type_conversions, to_tuple) {
     EXPECT_TRUE(failed);
     EXPECT_TRUE(exists);
   }
+
   // l.to<std::tuple<bool, std::tuple<int, double>, std::string>>(1);  // error
+
+  {
+    // empty tuple
+    bool failed, exists;
+    auto t = l.to<std::tuple<>>(1, false, &failed, &exists);
+    EXPECT_EQ(t, std::make_tuple());
+    EXPECT_FALSE(failed);
+    EXPECT_FALSE(exists);
+  }
 }

@@ -1176,7 +1176,7 @@ public:
       return T{};
     }
     assert(gettop() >= sz);
-    if (gettop() <= sz) {
+    if (gettop() <= sz && !std::is_same<std::decay_t<T>, std::tuple<>>::value) {
       if (failed) *failed = true;
       if (!disable_log) log_error("No return");
       return T{};
@@ -1352,11 +1352,15 @@ template <typename T>
 struct decay_is_callable : is_callable<std::decay_t<T>> {};
 
 // whether T is std::tuple
+
 template <typename T>
-struct is_stdtuple : std::false_type {};
+struct __is_stdtuple : std::false_type {};
 
 template <typename... Ts>
-struct is_stdtuple<std::tuple<Ts...>> : std::true_type {};
+struct __is_stdtuple<std::tuple<Ts...>> : std::true_type {};
+
+template <typename T>
+using is_stdtuple = __is_stdtuple<std::decay_t<T>>;
 
 }  // namespace lua_wrapper_detail
 

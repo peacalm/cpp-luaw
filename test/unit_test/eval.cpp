@@ -116,3 +116,27 @@ TEST(eval, eval_using_setted_global) {
   EXPECT_EQ(s, "good");
   EXPECT_EQ(si, (std::set<int>{2, 5, 10}));
 }
+
+TEST(eval, tuple) {
+  lua_wrapper l;
+  {
+    bool failed;
+    auto t = l.eval<std::tuple<bool, int, std::string>>(
+        "return true, 2, 'tuple' ", false, &failed);
+    EXPECT_EQ(t, std::make_tuple(true, 2, "tuple"));
+    EXPECT_FALSE(failed);
+  }
+  {
+    bool failed;
+    auto t = l.eval<std::tuple<>>("a=true b=2 c='tuple' ", false, &failed);
+    EXPECT_EQ(t, std::make_tuple());
+    EXPECT_FALSE(failed);
+  }
+  {
+    bool failed;
+    auto t =
+        l.eval<const std::tuple<>>("a=true b=2 c='tuple' ", false, &failed);
+    EXPECT_EQ(t, std::make_tuple());
+    EXPECT_FALSE(failed);
+  }
+}

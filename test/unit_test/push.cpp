@@ -287,6 +287,10 @@ TEST(push, tuple) {
   EXPECT_EQ(l.gettop(), 3);
 
   // auto t2 = std::make_tuple(2, std::vector<int>{1, 2}, t); // error
+  // EXPECT_EQ(l.push(t2), 3);
+
+  // EXPECT_EQ(l.push(std::tuple<int, const std::tuple<bool, double>, float>{}),
+  // 3);  // error
 
   const std::tuple<int, bool> t3;
   EXPECT_EQ(l.push(t3), 2);
