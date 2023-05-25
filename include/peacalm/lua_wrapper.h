@@ -1828,8 +1828,8 @@ struct lua_wrapper::pusher<std::tuple<Ts...>> {
   static const size_t size = std::tuple_size<std::tuple<Ts...>>::value;
 
   static int push(lua_wrapper& l, const std::tuple<Ts...>& v) {
-    constexpr size_t N = std::tuple_size<std::tuple<Ts...>>::value;
-    int ret_num = __push<0, N>(l, v, std::integral_constant<bool, 0 < N>{});
+    const size_t N = size;
+    int ret_num    = __push<0, N>(l, v, std::integral_constant<bool, 0 < N>{});
     assert(ret_num == N);
     return ret_num;
   }
@@ -1913,12 +1913,12 @@ public:
       function_exists_ = true;
     }
 
-    int narg     = push_args(l, args...);
-    int nret     = lua_wrapper::pusher<std::decay_t<Return>>::size;
-    int call_ret = l.pcall(narg, nret, 0);
+    int narg      = push_args(l, args...);
+    int nret      = lua_wrapper::pusher<std::decay_t<Return>>::size;
+    int pcall_ret = l.pcall(narg, nret, 0);
 
     assert(l.gettop() >= sz);
-    if (call_ret == LUA_OK) {
+    if (pcall_ret == LUA_OK) {
       function_failed_ = false;
     } else {
       function_failed_ = true;

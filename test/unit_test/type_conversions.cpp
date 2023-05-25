@@ -1031,3 +1031,116 @@ TEST(type_conversions, to_function) {
   auto f4 = l.to<std::function<void(int, int)>>(1);
   f4(2, 3);
 }
+
+TEST(type_conversions, to_function_tuple_result) {
+  lua_wrapper l;
+  l.dostring("f = function(a, b) return a + b, a - b, a * b end");
+  l.getglobal("f");
+  EXPECT_EQ(l.gettop(), 1);
+  int sz = l.gettop();
+
+  {
+    bool failed, exists;
+    auto f = l.to<lua_wrapper::function<std::tuple<int, int, int>(int, int)>>(
+        1, false, &failed, &exists);
+
+    EXPECT_EQ(l.gettop(), sz);
+
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+
+    EXPECT_EQ(f(1, 2), std::make_tuple(3, -1, 2));
+
+    EXPECT_EQ(l.gettop(), sz);
+
+    EXPECT_FALSE(f.function_failed());
+    EXPECT_TRUE(f.function_exists());
+    EXPECT_FALSE(f.result_failed());
+    EXPECT_TRUE(f.result_exists());
+    EXPECT_FALSE(f.failed());
+  }
+  {
+    // const tuple as result
+    bool failed, exists;
+    auto f =
+        l.to<lua_wrapper::function<const std::tuple<int, int, int>(int, int)>>(
+            1, false, &failed, &exists);
+
+    EXPECT_EQ(l.gettop(), sz);
+
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+
+    EXPECT_EQ(f(1, 2), std::make_tuple(3, -1, 2));
+
+    EXPECT_EQ(l.gettop(), sz);
+
+    EXPECT_FALSE(f.function_failed());
+    EXPECT_TRUE(f.function_exists());
+    EXPECT_FALSE(f.result_failed());
+    EXPECT_TRUE(f.result_exists());
+    EXPECT_FALSE(f.failed());
+  }
+  {
+    // result size 3 -> 4
+    bool failed, exists;
+    auto f =
+        l.to<lua_wrapper::function<std::tuple<int, int, int, int>(int, int)>>(
+            1, false, &failed, &exists);
+
+    EXPECT_EQ(l.gettop(), sz);
+
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+
+    EXPECT_EQ(f(1, 2), std::make_tuple(3, -1, 2, 0));
+
+    EXPECT_EQ(l.gettop(), sz);
+
+    EXPECT_FALSE(f.function_failed());
+    EXPECT_TRUE(f.function_exists());
+    EXPECT_FALSE(f.result_failed());
+    EXPECT_TRUE(f.result_exists());
+    EXPECT_FALSE(f.failed());
+  }
+  {
+    // result size 3 -> 2
+    bool failed, exists;
+    auto f = l.to<lua_wrapper::function<std::tuple<int, int>(int, int)>>(
+        1, false, &failed, &exists);
+
+    EXPECT_EQ(l.gettop(), sz);
+
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+
+    EXPECT_EQ(f(1, 2), std::make_tuple(3, -1));
+
+    EXPECT_EQ(l.gettop(), sz);
+
+    EXPECT_FALSE(f.function_failed());
+    EXPECT_TRUE(f.function_exists());
+    EXPECT_FALSE(f.result_failed());
+    EXPECT_TRUE(f.result_exists());
+    EXPECT_FALSE(f.failed());
+  }
+  {
+    // result size 3 -> 1
+    bool failed, exists;
+    auto f =
+        l.to<lua_wrapper::function<int(int, int)>>(1, false, &failed, &exists);
+
+    EXPECT_EQ(l.gettop(), sz);
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+
+    EXPECT_EQ(f(1, 2), 3);
+    EXPECT_EQ(l.gettop(), sz);
+
+    EXPECT_FALSE(f.function_failed());
+    EXPECT_TRUE(f.function_exists());
+    EXPECT_FALSE(f.result_failed());
+    EXPECT_TRUE(f.result_exists());
+    EXPECT_FALSE(f.failed());
+  }
+}
