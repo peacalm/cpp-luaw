@@ -1351,6 +1351,13 @@ struct is_callable : std::integral_constant<bool,
 template <typename T>
 struct decay_is_callable : is_callable<std::decay_t<T>> {};
 
+// whether T is std::tuple
+template <typename T>
+struct is_stdtuple : std::false_type {};
+
+template <typename... Ts>
+struct is_stdtuple<std::tuple<Ts...>> : std::true_type {};
+
 }  // namespace lua_wrapper_detail
 
 // primary pusher. guess whether it may be a lambda, push as function if true,
@@ -1737,6 +1744,34 @@ struct lua_wrapper::pusher<std::unordered_map<Key, Hash, KeyEqual, Allocator>> {
   static int push(lua_wrapper&                                              l,
                   const std::unordered_map<Key, Hash, KeyEqual, Allocator>& v) {
     return lua_wrapper_detail::__push_map(l, v);
+  }
+};
+
+// std::tuple
+// Push elements separately in order. One element takes one place in stack.
+// Any element of the tuple should not be a tuple anymore.
+template <typename... Ts>
+struct lua_wrapper::pusher<std::tuple<Ts...>> {
+  static int push(lua_wrapper& l, const std::tuple<Ts...>& v) {
+    constexpr size_t N = std::tuple_size<std::tuple<Ts...>>::value;
+    int ret_num = __push<0, N>(l, v, std::integral_constant<bool, 0 < N>{});
+    assert(ret_num == N);
+    return ret_num;
+  }
+
+private:
+  template <size_t I, size_t N, typename T>
+  static int __push(lua_wrapper& l, const T& t, std::true_type) {
+    static_assert(
+        !lua_wrapper_detail::is_stdtuple<std::tuple_element_t<I, T>>::value,
+        "Recursive tuple is not allowed");
+    int x = l.push(std::get<I>(t));
+    int y = __push<I + 1, N>(l, t, std::integral_constant<bool, I + 1 < N>{});
+    return x + y;
+  }
+  template <size_t I, size_t N, typename T>
+  static int __push(lua_wrapper& l, const T& t, std::false_type) {
+    return 0;
   }
 };
 

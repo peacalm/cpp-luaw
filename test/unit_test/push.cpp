@@ -273,6 +273,31 @@ TEST(push, push) {
   }
 }
 
+TEST(push, tuple) {
+  lua_wrapper l;
+  auto        t = std::make_tuple(1, 2.5, "str");
+  EXPECT_EQ(l.push(t), 3);
+
+  EXPECT_EQ(l.gettop(), 3);
+  EXPECT_EQ(l.to_int(1), 1);
+  EXPECT_EQ(l.to_double(2), 2.5);
+  EXPECT_EQ(l.to_string(3), "str");
+
+  EXPECT_EQ(l.push(std::tuple<>{}), 0);
+  EXPECT_EQ(l.gettop(), 3);
+
+  // auto t2 = std::make_tuple(2, std::vector<int>{1, 2}, t); // error
+
+  const std::tuple<int, bool> t3;
+  EXPECT_EQ(l.push(t3), 2);
+
+  EXPECT_EQ(l.gettop(), 5);
+
+  const auto &tr = t3;
+  EXPECT_EQ(l.push(tr), 2);
+  EXPECT_EQ(l.push(std::move(t3)), 2);
+}
+
 void func(int) {}
 
 TEST(push, function) {
