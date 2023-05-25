@@ -1004,6 +1004,26 @@ TEST(type_conversions, to_function) {
     EXPECT_FALSE(f.failed());
   }
   {
+    // get a const lua_wrapper::function
+
+    bool       failed, exists;
+    const auto f = l.to<const lua_wrapper::function<int(int, int)>>(
+        1, false, &failed, &exists);
+
+    EXPECT_EQ(l.gettop(), sz);
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+
+    EXPECT_EQ(f(1, 2), 3);
+    EXPECT_EQ(l.gettop(), sz);
+
+    EXPECT_FALSE(f.function_failed());
+    EXPECT_TRUE(f.function_exists());
+    EXPECT_FALSE(f.result_failed());
+    EXPECT_TRUE(f.result_exists());
+    EXPECT_FALSE(f.failed());
+  }
+  {
     bool failed, exists;
     auto f =
         l.to<lua_wrapper::function<int(int, int)>>(2, false, &failed, &exists);

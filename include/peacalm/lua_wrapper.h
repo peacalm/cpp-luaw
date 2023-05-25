@@ -1865,8 +1865,8 @@ class lua_wrapper::function<Return(Args...)> {
   // parameters put in
   bool disable_log_ = false;
   // states put out
-  bool function_failed_ = false, function_exists_ = false;
-  bool result_failed_ = false, result_exists_ = false;
+  mutable bool function_failed_ = false, function_exists_ = false,
+               result_failed_ = false, result_exists_ = false;
 
 public:
   function(lua_State* L,
@@ -1900,7 +1900,7 @@ public:
   bool result_exists() const { return result_exists_; }
   bool failed() const { return function_failed_ || result_failed_; }
 
-  Return operator()(const Args&... args) {
+  Return operator()(const Args&... args) const {
     lua_wrapper_fake l(L_, lua_gettop(L_));
     int              sz = l.gettop();
     lua_rawgeti(L_, LUA_REGISTRYINDEX, *ref_sptr_);
