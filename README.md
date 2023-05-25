@@ -404,7 +404,7 @@ auto si = l.eval<std::set<int>>("return {a, b, c}"); // {2,5,10}
 ### 7. Lua Wrapper with Custom Variable Provider
 
 ```C++
-template <typename VariableProviderPointerType>
+template <typename VariableProviderPointer>
 class custom_lua_wrapper;
 ```
 
@@ -413,7 +413,7 @@ a user defined variable provider.
 When a global variable used in some expression does not 
 exist in Lua, then it will seek the variable from the provider.
 
-The template parameter `VariableProviderPointerType` could 
+The template parameter `VariableProviderPointer` could 
 be either a raw pointer type or a smart pointer type, i.e. std::shared_ptr or 
 std::unique_ptr.
 The underlying provider type should implement a member function:
