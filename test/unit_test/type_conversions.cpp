@@ -964,3 +964,14 @@ TEST(type_conversions, to_tuple) {
     EXPECT_FALSE(exists);
   }
 }
+
+TEST(type_conversions, to_void) {
+  lua_wrapper l;
+  l.push(1);
+  l.push(nullptr);
+
+  bool failed, exists;
+  l.to<void>(1, false, &failed, &exists);
+  EXPECT_FALSE(failed);
+  EXPECT_FALSE(exists);
+}

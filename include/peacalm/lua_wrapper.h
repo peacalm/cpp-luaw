@@ -1168,6 +1168,9 @@ public:
    */
   template <typename T>
   T eval(const char* expr, bool disable_log = false, bool* failed = nullptr) {
+    static_assert(!std::is_same<std::decay_t<T>, void>::value,
+                  "void is not supported, try std::tuple<> instead");
+
     int sz = gettop();
     if (dostring(expr) != LUA_OK) {
       if (failed) *failed = true;
@@ -2102,6 +2105,20 @@ private:
                    bool*        exists      = nullptr) {
     if (failed) *failed = false;
     if (exists) *exists = false;
+  }
+};
+
+// to void
+template <>
+struct lua_wrapper::convertor<void> {
+  static void to(lua_wrapper& l,
+                 int          idx         = -1,
+                 bool         disable_log = false,
+                 bool*        failed      = nullptr,
+                 bool*        exists      = nullptr) {
+    if (failed) *failed = false;
+    if (exists) *exists = false;
+    return void();
   }
 };
 

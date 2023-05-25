@@ -139,4 +139,6 @@ TEST(eval, tuple) {
     EXPECT_EQ(t, std::make_tuple());
     EXPECT_FALSE(failed);
   }
+
+  // l.eval<void>("a=true b=2 c='tuple' "); // error
 }
