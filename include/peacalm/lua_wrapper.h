@@ -2036,6 +2036,71 @@ struct lua_wrapper::convertor<
   }
 };
 
+// to std::tuple
+// The result tuple shoule not contain any tuple any more.
+template <typename... Ts>
+struct lua_wrapper::convertor<std::tuple<Ts...>> {
+  using result_t = std::tuple<Ts...>;
+  static result_t to(lua_wrapper& l,
+                     int          idx         = -1,
+                     bool         disable_log = false,
+                     bool*        failed      = nullptr,
+                     bool*        exists      = nullptr) {
+    constexpr size_t N = std::tuple_size<result_t>::value;
+    result_t         ret;
+    __to<0, N>(ret,
+               std::integral_constant<bool, 0 < N>{},
+               l,
+               l.abs_index(idx),
+               disable_log,
+               failed,
+               exists);
+    return ret;
+  }
+
+private:
+  template <size_t I, size_t N, typename T>
+  static void __to(T& ret,
+                   std::true_type,
+                   lua_wrapper& l,
+                   int          idx,
+                   bool         disable_log = false,
+                   bool*        failed      = nullptr,
+                   bool*        exists      = nullptr) {
+    static_assert(
+        !lua_wrapper_detail::is_stdtuple<std::tuple_element_t<I, T>>::value,
+        "Recursive tuple is not allowed");
+
+    bool thisfailed, thisexists;
+    std::get<I>(ret) = l.to<std::tuple_element_t<I, T>>(
+        idx, disable_log, &thisfailed, &thisexists);
+
+    bool restfailed, restexists;
+    __to<I + 1, N>(ret,
+                   std::integral_constant<bool, I + 1 < N>{},
+                   l,
+                   idx + 1,
+                   disable_log,
+                   &restfailed,
+                   &restexists);
+
+    if (failed) *failed = thisfailed || restfailed;
+    if (exists) *exists = thisexists || restexists;
+  }
+
+  template <size_t I, size_t N, typename T>
+  static void __to(T& ret,
+                   std::false_type,
+                   lua_wrapper& l,
+                   int          idx         = -1,
+                   bool         disable_log = false,
+                   bool*        failed      = nullptr,
+                   bool*        exists      = nullptr) {
+    if (failed) *failed = false;
+    if (exists) *exists = false;
+  }
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace lua_wrapper_detail {

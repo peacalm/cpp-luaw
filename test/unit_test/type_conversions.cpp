@@ -921,3 +921,36 @@ TEST(type_conversions, template_to_complex_types) {
     EXPECT_EQ(l.gettop(), sz);
   }
 }
+
+TEST(type_conversions, to_tuple) {
+  lua_wrapper l;
+  l.push(true);
+  l.push(1);
+  l.push(2.5);
+  l.push("str");
+  EXPECT_EQ(l.gettop(), 4);
+
+  {
+    bool failed, exists;
+    auto t = l.to<std::tuple<bool, int, double, std::string>>(
+        -4, false, &failed, &exists);
+    EXPECT_EQ(t, std::make_tuple(true, 1, 2.5, "str"));
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+  }
+  {
+    bool failed, exists;
+    auto t = l.to<std::tuple<bool, int>>(5, false, &failed, &exists);
+    EXPECT_EQ(t, std::make_tuple(false, 0));
+    EXPECT_FALSE(failed);
+    EXPECT_FALSE(exists);
+  }
+  {
+    bool failed, exists;
+    auto t = l.to<std::tuple<bool, int>>(4, false, &failed, &exists);
+    EXPECT_EQ(t, std::make_tuple(false, 0));
+    EXPECT_TRUE(failed);
+    EXPECT_TRUE(exists);
+  }
+  // l.to<std::tuple<bool, std::tuple<int, double>, std::string>>(1);  // error
+}
