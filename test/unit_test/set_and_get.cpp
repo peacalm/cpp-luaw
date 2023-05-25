@@ -540,6 +540,8 @@ TEST(set_and_get, set_function) {
 
     l.set<lua_wrapper::function_tag>("f4", &echo);
     EXPECT_EQ(l.eval_int("return f4(4)"), 4);
+
+    EXPECT_EQ(l.gettop(), 0);
   }
 
   // std::function
@@ -550,6 +552,8 @@ TEST(set_and_get, set_function) {
 
     l.set<lua_wrapper::function_tag>("fadd2", fadd);
     EXPECT_EQ(l.eval_int("return fadd2(1, 2)"), 3);
+
+    EXPECT_EQ(l.gettop(), 0);
   }
 
   // lambda
@@ -587,6 +591,8 @@ TEST(set_and_get, set_function) {
     l.set<lua_wrapper::function_tag>("lmerge", push);
     EXPECT_EQ(l.eval<std::vector<int>>("return lmerge({1,2,3}, {11,22})"),
               (std::vector<int>{1, 2, 3, 11, 22}));
+
+    EXPECT_EQ(l.gettop(), 0);
   }
 
   // custom object as function
@@ -599,6 +605,8 @@ TEST(set_and_get, set_function) {
     Callable c(50, 3);
     l.set<lua_wrapper::function_tag>("c2", c);
     EXPECT_EQ(l.eval_int("return c2(2, 1)"), 103);
+
+    EXPECT_EQ(l.gettop(), 0);
   }
   {
     Callable c(11111, 11111);
@@ -610,4 +618,21 @@ TEST(set_and_get, set_function) {
     Callable c(0, 0);
     l.reset();  // release "c" and "c2"
   }
+}
+
+TEST(set_and_get, function_return_tuple) {
+  lua_wrapper l;
+  l.set("f", [](double n) { return std::make_tuple(true, n * n, n * n * n); });
+  l.dostring("print(f(3))");
+  EXPECT_EQ(l.gettop(), 0);
+
+  int n = 2;
+  l.set<lua_wrapper::function_tag>(
+      "f", [&]() { return std::make_tuple(true, n * n, n * n * n); });
+  l.dostring("print(f())");
+  EXPECT_EQ(l.gettop(), 0);
+
+  auto t = l.eval<std::tuple<bool, double, double>>("return f()");
+  EXPECT_EQ(t, std::make_tuple(true, 4.0, 8.0));
+  EXPECT_EQ(l.gettop(), 0);
 }
