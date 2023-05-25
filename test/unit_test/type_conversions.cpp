@@ -975,3 +975,59 @@ TEST(type_conversions, to_void) {
   EXPECT_FALSE(failed);
   EXPECT_FALSE(exists);
 }
+
+TEST(type_conversions, to_function) {
+  lua_wrapper l;
+  l.dostring("f = function(a, b) return a + b end");
+  l.getglobal("f");
+  EXPECT_EQ(l.gettop(), 1);
+  l.push(nullptr);
+  EXPECT_EQ(l.gettop(), 2);
+  int sz = l.gettop();
+
+  {
+    bool failed, exists;
+    auto f =
+        l.to<lua_wrapper::function<int(int, int)>>(1, false, &failed, &exists);
+
+    EXPECT_EQ(l.gettop(), sz);
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+
+    EXPECT_EQ(f(1, 2), 3);
+    EXPECT_EQ(l.gettop(), sz);
+
+    EXPECT_FALSE(f.function_failed());
+    EXPECT_TRUE(f.function_exists());
+    EXPECT_FALSE(f.result_failed());
+    EXPECT_TRUE(f.result_exists());
+    EXPECT_FALSE(f.failed());
+  }
+  {
+    bool failed, exists;
+    auto f =
+        l.to<lua_wrapper::function<int(int, int)>>(2, false, &failed, &exists);
+
+    EXPECT_EQ(l.gettop(), sz);
+    EXPECT_TRUE(failed);
+    EXPECT_FALSE(exists);
+
+    EXPECT_EQ(f(1, 2), 0);
+    EXPECT_EQ(l.gettop(), sz);
+
+    EXPECT_TRUE(f.function_failed());
+    EXPECT_FALSE(f.function_exists());
+    EXPECT_FALSE(f.result_failed());
+    EXPECT_FALSE(f.result_exists());
+    EXPECT_TRUE(f.failed());
+  }
+
+  auto f2 = l.to<lua_wrapper::function<void(int, int)>>(1);
+  f2(2, 3);
+
+  auto f3 = l.to<std::function<int(int, int)>>(1);
+  EXPECT_EQ(f3(1, 2), 3);
+
+  auto f4 = l.to<std::function<void(int, int)>>(1);
+  f4(2, 3);
+}

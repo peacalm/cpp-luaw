@@ -181,6 +181,9 @@ class lua_wrapper {
   lua_State* L_;
 
 public:
+  template <typename T>
+  class function;
+
   struct custom_tag {};
   struct function_tag {};
   struct metatable_tag {};
@@ -1219,6 +1222,25 @@ public:
   }
 };
 
+// This wrapper won't close state when destruct, and it could help set stack
+// size to final_topsz_ if final_topsz_ >= 0 when destruct.
+class lua_wrapper_fake : public lua_wrapper {
+  using base_t     = lua_wrapper;
+  int final_topsz_ = -1;
+
+public:
+  lua_wrapper_fake(lua_State* L, int sz = -1)
+      : lua_wrapper(L), final_topsz_(sz) {}
+
+  ~lua_wrapper_fake() {
+    if (final_topsz_ >= 0) base_t::settop(final_topsz_);
+    base_t::release();
+  }
+
+  void final_topsz(int sz) { final_topsz_ = sz; }
+  int  final_topsz() const { return final_topsz_; }
+};
+
 //////////////////// push impl ////////////////////////////////////////////////
 
 namespace lua_wrapper_detail {
@@ -1787,6 +1809,116 @@ private:
 template <typename T, typename>
 struct lua_wrapper::convertor {
   // empty
+};
+
+template <typename Return, typename... Args>
+class lua_wrapper::function<Return(Args...)> {
+  // component
+  lua_State*           L_ = nullptr;
+  std::shared_ptr<int> ref_sptr_;
+  // parameters put in
+  bool disable_log_ = false;
+  // states put out
+  bool function_failed_ = false, function_exists_ = false;
+  bool result_failed_ = false, result_exists_ = false;
+
+public:
+  function(lua_State* L,
+           int        idx         = -1,
+           bool       disable_log = false,
+           bool*      failed      = nullptr,
+           bool*      exists      = nullptr)
+      : L_(L), disable_log_(disable_log) {
+    assert(L);
+
+    // states about convertion to function,
+    // it is states before call the function.
+    if (exists) *exists = !lua_isnoneornil(L_, idx);
+    // noneornil is not callable, so we regard not-exists as failed for
+    // function, which is not as same as usual.
+    // TODO: check more about whether it is callable?
+    if (failed) *failed = !!lua_isnoneornil(L_, idx);
+
+    lua_pushvalue(L_, idx);
+    int ref_ = luaL_ref(L, LUA_REGISTRYINDEX);
+    ref_sptr_.reset(new int(ref_), [L](int* p) {
+      luaL_unref(L, LUA_REGISTRYINDEX, *p);
+      delete p;
+    });
+  }
+
+  // states after function call
+  bool function_failed() const { return function_failed_; }
+  bool function_exists() const { return function_exists_; }
+  bool result_failed() const { return result_failed_; }
+  bool result_exists() const { return result_exists_; }
+  bool failed() const { return function_failed_ || result_failed_; }
+
+  Return operator()(const Args&... args) {
+    lua_wrapper_fake l(L_, lua_gettop(L_));
+    int              sz = l.gettop();
+    lua_rawgeti(L_, LUA_REGISTRYINDEX, *ref_sptr_);
+    if (l.isnoneornil()) {
+      function_failed_ = true;
+      function_exists_ = false;
+      l.pop();
+      return Return();
+    } else {
+      function_exists_ = true;
+    }
+
+    int narg     = push_args(l, args...);
+    int nret     = 1;  // TODO: pusher<std::decay_t<Return>>::size;
+    int call_ret = l.pcall(narg, nret, 0);
+
+    assert(l.gettop() >= sz);
+    if (call_ret == LUA_OK) {
+      function_failed_ = false;
+    } else {
+      function_failed_ = true;
+      if (!disable_log_) { l.log_error_in_stack(); }
+      l.pop();
+      return Return();
+    }
+
+    return l.to<Return>(sz + 1, disable_log_, &result_failed_, &result_exists_);
+  }
+
+private:
+  static int push_args(lua_wrapper& l) { return 0; }
+
+  template <typename FirstArg, typename... RestArgs>
+  static int push_args(lua_wrapper& l, FirstArg&& farg, RestArgs&&... rargs) {
+    int x = l.push(std::forward<FirstArg>(farg));
+    int y = push_args(l, std::forward<RestArgs>(rargs)...);
+    return x + y;
+  }
+};
+
+template <typename Return, typename... Args>
+struct lua_wrapper::convertor<lua_wrapper::function<Return(Args...)>> {
+  using result_t = lua_wrapper::function<Return(Args...)>;
+  static result_t to(lua_wrapper& l,
+                     int          idx         = -1,
+                     bool         disable_log = false,
+                     bool*        failed      = nullptr,
+                     bool*        exists      = nullptr) {
+    return result_t(l.L(), idx, disable_log, failed, exists);
+  }
+};
+
+template <typename Return, typename... Args>
+struct lua_wrapper::convertor<std::function<Return(Args...)>> {
+  using result_t = std::function<Return(Args...)>;
+  static result_t to(lua_wrapper& l,
+                     int          idx         = -1,
+                     bool         disable_log = false,
+                     bool*        failed      = nullptr,
+                     bool*        exists      = nullptr) {
+    return result_t(
+        lua_wrapper::convertor<lua_wrapper::function<Return(Args...)>>::to(
+            l, idx, disable_log, failed, exists));
+  }
 };
 
 // to bool
