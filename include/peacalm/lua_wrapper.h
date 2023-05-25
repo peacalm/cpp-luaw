@@ -1241,7 +1241,7 @@ public:
   int  final_topsz() const { return final_topsz_; }
 };
 
-//////////////////// push impl ////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
 namespace lua_wrapper_detail {
 
@@ -1389,10 +1389,14 @@ using is_stdtuple = __is_stdtuple<std::decay_t<T>>;
 
 }  // namespace lua_wrapper_detail
 
+//////////////////// push impl ////////////////////////////////////////////////
+
 // primary pusher. guess whether it may be a lambda, push as function if true,
 // otherwise push as an user defined custom object.
 template <typename T, typename>
 struct lua_wrapper::pusher {
+  static const size_t size = 1;
+
   template <typename Y>
   static int push(lua_wrapper& l, Y&& v) {
     using Tag =
@@ -1406,6 +1410,8 @@ struct lua_wrapper::pusher {
 // custom_tag: push as an user defined custom type
 template <>
 struct lua_wrapper::pusher<lua_wrapper::custom_tag> {
+  static const size_t size = 1;
+
   // TODO:
   // template <typename Y>
   // static int push(lua_wrapper& l, Y&& v) {}
@@ -1414,6 +1420,8 @@ struct lua_wrapper::pusher<lua_wrapper::custom_tag> {
 // function_tag: push as a function
 template <>
 struct lua_wrapper::pusher<lua_wrapper::function_tag> {
+  static const size_t size = 1;
+
   template <typename F>
   static int push(lua_wrapper& l, F&& f) {
     using DecayF = std::decay_t<F>;
@@ -1434,6 +1442,8 @@ struct lua_wrapper::pusher<lua_wrapper::function_tag> {
 // std::function
 template <typename Return, typename... Args>
 struct lua_wrapper::pusher<std::function<Return(Args...)>> {
+  static const size_t size = 1;
+
   template <typename F>
   static int push(lua_wrapper& l, F&& f) {
     using CFunctionPtr = Return (*)(Args...);
@@ -1444,6 +1454,8 @@ struct lua_wrapper::pusher<std::function<Return(Args...)>> {
 // C funtion, also implementation for functions
 template <typename Return, typename... Args>
 struct lua_wrapper::pusher<Return (*)(Args...)> {
+  static const size_t size = 1;
+
   // function object with non-trivially destructor
   template <typename F>
   static std::
@@ -1594,6 +1606,8 @@ private:
 // bool
 template <>
 struct lua_wrapper::pusher<bool> {
+  static const size_t size = 1;
+
   static int push(lua_wrapper& l, bool v) {
     lua_pushboolean(l.L(), v);
     return 1;
@@ -1604,6 +1618,8 @@ struct lua_wrapper::pusher<bool> {
 template <typename IntType>
 struct lua_wrapper::pusher<IntType,
                            std::enable_if_t<std::is_integral<IntType>::value>> {
+  static const size_t size = 1;
+
   static int push(lua_wrapper& l, IntType v) {
     lua_pushinteger(l.L(), v);
     return 1;
@@ -1615,6 +1631,8 @@ template <typename FloatType>
 struct lua_wrapper::pusher<
     FloatType,
     std::enable_if_t<std::is_floating_point<FloatType>::value>> {
+  static const size_t size = 1;
+
   static int push(lua_wrapper& l, FloatType v) {
     lua_pushnumber(l.L(), v);
     return 1;
@@ -1624,6 +1642,8 @@ struct lua_wrapper::pusher<
 // std::string
 template <>
 struct lua_wrapper::pusher<std::string> {
+  static const size_t size = 1;
+
   static int push(lua_wrapper& l, const std::string& v) {
     lua_pushstring(l.L(), v.c_str());
     return 1;
@@ -1633,6 +1653,8 @@ struct lua_wrapper::pusher<std::string> {
 // const char*
 template <>
 struct lua_wrapper::pusher<const char*> {
+  static const size_t size = 1;
+
   static int push(lua_wrapper& l, const char* v) {
     lua_pushstring(l.L(), v);
     return 1;
@@ -1642,6 +1664,8 @@ struct lua_wrapper::pusher<const char*> {
 // nullptr
 template <>
 struct lua_wrapper::pusher<std::nullptr_t> {
+  static const size_t size = 1;
+
   static int push(lua_wrapper& l, std::nullptr_t) {
     lua_pushnil(l.L());
     return 1;
@@ -1651,6 +1675,8 @@ struct lua_wrapper::pusher<std::nullptr_t> {
 // std::pair
 template <typename T, typename U>
 struct lua_wrapper::pusher<std::pair<T, U>> {
+  static const size_t size = 1;
+
   static int push(lua_wrapper& l, const std::pair<T, U>& p) {
     lua_newtable(l.L());
     l.push(p.first);
@@ -1705,6 +1731,8 @@ static int __push_map(lua_wrapper& l, const Container& v) {
 // std::array
 template <typename T, std::size_t N>
 struct lua_wrapper::pusher<std::array<T, N>> {
+  static const size_t size = 1;
+
   static int push(lua_wrapper& l, const std::array<T, N>& v) {
     return lua_wrapper_detail::__push_list(l, v);
   }
@@ -1713,6 +1741,8 @@ struct lua_wrapper::pusher<std::array<T, N>> {
 // std::vector
 template <typename T, typename Allocator>
 struct lua_wrapper::pusher<std::vector<T, Allocator>> {
+  static const size_t size = 1;
+
   static int push(lua_wrapper& l, const std::vector<T, Allocator>& v) {
     return lua_wrapper_detail::__push_list(l, v);
   }
@@ -1721,6 +1751,8 @@ struct lua_wrapper::pusher<std::vector<T, Allocator>> {
 // std::deque
 template <typename T, typename Allocator>
 struct lua_wrapper::pusher<std::deque<T, Allocator>> {
+  static const size_t size = 1;
+
   static int push(lua_wrapper& l, const std::deque<T, Allocator>& v) {
     return lua_wrapper_detail::__push_list(l, v);
   }
@@ -1729,6 +1761,8 @@ struct lua_wrapper::pusher<std::deque<T, Allocator>> {
 // std::forward_list
 template <typename T, typename Allocator>
 struct lua_wrapper::pusher<std::forward_list<T, Allocator>> {
+  static const size_t size = 1;
+
   static int push(lua_wrapper& l, const std::forward_list<T, Allocator>& v) {
     return lua_wrapper_detail::__push_list(l, v);
   }
@@ -1737,6 +1771,8 @@ struct lua_wrapper::pusher<std::forward_list<T, Allocator>> {
 // std::list
 template <typename T, typename Allocator>
 struct lua_wrapper::pusher<std::list<T, Allocator>> {
+  static const size_t size = 1;
+
   static int push(lua_wrapper& l, const std::list<T, Allocator>& v) {
     return lua_wrapper_detail::__push_list(l, v);
   }
@@ -1745,6 +1781,8 @@ struct lua_wrapper::pusher<std::list<T, Allocator>> {
 // std::set
 template <typename Key, typename Compare, typename Allocator>
 struct lua_wrapper::pusher<std::set<Key, Compare, Allocator>> {
+  static const size_t size = 1;
+
   static int push(lua_wrapper& l, const std::set<Key, Compare, Allocator>& v) {
     return lua_wrapper_detail::__push_set(l, v);
   }
@@ -1753,6 +1791,8 @@ struct lua_wrapper::pusher<std::set<Key, Compare, Allocator>> {
 // std::unordered_set
 template <typename Key, typename Hash, typename KeyEqual, typename Allocator>
 struct lua_wrapper::pusher<std::unordered_set<Key, Hash, KeyEqual, Allocator>> {
+  static const size_t size = 1;
+
   static int push(lua_wrapper&                                              l,
                   const std::unordered_set<Key, Hash, KeyEqual, Allocator>& v) {
     return lua_wrapper_detail::__push_set(l, v);
@@ -1762,6 +1802,8 @@ struct lua_wrapper::pusher<std::unordered_set<Key, Hash, KeyEqual, Allocator>> {
 // std::map
 template <typename Key, typename Compare, typename Allocator>
 struct lua_wrapper::pusher<std::map<Key, Compare, Allocator>> {
+  static const size_t size = 1;
+
   static int push(lua_wrapper& l, const std::map<Key, Compare, Allocator>& v) {
     return lua_wrapper_detail::__push_map(l, v);
   }
@@ -1770,6 +1812,8 @@ struct lua_wrapper::pusher<std::map<Key, Compare, Allocator>> {
 // std::unordered_map
 template <typename Key, typename Hash, typename KeyEqual, typename Allocator>
 struct lua_wrapper::pusher<std::unordered_map<Key, Hash, KeyEqual, Allocator>> {
+  static const size_t size = 1;
+
   static int push(lua_wrapper&                                              l,
                   const std::unordered_map<Key, Hash, KeyEqual, Allocator>& v) {
     return lua_wrapper_detail::__push_map(l, v);
@@ -1781,6 +1825,8 @@ struct lua_wrapper::pusher<std::unordered_map<Key, Hash, KeyEqual, Allocator>> {
 // Any element of the tuple should not be a tuple anymore.
 template <typename... Ts>
 struct lua_wrapper::pusher<std::tuple<Ts...>> {
+  static const size_t size = std::tuple_size<std::tuple<Ts...>>::value;
+
   static int push(lua_wrapper& l, const std::tuple<Ts...>& v) {
     constexpr size_t N = std::tuple_size<std::tuple<Ts...>>::value;
     int ret_num = __push<0, N>(l, v, std::integral_constant<bool, 0 < N>{});
@@ -1868,7 +1914,7 @@ public:
     }
 
     int narg     = push_args(l, args...);
-    int nret     = 1;  // TODO: pusher<std::decay_t<Return>>::size;
+    int nret     = lua_wrapper::pusher<std::decay_t<Return>>::size;
     int call_ret = l.pcall(narg, nret, 0);
 
     assert(l.gettop() >= sz);
