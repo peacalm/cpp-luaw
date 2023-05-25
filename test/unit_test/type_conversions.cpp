@@ -1030,6 +1030,19 @@ TEST(type_conversions, to_function) {
 
   auto f4 = l.to<std::function<void(int, int)>>(1);
   f4(2, 3);
+
+  EXPECT_EQ(l.gettop(), sz);
+  {
+    auto f = l.to<lua_wrapper::function<double(double &, double &)>>(1);
+    EXPECT_EQ(l.gettop(), sz);
+
+    double a = 2.25, b = 1.25;
+    EXPECT_EQ(f(a, b), 3.5);
+    EXPECT_EQ(l.gettop(), sz);
+
+    EXPECT_EQ(a, 2.25);
+    EXPECT_EQ(b, 1.25);
+  }
 }
 
 TEST(type_conversions, to_function_tuple_result) {
