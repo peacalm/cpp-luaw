@@ -783,7 +783,71 @@ public:
     set<Hint>(name.c_str(), std::forward<T>(value));
   }
 
+  /// Recursively set fields. The last element in path is the key for value,
+  /// other elements in path are nested tables.
+  template <typename T>
+  void set(const std::initializer_list<const char*>& path, T&& value) {
+    __set<T>(path.begin(), path.end(), std::forward<T>(value));
+  }
+  template <typename T>
+  void set(const std::initializer_list<std::string>& path, T&& value) {
+    __set<T>(path.begin(), path.end(), std::forward<T>(value));
+  }
+  template <typename T>
+  void set(const std::vector<const char*>& path, T&& value) {
+    __set<T>(path.begin(), path.end(), std::forward<T>(value));
+  }
+  template <typename T>
+  void set(const std::vector<std::string>& path, T&& value) {
+    __set<T>(path.begin(), path.end(), std::forward<T>(value));
+  }
+
+  /// Recursively set fields with hint type
+  template <typename Hint, typename T>
+  std::enable_if_t<!std::is_same<Hint, T>::value> set(
+      const std::initializer_list<const char*>& path, T&& value) {
+    __set<Hint>(path.begin(), path.end(), std::forward<T>(value));
+  }
+  template <typename Hint, typename T>
+  std::enable_if_t<!std::is_same<Hint, T>::value> set(
+      const std::initializer_list<std::string>& path, T&& value) {
+    __set<Hint>(path.begin(), path.end(), std::forward<T>(value));
+  }
+  template <typename Hint, typename T>
+  std::enable_if_t<!std::is_same<Hint, T>::value> set(
+      const std::vector<const char*>& path, T&& value) {
+    __set<Hint>(path.begin(), path.end(), std::forward<T>(value));
+  }
+  template <typename Hint, typename T>
+  std::enable_if_t<!std::is_same<Hint, T>::value> set(
+      const std::vector<std::string>& path, T&& value) {
+    __set<Hint>(path.begin(), path.end(), std::forward<T>(value));
+  }
+
+private:
+  template <typename Hint, typename Iterator, typename T>
+  void __set(Iterator b, Iterator e, T&& value) {
+    if (b == e) return;
+    int sz = gettop();
+    gseek_env();
+
+    auto it = b;
+    while (true) {
+      auto nx = std::next(it, 1);
+      if (nx == e) {
+        setfield<Hint>(*it, std::forward<T>(value));
+        break;
+      } else {
+        touchtb(*it);
+        it = nx;
+      }
+    }
+    settop(sz);
+  }
+
+public:
   // set for simple types
+
   void set_integer(const char* name, long long value) {
     lua_pushinteger(L_, value);
     lua_setglobal(L_, name);

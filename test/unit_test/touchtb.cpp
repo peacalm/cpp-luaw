@@ -72,4 +72,19 @@ TEST(setfield, setfield) {
   std::vector<int> x{1, 2, 3};
   l.setfield("x", x);
   EXPECT_EQ(l.get<std::vector<int>>("x"), x);
+
+  l.set({"g", "gg"}, 1);
+  EXPECT_EQ(l.get_int({"g", "gg"}), 1);
+
+  l.set({"g", "gg", "x"}, 1);
+  l.set({"g", "gg", "y"}, 2);
+  l.set<double(double, double)>({"g", "gg", "fadd"},
+                                [](auto x, auto y) { return x + y; });
+  EXPECT_EQ(l.get<int>({"g", "gg", "x"}), 1);
+  EXPECT_EQ(l.get<int>({"g", "gg", "y"}), 2);
+  EXPECT_EQ(l.get<std::function<double(double, double)>>({"g", "gg", "fadd"})(
+                1.5, 1.5),
+            3);
+  EXPECT_EQ(l.eval<double>("return g.gg.fadd(1.25, 1.5) "), 2.75);
+  EXPECT_EQ(l.get<std::function<int(int, int)>>({"g", "gg", "fadd"})(1, 1), 2);
 }
