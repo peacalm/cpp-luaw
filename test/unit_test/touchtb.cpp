@@ -66,6 +66,8 @@ TEST(setfield, setfield) {
   EXPECT_TRUE(ff.failed());
 
   l.cleartop();
+  EXPECT_EQ(l.gettop(), 0);
+
   l.gseek_env();
   std::vector<int> x{1, 2, 3};
   l.setfield("x", x);
