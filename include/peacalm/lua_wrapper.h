@@ -362,6 +362,7 @@ public:
   void pop(int n = 1) { lua_pop(L_, n); }
   int  gettop() const { return lua_gettop(L_); }
   void settop(int idx) { lua_settop(L_, idx); }
+  void cleartop() { settop(0); }
 
   // clang-format off
   int loadstring(const char*        s)   { return luaL_loadstring(L_, s); }
