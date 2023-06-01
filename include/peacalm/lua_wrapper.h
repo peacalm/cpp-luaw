@@ -186,6 +186,7 @@ public:
 
   struct custom_tag {};
   struct function_tag {};
+  struct newtable_tag {};
   struct metatable_tag {};
 
   // Initialization options for lua_wrapper
@@ -1515,6 +1516,16 @@ struct lua_wrapper::pusher {
                            function_tag,
                            custom_tag>;
     return lua_wrapper::pusher<Tag>::push(l, std::forward<Y>(v));
+  }
+};
+
+// newtable_tag: push a new empty table
+template <>
+struct lua_wrapper::pusher<lua_wrapper::newtable_tag> {
+  static const size_t size = 1;
+  static int          push(lua_wrapper& l, newtable_tag) {
+             lua_newtable(l.L());
+             return 1;
   }
 };
 

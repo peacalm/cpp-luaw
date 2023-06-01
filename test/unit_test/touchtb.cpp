@@ -88,3 +88,40 @@ TEST(setfield, setfield) {
   EXPECT_EQ(l.eval<double>("return g.gg.fadd(1.25, 1.5) "), 2.75);
   EXPECT_EQ(l.get<std::function<int(int, int)>>({"g", "gg", "fadd"})(1, 1), 2);
 }
+
+TEST(setfield, newtable_tag) {
+  lua_wrapper l;
+  l.set({"g", "gg", "x"}, 1);
+  l.gseek("g");
+  l.setfield(1, 1);
+  l.setfield(2, 2);
+  l.seek("gg");
+  l.setfield(1, 1);
+  l.setfield(2, 2);
+  EXPECT_EQ(l.gettop(), 2);
+  EXPECT_EQ(l.get<std::vector<int>>({"g", "gg"}), (std::vector<int>{1, 2}));
+  EXPECT_EQ(l.to<std::vector<int>>(), (std::vector<int>{1, 2}));
+
+  // set newtable
+  l.setfield("gg", lua_wrapper::newtable_tag{}, 1);
+  EXPECT_TRUE(l.get<std::vector<int>>({"g", "gg"}).empty());
+
+  EXPECT_EQ(l.gettop(), 2);
+  // old "gg" in stack does not change, but this is meaningless.
+  // EXPECT_EQ(l.to<std::vector<int>>(), (std::vector<int>{1, 2}));
+
+  l.cleartop();
+  l.gseek("g").seek("gg");
+  // re-seek gg, new it is emtpy
+  EXPECT_EQ(l.to<std::vector<int>>(), (std::vector<int>{}));
+
+  l.setfield(1, 1);
+  l.setfield(2, 2);
+
+  l.set({"g", "gg"}, lua_wrapper::newtable_tag{});
+  EXPECT_TRUE(l.get<std::vector<int>>({"g", "gg"}).empty());
+
+  EXPECT_EQ(l.get<std::vector<int>>("g"), (std::vector<int>{1, 2}));
+  l.set("g", lua_wrapper::newtable_tag{});
+  EXPECT_TRUE(l.get<std::vector<int>>("g").empty());
+}

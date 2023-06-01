@@ -335,3 +335,9 @@ TEST(push, function) {
   EXPECT_EQ(l.push<int(double)>(l2), 1);
   EXPECT_EQ(l.push<double(int)>(l2), 1);
 }
+
+TEST(push, newtable) {
+  lua_wrapper l;
+  l.push(lua_wrapper::newtable_tag{});
+  EXPECT_TRUE(l.to<std::vector<int>>().empty());
+}
