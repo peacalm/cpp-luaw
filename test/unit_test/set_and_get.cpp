@@ -636,3 +636,27 @@ TEST(set_and_get, function_return_tuple) {
   EXPECT_EQ(t, std::make_tuple(true, 4.0, 8.0));
   EXPECT_EQ(l.gettop(), 0);
 }
+
+TEST(set_and_get, recursive_set) {
+  lua_wrapper l;
+  {
+    std::vector<std::string> path{"g", "x", "y"};
+    l.set(path, 1);
+    EXPECT_EQ(l.get_int(path), 1);
+  }
+  {
+    std::vector<const char *> path{"g", "x", "y"};
+    l.set(path, 1);
+    EXPECT_EQ(l.get_int(path), 1);
+  }
+  {
+    std::initializer_list<std::string> path{"g", "x", "y"};
+    l.set(path, 1);
+    EXPECT_EQ(l.get_int(path), 1);
+  }
+  {
+    std::initializer_list<const char *> path{"g", "x", "y"};
+    l.set(path, 1);
+    EXPECT_EQ(l.get_int(path), 1);
+  }
+}
