@@ -44,6 +44,7 @@ TEST(setfield, setfield) {
 
   l.setfield("a", 1);
   l.setfield("b", 2);
+  l.setfield(1, "one");
   l.setfield<lua_wrapper::function_tag>("fadd",
                                         [](int a, int b) { return a + b; });
 
@@ -51,6 +52,7 @@ TEST(setfield, setfield) {
 
   EXPECT_EQ(l.get<int>({"g", "a"}), 1);
   EXPECT_EQ(l.get<int>({"g", "b"}), 2);
+  EXPECT_EQ(l.gseek("g").seek(1).to<std::string>(), "one");
 
   auto fadd = l.get<lua_wrapper::function<int(int, int)>>({"g", "fadd"});
   EXPECT_EQ(fadd(1, 1), 2);
@@ -62,4 +64,10 @@ TEST(setfield, setfield) {
   auto ff = l.get<lua_wrapper::function<int(int, int)>>({"g", "f", "ff"});
   EXPECT_EQ(ff(1, 1), 0);
   EXPECT_TRUE(ff.failed());
+
+  l.cleartop();
+  l.gseek_env();
+  std::vector<int> x{1, 2, 3};
+  l.setfield("x", x);
+  EXPECT_EQ(l.get<std::vector<int>>("x"), x);
 }
