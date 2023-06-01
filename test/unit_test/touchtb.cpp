@@ -35,3 +35,20 @@ TEST(touchtb, touchtb) {
 
   l.settop(0);
 }
+
+TEST(setfield, setfield) {
+  lua_wrapper l;
+  l.gseek_env().touchtb("g");
+
+  EXPECT_EQ(l.gettop(), 2);
+
+  l.setfield("a", 1);
+  l.setfield("b", 2);
+  l.setfield<lua_wrapper::function_tag>("fadd",
+                                        [](int a, int b) { return a + b; });
+
+  EXPECT_EQ(l.gettop(), 2);
+
+  EXPECT_EQ(l.get<int>({"g", "a"}), 1);
+  EXPECT_EQ(l.get<int>({"g", "b"}), 2);
+}

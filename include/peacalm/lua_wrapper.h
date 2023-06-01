@@ -706,6 +706,52 @@ private:
   }
 
 public:
+  ///////////////////////// set fields into a table ////////////////////////////
+
+  template <typename T>
+  void setfield(const char* key, T&& value, int idx = -1) {
+    assert(istable(idx));
+    int aidx = abs_index(idx);
+    push(std::forward<T>(value));
+    lua_setfield(L_, aidx, key);
+  }
+  template <typename T>
+  void setfield(const std::string& key, T&& value, int idx = -1) {
+    setfield(key.c_str(), std::forward<T>(value), idx);
+  }
+  template <typename T>
+  void setfield(int key, T&& value, int idx = -1) {
+    assert(istable(idx));
+    int aidx = abs_index(idx);
+    push(std::forward<T>(value));
+    lua_seti(L_, aidx, key);
+  }
+
+  /// Set field with an user given hint type.
+  template <typename Hint, typename T>
+  std::enable_if_t<!std::is_same<Hint, T>::value> setfield(const char* key,
+                                                           T&&         value,
+                                                           int idx = -1) {
+    assert(istable(idx));
+    int aidx = abs_index(idx);
+    push<Hint>(std::forward<T>(value));
+    lua_setfield(L_, aidx, key);
+  }
+  template <typename Hint, typename T>
+  std::enable_if_t<!std::is_same<Hint, T>::value> setfield(
+      const std::string& key, T&& value, int idx = -1) {
+    setfield<Hint>(key.c_str(), std::forward<T>(value), idx);
+  }
+  template <typename Hint, typename T>
+  std::enable_if_t<!std::is_same<Hint, T>::value> setfield(int key,
+                                                           T&& value,
+                                                           int idx = -1) {
+    assert(istable(idx));
+    int aidx = abs_index(idx);
+    push<Hint>(std::forward<T>(value));
+    lua_seti(L_, aidx, key);
+  }
+
   ///////////////////////// set global variables ///////////////////////////////
 
   /**
