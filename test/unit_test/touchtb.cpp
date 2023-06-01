@@ -51,4 +51,15 @@ TEST(setfield, setfield) {
 
   EXPECT_EQ(l.get<int>({"g", "a"}), 1);
   EXPECT_EQ(l.get<int>({"g", "b"}), 2);
+
+  auto fadd = l.get<lua_wrapper::function<int(int, int)>>({"g", "fadd"});
+  EXPECT_EQ(fadd(1, 1), 2);
+
+  auto f = l.get<lua_wrapper::function<int(int, int)>>({"g", "f"});
+  EXPECT_EQ(f(1, 1), 0);
+  EXPECT_TRUE(f.failed());
+
+  auto ff = l.get<lua_wrapper::function<int(int, int)>>({"g", "f", "ff"});
+  EXPECT_EQ(ff(1, 1), 0);
+  EXPECT_TRUE(ff.failed());
 }

@@ -1915,13 +1915,17 @@ class lua_wrapper::function<Return(Args...)> {
                result_failed_ = false, result_exists_ = false;
 
 public:
-  function(lua_State* L,
+  function(lua_State* L           = nullptr,
            int        idx         = -1,
            bool       disable_log = false,
            bool*      failed      = nullptr,
            bool*      exists      = nullptr)
       : L_(L), disable_log_(disable_log) {
-    assert(L);
+    if (!L) {
+      if (failed) *failed = true;
+      if (exists) *exists = false;
+      return;
+    }
 
     // states about convertion to function,
     // it is states before call the function.
@@ -1947,6 +1951,12 @@ public:
   bool failed() const { return function_failed_ || result_failed_; }
 
   Return operator()(const Args&... args) const {
+    if (!L_) {
+      function_failed_ = true;
+      function_exists_ = false;
+      return Return();
+    }
+
     lua_wrapper_fake l(L_, lua_gettop(L_));
     int              sz = l.gettop();
     lua_rawgeti(L_, LUA_REGISTRYINDEX, *ref_sptr_);
@@ -1987,6 +1997,7 @@ private:
   }
 };
 
+// to lua_wrapper::function
 template <typename Return, typename... Args>
 struct lua_wrapper::convertor<lua_wrapper::function<Return(Args...)>> {
   using result_t = lua_wrapper::function<Return(Args...)>;
@@ -1999,6 +2010,7 @@ struct lua_wrapper::convertor<lua_wrapper::function<Return(Args...)>> {
   }
 };
 
+// to std::function
 template <typename Return, typename... Args>
 struct lua_wrapper::convertor<std::function<Return(Args...)>> {
   using result_t = std::function<Return(Args...)>;
