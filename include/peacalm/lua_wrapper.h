@@ -870,7 +870,40 @@ public:
     __set<Hint>(path.begin(), path.end(), std::forward<T>(value));
   }
 
+  /// Long set. The last argument is value, the rest arguments are indices and
+  /// sub-indices, where could contain metatable_tag.
+  template <typename... Args>
+  void lset(Args&&... args) {
+    constexpr size_t N = sizeof...(Args);
+    static_assert(N >= 2, "lset needs at least two arguments");
+    int sz = gettop();
+    gseek_env();
+    using T = std::tuple_element_t<N - 1, std::tuple<Args...>>;
+    __lset<T>(std::forward<Args>(args)...);
+    settop(sz);
+  }
+  /// Long set with a hint type.
+  template <typename Hint, typename... Args>
+  void lset(Args&&... args) {
+    static_assert(sizeof...(Args) >= 2, "lset needs at least two arguments");
+    int sz = gettop();
+    gseek_env();
+    __lset<Hint>(std::forward<Args>(args)...);
+    settop(sz);
+  }
+
 private:
+  template <typename Hint, typename First, typename Second>
+  void __lset(First&& f, Second&& s) {
+    setfield<Hint>(std::forward<First>(f), std::forward<Second>(s));
+  }
+
+  template <typename Hint, typename First, typename Second, typename... Rests>
+  void __lset(First&& f, Second&& s, Rests&&... rs) {
+    touchtb(std::forward<First>(f));
+    __lset<Hint>(std::forward<Second>(s), std::forward<Rests>(rs)...);
+  }
+
   template <typename Hint, typename Iterator, typename T>
   void __set(Iterator b, Iterator e, T&& value) {
     if (b == e) return;

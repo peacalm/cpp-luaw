@@ -83,4 +83,35 @@ TEST(metatable, metatable) {
   l.dostring("g = {gg = {} }");
   l.ltouchtb("g", "gg", lua_wrapper::metatable_tag{"always1_mt"});
   EXPECT_TRUE(l.eval<bool>("return g.gg.xxx == 1"));
+
+  // lset
+  l.lset("a", "b", "c", 2);
+  EXPECT_EQ(l.get_int({"a", "b", "c"}), 2);
+  l.lset("a", "b", lua_wrapper::metatable_tag{}, "__index", always1__index);
+  EXPECT_EQ(l.get_int({"a", "b", "c"}), 2);
+  EXPECT_EQ(l.get_int({"a", "b", "d"}), 1);
+
+  l.reset();
+  l.lset("a",
+         "aa",
+         lua_wrapper::metatable_tag{},
+         "__index",
+         [](std::map<std::string, std::string> t, std::string k) {
+           return k.size();
+         });
+
+  EXPECT_EQ(l.get_int({"a", "aa", "x"}), 1);
+  EXPECT_EQ(l.get_int({"a", "aa", "xxx"}), 3);
+
+  l.lset<lua_wrapper::function_tag>(
+      "b",
+      "bb",
+      lua_wrapper::metatable_tag{},
+      "__index",
+      [&](std::map<std::string, std::string> t, std::string k) {
+        return k.size() * 2;
+      });
+
+  EXPECT_EQ(l.get_int({"b", "bb", "x"}), 2);
+  EXPECT_EQ(l.get_int({"b", "bb", "yy"}), 4);
 }
