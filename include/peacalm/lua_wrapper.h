@@ -179,7 +179,7 @@ public:
 
   // A callable wrapper for Lua functions. Like std::function and can convert to
   // std::function, but contains more status information.
-  // Used with get.
+  // Used within get.
   template <typename T>
   class function;
 
@@ -1778,13 +1778,14 @@ private:
 
   template <typename Callee, typename FirstArg, typename... RestArgs>
   struct bind {
-    Callee   c;
-    FirstArg f;
-    bind(Callee&& cc, FirstArg&& ff)
-        : c(std::forward<Callee>(cc)), f(std::forward<FirstArg>(ff)) {}
+    Callee   callee;
+    FirstArg first_arg;
+    bind(Callee&& c, FirstArg&& f)
+        : callee(std::forward<Callee>(c)),
+          first_arg(std::forward<FirstArg>(f)) {}
 
     Return operator()(RestArgs&&... args) {
-      return c(std::move(f), std::forward<RestArgs>(args)...);
+      return callee(std::move(first_arg), std::forward<RestArgs>(args)...);
     }
   };
 
