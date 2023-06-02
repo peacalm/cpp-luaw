@@ -165,8 +165,7 @@ inline int COUNTER0(lua_State* L) {
 }  // namespace luafunc
 
 class lua_wrapper {
-  using self_t          = lua_wrapper;
-  using lua_cfunction_t = lua_CFunction;  // int (*)(lua_State *L)
+  using self_t = lua_wrapper;
 
   template <typename T, typename = void>
   struct pusher;
@@ -176,6 +175,8 @@ class lua_wrapper {
   lua_State* L_;
 
 public:
+  using lua_cfunction_t = lua_CFunction;  // int (*)(lua_State *L)
+
   template <typename T>
   class function;
 
@@ -1617,7 +1618,18 @@ struct lua_wrapper::pusher<std::function<Return(Args...)>> {
   }
 };
 
-// C funtion, also implementation for functions
+// Lua C functions
+template <>
+struct lua_wrapper::pusher<lua_wrapper::lua_cfunction_t> {
+  static const size_t size = 1;
+
+  static int push(lua_wrapper& l, lua_cfunction_t f) {
+    lua_pushcfunction(l.L(), f);
+    return 1;
+  }
+};
+
+// C funtions except lua_cfunction_t, also implementation for callable objects
 template <typename Return, typename... Args>
 struct lua_wrapper::pusher<Return (*)(Args...)> {
   static const size_t size = 1;

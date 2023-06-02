@@ -68,6 +68,16 @@ TEST(metatable, metatable) {
   EXPECT_TRUE(l.eval<bool>("return c.y == 2"));
   EXPECT_TRUE(l.eval<bool>("return c.z == nil"));
 
+  l.cleartop();
+  l.set("d", lua_wrapper::newtable_tag{});
+  EXPECT_TRUE(l.eval<bool>("return d.x == nil"));
+  l.gseek("d");
+  l.setfield(lua_wrapper::metatable_tag{},
+             std::map<std::string, lua_wrapper::lua_cfunction_t>{
+                 {"__index", always1__index}});
+  EXPECT_TRUE(l.eval<bool>("return d.x == 1"));
+  EXPECT_TRUE(l.eval<bool>("return d.y == 1"));
+
   // ltouchtb using metatable_tag
 
   l.dostring("g = {gg = {} }");
