@@ -1279,6 +1279,24 @@ public:
 
   /** @} */
 
+  struct lgetopt {
+    bool  disable_log;
+    bool *failed, *exists;
+    lgetopt(bool d = false, bool* f = nullptr, bool* e = nullptr)
+        : disable_log(d), failed(f), exists(e) {}
+  };
+
+  /// Long get. Args is the path to get value.
+  template <typename T, typename... Args>
+  T lget(const lgetopt& o, Args&&... args) {
+    static_assert(sizeof...(Args) > 0, "lget needs at least one key in path");
+    int sz = gettop();
+    lseek(std::forward<Args>(args)...);
+    T ret = to<T>(-1, o.disable_log, o.failed, o.exists);
+    settop(sz);
+    return ret;
+  }
+
 private:
   template <typename T, typename Iterator>
   T __get(Iterator b,

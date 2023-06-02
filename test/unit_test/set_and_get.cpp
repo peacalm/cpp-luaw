@@ -660,3 +660,39 @@ TEST(set_and_get, recursive_set) {
     EXPECT_EQ(l.get_int(path), 1);
   }
 }
+
+TEST(set_and_get, lget) {
+  lua_wrapper l;
+  l.dostring("g={gg={{a=1,b=2},{a=10,b=20,c='s'}}}");
+  EXPECT_EQ(l.gettop(), 0);
+  EXPECT_EQ(l.lget<int>({}, "g", "gg", 1, "a"), 1);
+  EXPECT_EQ(l.gettop(), 0);
+
+  bool failed, exists;
+  EXPECT_EQ(l.lget<int>({false, &failed, &exists}, "g", "gg", 2, "a"), 10);
+  EXPECT_EQ(l.gettop(), 0);
+  EXPECT_FALSE(failed);
+  EXPECT_TRUE(exists);
+
+  EXPECT_EQ(l.lget<int>({}, "g", "gg", 1, "b"), 2);
+  EXPECT_EQ(l.lget<int>({}, "g", "gg", 2, "b"), 20);
+  EXPECT_EQ(l.gettop(), 0);
+
+  EXPECT_EQ(l.lget<int>({false, &failed, &exists}, "g", "gg", 1, "c"), 0);
+  EXPECT_FALSE(failed);
+  EXPECT_FALSE(exists);
+
+  EXPECT_EQ(l.lget<int>({}, "g", "gg", 3, "a"), 0);
+  EXPECT_EQ(l.gettop(), 0);
+
+  EXPECT_EQ(l.lget<int>({false, &failed, &exists}, "g", "gg", 2, "c"), 0);
+  EXPECT_TRUE(failed);
+  EXPECT_TRUE(exists);
+
+  l.lset("a", "b", lua_wrapper::metatable_tag{}, "__name", "metatable");
+  EXPECT_EQ(
+      l.lget<std::string>({}, "a", "b", lua_wrapper::metatable_tag{}, "__name"),
+      "metatable");
+
+  // l.lget<int>({}); // compile error
+}
