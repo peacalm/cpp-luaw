@@ -61,7 +61,7 @@ TEST(metatable, seek_touchtb_setfield) {
 
   l.cleartop();
   l.gseek("c");
-  std::unordered_map<std::string, std::unordered_map<std::string, int> > meta{
+  std::unordered_map<std::string, std::unordered_map<std::string, int>> meta{
       {"__index", {{"x", 1}, {"y", 2}}}};
   l.setfield(lua_wrapper::metatable_tag{}, meta);
   EXPECT_TRUE(l.eval<bool>("return c.x == 1"));
@@ -101,9 +101,8 @@ TEST(metatable, lset) {
            "aa",
            lua_wrapper::metatable_tag{},
            "__index",
-           [](std::map<std::string, std::string> t, std::string k) {
-             return k.size();
-           });
+           [](const std::map<std::string, std::string>& t,
+              const std::string& k) { return k.size(); });
 
     EXPECT_EQ(l.get_int({"a", "aa", "x"}), 1);
     EXPECT_EQ(l.get_int({"a", "aa", "xxx"}), 3);
@@ -126,7 +125,7 @@ TEST(metatable, lset) {
         "bb",
         lua_wrapper::metatable_tag{},
         "__index",
-        [&](std::map<std::string, std::string> t, std::string k) {
+        [&](const std::map<std::string, std::string>& t, const std::string& k) {
           return k.size() * 2;
         });
 
@@ -141,11 +140,101 @@ TEST(metatable, lset) {
         "cc",
         lua_wrapper::metatable_tag{},
         "__index",
-        [&](lua_wrapper::placeholder_tag, std::string k) {
+        [&](lua_wrapper::placeholder_tag, const std::string& k) {
           return k.size() * 2;
         });
 
     EXPECT_EQ(l.get_int({"c", "cc", "x"}), 2);
     EXPECT_EQ(l.get_int({"c", "cc", "yy"}), 4);
+  }
+
+  {
+    // placeholder_tag
+    l.lset<lua_wrapper::function_tag>(
+        "d",
+        "dd",
+        lua_wrapper::metatable_tag{},
+        "__index",
+        [&](const std::unordered_map<std::string, lua_wrapper::placeholder_tag>&
+                               m,
+            const std::string& k) { return m.size() * 100 + k.size(); });
+
+    EXPECT_EQ(l.get_int({"d", "dd", "x"}), 1);
+
+    l.lset("d", "dd", "v1", 1);
+
+    EXPECT_EQ(l.get_int({"d", "dd", "x"}), 101);
+
+    l.lset("d", "dd", "v2", 2);
+
+    EXPECT_EQ(l.get_int({"d", "dd", "x"}), 201);
+
+    EXPECT_EQ((l.get<std::unordered_map<std::string, int>>({"d", "dd"})),
+              (std::unordered_map<std::string, int>{{"v1", 1}, {"v2", 2}}));
+    EXPECT_EQ(
+        (l.get<std::unordered_map<std::string, lua_wrapper::placeholder_tag>>(
+              {"d", "dd"})
+             .size()),
+        2);
+
+    EXPECT_EQ(l.get_int({"d", "dd", "y"}), 201);
+    EXPECT_EQ(l.get_int({"d", "dd", "yy"}), 202);
+  }
+
+  {
+    // different function formal parameter
+
+    l.lset<lua_wrapper::function_tag>(
+        "d",
+        "dd",
+        lua_wrapper::metatable_tag{},
+        "__index",
+        [&](std::unordered_map<std::string, lua_wrapper::placeholder_tag> m,
+            std::string k) { return m.size() * 100 + k.size(); });
+    EXPECT_EQ(l.get_int({"d", "dd", "y"}), 201);
+    EXPECT_EQ(l.get_int({"d", "dd", "yy"}), 202);
+
+    l.lset<lua_wrapper::function_tag>(
+        "d",
+        "dd",
+        lua_wrapper::metatable_tag{},
+        "__index",
+        [&](const std::map<std::string, lua_wrapper::placeholder_tag>& m,
+            const std::string& k) { return m.size() * 100 + k.size(); });
+    EXPECT_EQ(l.get_int({"d", "dd", "y"}), 201);
+    EXPECT_EQ(l.get_int({"d", "dd", "yy"}), 202);
+
+    l.lset<lua_wrapper::function_tag>(
+        "d",
+        "dd",
+        lua_wrapper::metatable_tag{},
+        "__index",
+        [&](std::unordered_map<std::string, lua_wrapper::placeholder_tag>&& m,
+            std::string&& k) { return m.size() * 100 + k.size(); });
+    EXPECT_EQ(l.get_int({"d", "dd", "y"}), 201);
+    EXPECT_EQ(l.get_int({"d", "dd", "yy"}), 202);
+
+    l.lset<lua_wrapper::function_tag>(
+        "d",
+        "dd",
+        lua_wrapper::metatable_tag{},
+        "__index",
+        [&](const std::map<std::string, lua_wrapper::placeholder_tag>&& m,
+            const std::string&& k) { return m.size() * 100 + k.size(); });
+    EXPECT_EQ(l.get_int({"d", "dd", "y"}), 201);
+    EXPECT_EQ(l.get_int({"d", "dd", "yy"}), 202);
+  }
+
+  {
+    l.reset();
+    l.dostring("t={a=1,b=2}");
+    EXPECT_EQ((l.get<std::map<std::string, int>>("t").size()), 2);
+    bool failed, exists;
+    EXPECT_EQ((l.get<std::map<std::string, lua_wrapper::placeholder_tag>>(
+                    "t", false, &failed, &exists)
+                   .size()),
+              2);
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
   }
 }

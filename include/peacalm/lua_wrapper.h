@@ -1818,7 +1818,7 @@ private:
                         wrap<FirstArg> farg,
                         wrap<RestArgs>... args) {
     bool failed, exists;
-    auto param = l.to<FirstArg>(i, false, &failed, &exists);
+    auto param = l.to<std::decay_t<FirstArg>>(i, false, &failed, &exists);
     if (failed) {
       lua_pushfstring(l.L(), "The %dth argument conversion failed", counter);
       lua_error(l.L());
@@ -2091,12 +2091,14 @@ struct lua_wrapper::convertor {
 // to placeholder_tag
 template <>
 struct lua_wrapper::convertor<lua_wrapper::placeholder_tag> {
-  static placeholder_tag to(lua_wrapper& l,
-                            int          idx         = -1,
-                            bool         disable_log = false,
-                            bool*        failed      = nullptr,
-                            bool*        exists      = nullptr) {
-    return placeholder_tag{};
+  static lua_wrapper::placeholder_tag to(lua_wrapper& l,
+                                         int          idx         = -1,
+                                         bool         disable_log = false,
+                                         bool*        failed      = nullptr,
+                                         bool*        exists      = nullptr) {
+    if (failed) *failed = false;
+    if (exists) *exists = !l.isnoneornil(idx);
+    return lua_wrapper::placeholder_tag{};
   }
 };
 
