@@ -395,21 +395,55 @@ public:
   // clang-format on
 
   // clang-format off
-  bool isstring(int idx = -1)        { return lua_isstring(L_, idx); }
-  bool isnumber(int idx = -1)        { return lua_isnumber(L_, idx); }
-  bool isinteger(int idx = -1)       { return lua_isinteger(L_, idx); }
-  bool isboolean(int idx = -1)       { return lua_isboolean(L_, idx); }
-  bool isnil(int idx = -1)           { return lua_isnil(L_, idx); }
-  bool isnone(int idx = -1)          { return lua_isnone(L_, idx); }
-  bool isnoneornil(int idx = -1)     { return lua_isnoneornil(L_, idx); }
-  bool istable(int idx = -1)         { return lua_istable(L_, idx); }
-  bool iscfunction(int idx = -1)     { return lua_iscfunction(L_, idx); }
-  bool isfunction(int idx = -1)      { return lua_isfunction(L_, idx); }
-  bool isuserdata(int idx = -1)      { return lua_isuserdata(L_, idx); }
-  bool islightuserdata(int idx = -1) { return lua_islightuserdata(L_, idx); }
-  bool isthread(int idx = -1)        { return lua_isthread(L_, idx); }
+  bool isstring(int idx = -1)        const { return lua_isstring(L_, idx); }
+  bool isnumber(int idx = -1)        const { return lua_isnumber(L_, idx); }
+  bool isinteger(int idx = -1)       const { return lua_isinteger(L_, idx); }
+  bool isboolean(int idx = -1)       const { return lua_isboolean(L_, idx); }
+  bool isnil(int idx = -1)           const { return lua_isnil(L_, idx); }
+  bool isnone(int idx = -1)          const { return lua_isnone(L_, idx); }
+  bool isnoneornil(int idx = -1)     const { return lua_isnoneornil(L_, idx); }
+  bool istable(int idx = -1)         const { return lua_istable(L_, idx); }
+  bool iscfunction(int idx = -1)     const { return lua_iscfunction(L_, idx); }
+  bool isfunction(int idx = -1)      const { return lua_isfunction(L_, idx); }
+  bool isuserdata(int idx = -1)      const { return lua_isuserdata(L_, idx); }
+  bool islightuserdata(int idx = -1) const { return lua_islightuserdata(L_, idx); }
+  bool isthread(int idx = -1)        const { return lua_isthread(L_, idx); }
   // clang-format on
 
+  bool indexable(int idx = -1) const {
+    if (istable(idx)) return true;
+    if (lua_getmetatable(L_, idx) == 0) return false;
+    int sz = lua_gettop(L_) - 1;
+    lua_getfield(L_, -1, "__index");
+    // if __index exists, then regard as indexable
+    bool ret = !isnoneornil(-1);
+    lua_settop(L_, sz);
+    return ret;
+  }
+
+  bool newindexable(int idx = -1) const {
+    if (istable(idx)) return true;
+    if (lua_getmetatable(L_, idx) == 0) return false;
+    int sz = lua_gettop(L_) - 1;
+    lua_getfield(L_, -1, "__newindex");
+    // if __newindex exists, then regard as newindexable
+    bool ret = !isnoneornil(-1);
+    lua_settop(L_, sz);
+    return ret;
+  }
+
+  bool callable(int idx = -1) const {
+    if (isfunction(idx)) return true;
+    if (lua_getmetatable(L_, idx) == 0) return false;
+    int sz = lua_gettop(L_) - 1;
+    lua_getfield(L_, -1, "__call");
+    bool ret = !isnoneornil(-1);
+    lua_settop(L_, sz);
+    return ret;
+  }
+
+  // Pushes onto the stack the value of the global name.
+  // Returns the type of that value.
   int getglobal(const char* name) { return lua_getglobal(L_, name); }
 
   int pcall(int n, int r, int f) { return lua_pcall(L_, n, r, f); }

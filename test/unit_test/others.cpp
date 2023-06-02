@@ -35,3 +35,105 @@ TEST(others, abs_index) {
   EXPECT_EQ(l.abs_index(-4), -4);
   EXPECT_EQ(l.abs_index(-5), -5);
 }
+
+TEST(others, indexable) {
+  lua_wrapper l;
+  EXPECT_EQ(l.gettop(), 0);
+  l.dostring("t={} a=1 ");
+  EXPECT_EQ(l.gettop(), 0);
+  l.gseek("t");
+
+  EXPECT_EQ(l.gettop(), 1);
+  EXPECT_TRUE(l.indexable());
+  EXPECT_EQ(l.gettop(), 1);
+  EXPECT_TRUE(l.newindexable());
+  EXPECT_EQ(l.gettop(), 1);
+  EXPECT_FALSE(l.callable());
+  EXPECT_EQ(l.gettop(), 1);
+
+  l.cleartop();
+  l.gseek("a");
+  EXPECT_EQ(l.gettop(), 1);
+  EXPECT_FALSE(l.indexable());
+  EXPECT_EQ(l.gettop(), 1);
+  EXPECT_FALSE(l.newindexable());
+  EXPECT_EQ(l.gettop(), 1);
+  EXPECT_FALSE(l.callable());
+  EXPECT_EQ(l.gettop(), 1);
+
+  l.cleartop();
+  l.dostring("f = function(x, y) return x + y end ");
+  l.gseek("f");
+  EXPECT_EQ(l.gettop(), 1);
+  EXPECT_FALSE(l.indexable());
+  EXPECT_EQ(l.gettop(), 1);
+  EXPECT_FALSE(l.newindexable());
+  EXPECT_EQ(l.gettop(), 1);
+  EXPECT_TRUE(l.callable());
+  EXPECT_EQ(l.gettop(), 1);
+
+  l.cleartop();
+  l.push([](int a, int b) { return a + b; });
+  EXPECT_EQ(l.gettop(), 1);
+  EXPECT_FALSE(l.indexable());
+  EXPECT_EQ(l.gettop(), 1);
+  EXPECT_FALSE(l.newindexable());
+  EXPECT_EQ(l.gettop(), 1);
+  EXPECT_TRUE(l.callable());
+  EXPECT_EQ(l.gettop(), 1);
+
+  l.cleartop();
+  l.gseek("a");
+  EXPECT_FALSE(l.istable(1));
+  l.touchtb(lua_wrapper::metatable_tag{});
+  EXPECT_EQ(l.gettop(), 2);
+
+  EXPECT_FALSE(l.istable(1));
+  EXPECT_FALSE(l.indexable(1));
+  EXPECT_FALSE(l.newindexable(1));
+  EXPECT_FALSE(l.callable(1));
+
+  EXPECT_TRUE(l.istable(2));
+  EXPECT_TRUE(l.indexable(2));
+  EXPECT_TRUE(l.newindexable(2));
+  EXPECT_FALSE(l.callable(2));
+
+  EXPECT_EQ(l.gettop(), 2);
+  l.setfield("__index", []() { return 1; });
+  EXPECT_EQ(l.gettop(), 2);
+
+  EXPECT_FALSE(l.istable(1));
+  EXPECT_EQ(l.gettop(), 2);
+  EXPECT_TRUE(l.indexable(1));
+  EXPECT_EQ(l.gettop(), 2);
+  EXPECT_FALSE(l.newindexable(1));
+  EXPECT_EQ(l.gettop(), 2);
+  EXPECT_FALSE(l.callable(1));
+  EXPECT_EQ(l.gettop(), 2);
+
+  //
+  l.setfield("__newindex", []() { return 1; });
+  EXPECT_EQ(l.gettop(), 2);
+
+  EXPECT_FALSE(l.istable(1));
+  EXPECT_EQ(l.gettop(), 2);
+  EXPECT_TRUE(l.indexable(1));
+  EXPECT_EQ(l.gettop(), 2);
+  EXPECT_TRUE(l.newindexable(1));
+  EXPECT_EQ(l.gettop(), 2);
+  EXPECT_FALSE(l.callable(1));
+  EXPECT_EQ(l.gettop(), 2);
+
+  //
+  l.setfield("__call", []() { return 1; });
+  EXPECT_EQ(l.gettop(), 2);
+
+  EXPECT_FALSE(l.istable(1));
+  EXPECT_EQ(l.gettop(), 2);
+  EXPECT_TRUE(l.indexable(1));
+  EXPECT_EQ(l.gettop(), 2);
+  EXPECT_TRUE(l.newindexable(1));
+  EXPECT_EQ(l.gettop(), 2);
+  EXPECT_TRUE(l.callable(1));
+  EXPECT_EQ(l.gettop(), 2);
+}
