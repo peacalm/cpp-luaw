@@ -88,6 +88,8 @@ TEST(extended_functions, COUNTER) {
 TEST(extended_functions, COUNTER0) {
   lua_wrapper l;
   EXPECT_TRUE(l.eval_bool("return COUNTER0(1,2,3)[4] == 0"));
+  EXPECT_TRUE(l.eval_bool("return COUNTER0(1,2,3,1)[4] == 0"));
+  EXPECT_TRUE(l.eval_bool("return COUNTER0(1,2,3,2)[4] == 0"));
   EXPECT_EQ(l.eval_int("return COUNTER0(1,2,3)[4]"), 0);
 
   EXPECT_EQ(l.eval_int("return COUNTER0(1,2,4,1,2,1)[1]"), 3);

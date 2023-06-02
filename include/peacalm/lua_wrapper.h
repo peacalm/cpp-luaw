@@ -182,7 +182,10 @@ public:
   struct custom_tag {};
   struct function_tag {};
   struct newtable_tag {};
-  struct metatable_tag {};
+  struct metatable_tag {
+    const char* tname;
+    metatable_tag(const char* name = nullptr) : tname(name) {}
+  };
 
   // Initialization options for lua_wrapper
   class opt {
@@ -606,6 +609,13 @@ public:
     return *this;
   }
 
+  /// Push the metatable of the value at the given index onto the stack if it
+  /// has a metatable, otherwise push a nil.
+  self_t& seek(metatable_tag, int idx = -1) {
+    if (lua_getmetatable(L_, idx) == 0) { lua_pushnil(L_); }
+    return *this;
+  }
+
   /// Long Seek: Call gseek() for the first parameter, then call seek() for the
   /// rest parameters.
   template <typename T, typename... Ts>
@@ -684,6 +694,27 @@ public:
     return *this;
   }
 
+  /// Push the metatable of the value at the given index onto the stack.
+  /// If the value does not have a metatable, make a new metatable for it then
+  /// push the metatable onto stack.
+  /// The way to make new metatable: If m.tname is empty, make a empty
+  /// metatable, else make a new metatable using `luaL_newmetatable(L_,
+  /// m.tname)`.
+  self_t& touchtb(metatable_tag m, int idx = -1) {
+    if (lua_getmetatable(L_, idx) == 0) {
+      int aidx = abs_index(idx);
+      if (!m.tname) {
+        lua_newtable(L_);
+      } else {
+        luaL_newmetatable(L_, m.tname);
+      }
+      lua_setmetatable(L_, aidx);
+      int t = lua_getmetatable(L_, aidx);
+      assert(t == 1);
+    }
+    return *this;
+  }
+
   /// Long touchtb: Call gtouchtb() for the first parameter, then call touchtb()
   /// for the rest parameters.
   template <typename T, typename... Ts>
@@ -748,6 +779,23 @@ public:
     int aidx = abs_index(idx);
     push<Hint>(std::forward<T>(value));
     lua_seti(L_, aidx, key);
+  }
+
+  /// Set the parameter value as metatable for the value at given index.
+  /// Setting nullptr as metatable means setting nil to metatable.
+  template <typename T>
+  void setfield(metatable_tag, T&& value, int idx = -1) {
+    int aidx = abs_index(idx);
+    push(std::forward<T>(value));
+    lua_setmetatable(L_, aidx);
+  }
+  template <typename Hint, typename T>
+  std::enable_if_t<!std::is_same<Hint, T>::value> setfield(metatable_tag,
+                                                           T&& value,
+                                                           int idx = -1) {
+    int aidx = abs_index(idx);
+    push<Hint>(std::forward<T>(value));
+    lua_setmetatable(L_, aidx);
   }
 
   ///////////////////////// set global variables ///////////////////////////////
