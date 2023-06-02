@@ -154,7 +154,7 @@ static inline int COUNTER0__index(lua_State* L) {
 // Like COUNTER but return 0 if key not exists.
 inline int COUNTER0(lua_State* L) {
   COUNTER(L);
-  if (luaL_newmetatable(L, "COUNTER0_mt") == 0) {
+  if (luaL_newmetatable(L, "COUNTER0_mt") == 1) {
     lua_pushcfunction(L, COUNTER0__index);
     lua_setfield(L, -2, "__index");
   }
