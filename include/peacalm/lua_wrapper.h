@@ -177,16 +177,35 @@ class lua_wrapper {
 public:
   using lua_cfunction_t = lua_CFunction;  // int (*)(lua_State *L)
 
+  // A callable wrapper for Lua functions. Like std::function and can convert to
+  // std::function, but contains more status information.
+  // Used with get.
   template <typename T>
   class function;
 
+  // Used as hint type for set/push, indicate the value is a user defined custom
+  // object.
   struct custom_tag {};
+
+  // Used as hint type for set/push, indicate the value is a function or a
+  // callable object used as a function.
   struct function_tag {};
+
+  // Used as a value for set/push, indicate that should set/push a new empty
+  // table to Lua.
   struct newtable_tag {};
+
+  // Used as a key for seek/touchtb/setfield/lset, indicate that we're
+  // getting/setting a value's metatable.
   struct metatable_tag {
     const char* tname;
     metatable_tag(const char* name = nullptr) : tname(name) {}
   };
+
+  // Indicate that convert a Lua value to nothing, the Lua value is useless.
+  // Any Lua value can convert to this.
+  // Maybe used as a function formal parameter.
+  struct placeholder_tag {};
 
   // Initialization options for lua_wrapper
   class opt {
@@ -2066,6 +2085,18 @@ private:
 template <typename T, typename>
 struct lua_wrapper::convertor {
   // empty
+};
+
+// to placeholder_tag
+template <>
+struct lua_wrapper::convertor<lua_wrapper::placeholder_tag> {
+  static placeholder_tag to(lua_wrapper& l,
+                            int          idx         = -1,
+                            bool         disable_log = false,
+                            bool*        failed      = nullptr,
+                            bool*        exists      = nullptr) {
+    return placeholder_tag{};
+  }
 };
 
 template <typename Return, typename... Args>

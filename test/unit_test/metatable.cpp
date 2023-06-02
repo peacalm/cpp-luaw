@@ -19,7 +19,7 @@ static inline int always1__index(lua_State* L) {
   return 1;
 }
 
-TEST(metatable, metatable) {
+TEST(metatable, seek_touchtb_setfield) {
   lua_wrapper l;
 
   auto push_mt = [&]() {
@@ -83,35 +83,69 @@ TEST(metatable, metatable) {
   l.dostring("g = {gg = {} }");
   l.ltouchtb("g", "gg", lua_wrapper::metatable_tag{"always1_mt"});
   EXPECT_TRUE(l.eval<bool>("return g.gg.xxx == 1"));
+}
 
-  // lset
-  l.lset("a", "b", "c", 2);
-  EXPECT_EQ(l.get_int({"a", "b", "c"}), 2);
-  l.lset("a", "b", lua_wrapper::metatable_tag{}, "__index", always1__index);
-  EXPECT_EQ(l.get_int({"a", "b", "c"}), 2);
-  EXPECT_EQ(l.get_int({"a", "b", "d"}), 1);
+TEST(metatable, lset) {
+  lua_wrapper l;
 
-  l.reset();
-  l.lset("a",
-         "aa",
-         lua_wrapper::metatable_tag{},
-         "__index",
-         [](std::map<std::string, std::string> t, std::string k) {
-           return k.size();
-         });
+  {
+    l.lset("a", "b", "c", 2);
+    EXPECT_EQ(l.get_int({"a", "b", "c"}), 2);
+    l.lset("a", "b", lua_wrapper::metatable_tag{}, "__index", always1__index);
+    EXPECT_EQ(l.get_int({"a", "b", "c"}), 2);
+    EXPECT_EQ(l.get_int({"a", "b", "d"}), 1);
+  }
 
-  EXPECT_EQ(l.get_int({"a", "aa", "x"}), 1);
-  EXPECT_EQ(l.get_int({"a", "aa", "xxx"}), 3);
+  {
+    l.lset("a",
+           "aa",
+           lua_wrapper::metatable_tag{},
+           "__index",
+           [](std::map<std::string, std::string> t, std::string k) {
+             return k.size();
+           });
 
-  l.lset<lua_wrapper::function_tag>(
-      "b",
-      "bb",
-      lua_wrapper::metatable_tag{},
-      "__index",
-      [&](std::map<std::string, std::string> t, std::string k) {
-        return k.size() * 2;
-      });
+    EXPECT_EQ(l.get_int({"a", "aa", "x"}), 1);
+    EXPECT_EQ(l.get_int({"a", "aa", "xxx"}), 3);
+  }
 
-  EXPECT_EQ(l.get_int({"b", "bb", "x"}), 2);
-  EXPECT_EQ(l.get_int({"b", "bb", "yy"}), 4);
+  {
+    int cnt = 0;
+    l.lset<int()>("b", "bb", lua_wrapper::metatable_tag{}, "__index", [&]() {
+      return ++cnt;
+    });
+
+    EXPECT_EQ(l.get_int({"b", "bb", "x"}), 1);
+    EXPECT_EQ(l.get_int({"b", "bb", "y"}), 2);
+    EXPECT_EQ(l.get_int({"b", "bb", "z"}), 3);
+  }
+
+  {
+    l.lset<lua_wrapper::function_tag>(
+        "b",
+        "bb",
+        lua_wrapper::metatable_tag{},
+        "__index",
+        [&](std::map<std::string, std::string> t, std::string k) {
+          return k.size() * 2;
+        });
+
+    EXPECT_EQ(l.get_int({"b", "bb", "x"}), 2);
+    EXPECT_EQ(l.get_int({"b", "bb", "yy"}), 4);
+  }
+
+  {
+    // placeholder_tag
+    l.lset<lua_wrapper::function_tag>(
+        "c",
+        "cc",
+        lua_wrapper::metatable_tag{},
+        "__index",
+        [&](lua_wrapper::placeholder_tag, std::string k) {
+          return k.size() * 2;
+        });
+
+    EXPECT_EQ(l.get_int({"c", "cc", "x"}), 2);
+    EXPECT_EQ(l.get_int({"c", "cc", "yy"}), 4);
+  }
 }
