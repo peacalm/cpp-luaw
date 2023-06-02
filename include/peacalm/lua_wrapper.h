@@ -2552,7 +2552,7 @@ struct lua_wrapper::convertor<void> {
                  bool*        failed      = nullptr,
                  bool*        exists      = nullptr) {
     if (failed) *failed = false;
-    if (exists) *exists = false;
+    if (exists) *exists = !l.isnoneornil(idx);
     return void();
   }
 };

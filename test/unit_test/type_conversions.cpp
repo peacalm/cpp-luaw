@@ -973,6 +973,10 @@ TEST(type_conversions, to_void) {
   bool failed, exists;
   l.to<void>(1, false, &failed, &exists);
   EXPECT_FALSE(failed);
+  EXPECT_TRUE(exists);
+
+  l.to<void>(2, false, &failed, &exists);
+  EXPECT_FALSE(failed);
   EXPECT_FALSE(exists);
 }
 
