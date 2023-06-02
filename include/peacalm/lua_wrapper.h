@@ -733,7 +733,7 @@ public:
   /// If t[name] is not a table, make a new one.
   self_t& touchtb(const char* name, int idx = -1) {
     int aidx = abs_index(idx);
-    assert(istable(aidx));
+    assert(indexable_and_newindexable(aidx));
     lua_getfield(L_, aidx, name);
     if (istable()) return *this;
     pop();
@@ -750,7 +750,7 @@ public:
   /// If t[n] is not a table, make a new one.
   self_t& touchtb(int n, int idx = -1) {
     int aidx = abs_index(idx);
-    assert(istable(aidx));
+    assert(indexable_and_newindexable(aidx));
     lua_geti(L_, aidx, n);
     if (istable()) return *this;
     pop();
@@ -805,7 +805,7 @@ public:
   /// Set t[key] = value, where t is a table at given index.
   template <typename T>
   void setfield(const char* key, T&& value, int idx = -1) {
-    assert(istable(idx));
+    assert(newindexable(idx));
     int aidx = abs_index(idx);
     push(std::forward<T>(value));
     lua_setfield(L_, aidx, key);
@@ -816,7 +816,7 @@ public:
   }
   template <typename T>
   void setfield(int key, T&& value, int idx = -1) {
-    assert(istable(idx));
+    assert(newindexable(idx));
     int aidx = abs_index(idx);
     push(std::forward<T>(value));
     lua_seti(L_, aidx, key);
@@ -827,7 +827,7 @@ public:
   std::enable_if_t<!std::is_same<Hint, T>::value> setfield(const char* key,
                                                            T&&         value,
                                                            int idx = -1) {
-    assert(istable(idx));
+    assert(newindexable(idx));
     int aidx = abs_index(idx);
     push<Hint>(std::forward<T>(value));
     lua_setfield(L_, aidx, key);
@@ -841,7 +841,7 @@ public:
   std::enable_if_t<!std::is_same<Hint, T>::value> setfield(int key,
                                                            T&& value,
                                                            int idx = -1) {
-    assert(istable(idx));
+    assert(newindexable(idx));
     int aidx = abs_index(idx);
     push<Hint>(std::forward<T>(value));
     lua_seti(L_, aidx, key);
