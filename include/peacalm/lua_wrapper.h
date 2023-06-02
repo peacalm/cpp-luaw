@@ -432,6 +432,18 @@ public:
     return ret;
   }
 
+  bool indexable_and_newindexable(int idx = -1) const {
+    if (istable(idx)) return true;
+    if (lua_getmetatable(L_, idx) == 0) return false;
+    int sz = lua_gettop(L_) - 1;
+    lua_getfield(L_, -1, "__index");
+    lua_getfield(L_, -2, "__newindex");
+    // if both __index and __newindex exists
+    bool ret = !isnoneornil(-1) && !isnoneornil(-2);
+    lua_settop(L_, sz);
+    return ret;
+  }
+
   bool callable(int idx = -1) const {
     if (isfunction(idx)) return true;
     if (lua_getmetatable(L_, idx) == 0) return false;

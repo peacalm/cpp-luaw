@@ -45,9 +45,8 @@ TEST(others, indexable) {
 
   EXPECT_EQ(l.gettop(), 1);
   EXPECT_TRUE(l.indexable());
-  EXPECT_EQ(l.gettop(), 1);
   EXPECT_TRUE(l.newindexable());
-  EXPECT_EQ(l.gettop(), 1);
+  EXPECT_TRUE(l.indexable_and_newindexable());
   EXPECT_FALSE(l.callable());
   EXPECT_EQ(l.gettop(), 1);
 
@@ -55,9 +54,8 @@ TEST(others, indexable) {
   l.gseek("a");
   EXPECT_EQ(l.gettop(), 1);
   EXPECT_FALSE(l.indexable());
-  EXPECT_EQ(l.gettop(), 1);
   EXPECT_FALSE(l.newindexable());
-  EXPECT_EQ(l.gettop(), 1);
+  EXPECT_FALSE(l.indexable_and_newindexable());
   EXPECT_FALSE(l.callable());
   EXPECT_EQ(l.gettop(), 1);
 
@@ -66,9 +64,8 @@ TEST(others, indexable) {
   l.gseek("f");
   EXPECT_EQ(l.gettop(), 1);
   EXPECT_FALSE(l.indexable());
-  EXPECT_EQ(l.gettop(), 1);
   EXPECT_FALSE(l.newindexable());
-  EXPECT_EQ(l.gettop(), 1);
+  EXPECT_FALSE(l.indexable_and_newindexable());
   EXPECT_TRUE(l.callable());
   EXPECT_EQ(l.gettop(), 1);
 
@@ -76,9 +73,8 @@ TEST(others, indexable) {
   l.push([](int a, int b) { return a + b; });
   EXPECT_EQ(l.gettop(), 1);
   EXPECT_FALSE(l.indexable());
-  EXPECT_EQ(l.gettop(), 1);
   EXPECT_FALSE(l.newindexable());
-  EXPECT_EQ(l.gettop(), 1);
+  EXPECT_FALSE(l.indexable_and_newindexable());
   EXPECT_TRUE(l.callable());
   EXPECT_EQ(l.gettop(), 1);
 
@@ -91,11 +87,13 @@ TEST(others, indexable) {
   EXPECT_FALSE(l.istable(1));
   EXPECT_FALSE(l.indexable(1));
   EXPECT_FALSE(l.newindexable(1));
+  EXPECT_FALSE(l.indexable_and_newindexable(1));
   EXPECT_FALSE(l.callable(1));
 
   EXPECT_TRUE(l.istable(2));
   EXPECT_TRUE(l.indexable(2));
   EXPECT_TRUE(l.newindexable(2));
+  EXPECT_TRUE(l.indexable_and_newindexable(2));
   EXPECT_FALSE(l.callable(2));
 
   EXPECT_EQ(l.gettop(), 2);
@@ -105,9 +103,8 @@ TEST(others, indexable) {
   EXPECT_FALSE(l.istable(1));
   EXPECT_EQ(l.gettop(), 2);
   EXPECT_TRUE(l.indexable(1));
-  EXPECT_EQ(l.gettop(), 2);
   EXPECT_FALSE(l.newindexable(1));
-  EXPECT_EQ(l.gettop(), 2);
+  EXPECT_FALSE(l.indexable_and_newindexable(1));
   EXPECT_FALSE(l.callable(1));
   EXPECT_EQ(l.gettop(), 2);
 
@@ -118,9 +115,8 @@ TEST(others, indexable) {
   EXPECT_FALSE(l.istable(1));
   EXPECT_EQ(l.gettop(), 2);
   EXPECT_TRUE(l.indexable(1));
-  EXPECT_EQ(l.gettop(), 2);
   EXPECT_TRUE(l.newindexable(1));
-  EXPECT_EQ(l.gettop(), 2);
+  EXPECT_TRUE(l.indexable_and_newindexable(1));
   EXPECT_FALSE(l.callable(1));
   EXPECT_EQ(l.gettop(), 2);
 
@@ -131,9 +127,8 @@ TEST(others, indexable) {
   EXPECT_FALSE(l.istable(1));
   EXPECT_EQ(l.gettop(), 2);
   EXPECT_TRUE(l.indexable(1));
-  EXPECT_EQ(l.gettop(), 2);
   EXPECT_TRUE(l.newindexable(1));
-  EXPECT_EQ(l.gettop(), 2);
+  EXPECT_TRUE(l.indexable_and_newindexable(1));
   EXPECT_TRUE(l.callable(1));
   EXPECT_EQ(l.gettop(), 2);
 }
