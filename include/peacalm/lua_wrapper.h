@@ -2177,8 +2177,15 @@ public:
     if (exists) *exists = !lua_isnoneornil(L_, idx);
     // noneornil is not callable, so we regard not-exists as failed for
     // function, which is not as same as usual.
-    // TODO: check more about whether it is callable?
-    if (failed) *failed = !!lua_isnoneornil(L_, idx);
+    if (failed) {
+      if (lua_isnoneornil(L_, idx)) {
+        *failed = true;
+      } else {
+        // check more whether it's callable
+        lua_wrapper_fake l(L);
+        *failed = !l.callable(idx);
+      }
+    }
 
     lua_pushvalue(L_, idx);
     int ref_ = luaL_ref(L, LUA_REGISTRYINDEX);
