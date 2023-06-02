@@ -37,6 +37,18 @@
 
 static_assert(LUA_VERSION_NUM >= 504, "Lua version at least 5.4");
 
+#ifdef PEACALM_LUAW_ASSERT_OFF
+#define PEACALM_LUAW_ASSERT(x)
+#else
+#define PEACALM_LUAW_ASSERT(x) assert(x)
+#endif
+
+#ifdef PEACALM_LUAW_INDEXABLE_ASSERT_OFF
+#define PEACALM_LUAW_INDEXABLE_ASSERT(x)
+#else
+#define PEACALM_LUAW_INDEXABLE_ASSERT(x) assert(x)
+#endif
+
 namespace peacalm {
 
 namespace luafunc {
@@ -733,7 +745,7 @@ public:
   /// If t[name] is not a table, make a new one.
   self_t& touchtb(const char* name, int idx = -1) {
     int aidx = abs_index(idx);
-    assert(indexable_and_newindexable(aidx));
+    PEACALM_LUAW_INDEXABLE_ASSERT(indexable_and_newindexable(aidx));
     lua_getfield(L_, aidx, name);
     if (istable()) return *this;
     pop();
@@ -750,7 +762,7 @@ public:
   /// If t[n] is not a table, make a new one.
   self_t& touchtb(int n, int idx = -1) {
     int aidx = abs_index(idx);
-    assert(indexable_and_newindexable(aidx));
+    PEACALM_LUAW_INDEXABLE_ASSERT(indexable_and_newindexable(aidx));
     lua_geti(L_, aidx, n);
     if (istable()) return *this;
     pop();
@@ -776,7 +788,7 @@ public:
       }
       lua_setmetatable(L_, aidx);
       int t = lua_getmetatable(L_, aidx);
-      assert(t == 1);
+      PEACALM_LUAW_ASSERT(t == 1);
     }
     return *this;
   }
@@ -805,7 +817,7 @@ public:
   /// Set t[key] = value, where t is a table at given index.
   template <typename T>
   void setfield(const char* key, T&& value, int idx = -1) {
-    assert(newindexable(idx));
+    PEACALM_LUAW_INDEXABLE_ASSERT(newindexable(idx));
     int aidx = abs_index(idx);
     push(std::forward<T>(value));
     lua_setfield(L_, aidx, key);
@@ -816,7 +828,7 @@ public:
   }
   template <typename T>
   void setfield(int key, T&& value, int idx = -1) {
-    assert(newindexable(idx));
+    PEACALM_LUAW_INDEXABLE_ASSERT(newindexable(idx));
     int aidx = abs_index(idx);
     push(std::forward<T>(value));
     lua_seti(L_, aidx, key);
@@ -827,7 +839,7 @@ public:
   std::enable_if_t<!std::is_same<Hint, T>::value> setfield(const char* key,
                                                            T&&         value,
                                                            int idx = -1) {
-    assert(newindexable(idx));
+    PEACALM_LUAW_INDEXABLE_ASSERT(newindexable(idx));
     int aidx = abs_index(idx);
     push<Hint>(std::forward<T>(value));
     lua_setfield(L_, aidx, key);
@@ -841,7 +853,7 @@ public:
   std::enable_if_t<!std::is_same<Hint, T>::value> setfield(int key,
                                                            T&& value,
                                                            int idx = -1) {
-    assert(newindexable(idx));
+    PEACALM_LUAW_INDEXABLE_ASSERT(newindexable(idx));
     int aidx = abs_index(idx);
     push<Hint>(std::forward<T>(value));
     lua_seti(L_, aidx, key);
@@ -1351,7 +1363,7 @@ public:
       settop(sz);                                                   \
       return def;                                                   \
     }                                                               \
-    assert(gettop() >= sz);                                         \
+    PEACALM_LUAW_ASSERT(gettop() >= sz);                            \
     if (gettop() <= sz) {                                           \
       if (failed) *failed = true;                                   \
       if (!disable_log) log_error("No return");                     \
@@ -1393,7 +1405,7 @@ public:
       settop(sz);
       return def;
     }
-    assert(gettop() >= sz);
+    PEACALM_LUAW_ASSERT(gettop() >= sz);
     if (gettop() <= sz) {
       if (failed) *failed = true;
       if (!disable_log) log_error("No return");
@@ -1436,7 +1448,7 @@ public:
       settop(sz);
       return T{};
     }
-    assert(gettop() >= sz);
+    PEACALM_LUAW_ASSERT(gettop() >= sz);
     if (gettop() <= sz && !std::is_same<std::decay_t<T>, std::tuple<>>::value) {
       if (failed) *failed = true;
       if (!disable_log) log_error("No return");
@@ -1740,10 +1752,10 @@ struct lua_wrapper::pusher<Return (*)(Args...)> {
     using SolidF = std::remove_reference_t<F>;
 
     auto __call = [](lua_State* L) -> int {
-      assert(lua_gettop(L) >= 1);
-      assert(lua_isuserdata(L, 1));
+      PEACALM_LUAW_ASSERT(lua_gettop(L) >= 1);
+      PEACALM_LUAW_ASSERT(lua_isuserdata(L, 1));
       auto callee = static_cast<SolidF*>(lua_touserdata(L, 1));
-      assert(callee);
+      PEACALM_LUAW_ASSERT(callee);
       lua_wrapper l(L);
       int         ret_num = callback(l, *callee, 2, std::is_void<Return>{});
       l.release();
@@ -1751,10 +1763,10 @@ struct lua_wrapper::pusher<Return (*)(Args...)> {
     };
 
     auto __gc = [](lua_State* L) -> int {
-      assert(lua_gettop(L) == 1);
-      assert(lua_isuserdata(L, 1));
+      PEACALM_LUAW_ASSERT(lua_gettop(L) == 1);
+      PEACALM_LUAW_ASSERT(lua_isuserdata(L, 1));
       auto fptr = static_cast<SolidF*>(lua_touserdata(L, 1));
-      assert(fptr);
+      PEACALM_LUAW_ASSERT(fptr);
       fptr->~SolidF();
       return 0;
     };
@@ -1787,7 +1799,7 @@ struct lua_wrapper::pusher<Return (*)(Args...)> {
     auto closure = [](lua_State* L) -> int {
       auto callee =
           static_cast<SolidF*>(lua_touserdata(L, lua_upvalueindex(1)));
-      assert(callee);
+      PEACALM_LUAW_ASSERT(callee);
       lua_wrapper l(L);
       int         ret_num = callback(l, *callee, 1, std::is_void<Return>{});
       l.release();
@@ -1807,7 +1819,7 @@ struct lua_wrapper::pusher<Return (*)(Args...)> {
     auto closure = [](lua_State* L) -> int {
       auto callee = reinterpret_cast<Return (*)(Args...)>(
           lua_touserdata(L, lua_upvalueindex(1)));
-      assert(callee);
+      PEACALM_LUAW_ASSERT(callee);
       lua_wrapper l(L);
       int         ret_num = callback(l, callee, 1, std::is_void<Return>{});
       l.release();
@@ -2107,7 +2119,7 @@ struct lua_wrapper::pusher<std::tuple<Ts...>> {
   static int push(lua_wrapper& l, const std::tuple<Ts...>& v) {
     const size_t N = size;
     int ret_num    = __push<0, N>(l, v, std::integral_constant<bool, 0 < N>{});
-    assert(ret_num == N);
+    PEACALM_LUAW_ASSERT(ret_num == N);
     return ret_num;
   }
 
@@ -2225,7 +2237,7 @@ public:
     int nret      = lua_wrapper::pusher<std::decay_t<Return>>::size;
     int pcall_ret = l.pcall(narg, nret, 0);
 
-    assert(l.gettop() >= sz);
+    PEACALM_LUAW_ASSERT(l.gettop() >= sz);
     if (pcall_ret == LUA_OK) {
       function_failed_ = false;
     } else {
