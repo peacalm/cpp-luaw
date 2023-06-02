@@ -710,6 +710,7 @@ private:
 public:
   ///////////////////////// set fields into a table ////////////////////////////
 
+  /// Set t[key] = value, where t is a table at given index.
   template <typename T>
   void setfield(const char* key, T&& value, int idx = -1) {
     assert(istable(idx));
