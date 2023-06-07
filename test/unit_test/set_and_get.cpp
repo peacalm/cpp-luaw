@@ -696,3 +696,30 @@ TEST(set_and_get, lget) {
 
   // l.lget<int>({}); // compile error
 }
+
+int ret1(lua_State *L) {
+  lua_pushnumber(L, 1);
+  return 1;
+}
+
+int argnum(lua_State *L) {
+  int n = lua_gettop(L);
+  lua_pushnumber(L, n);
+  return 1;
+}
+
+TEST(set_and_get, registerf) {
+  lua_wrapper l;
+  l.registerf("f", ret1);
+  EXPECT_EQ(l.eval_int("return f()"), 1);
+}
+
+TEST(set_and_get, set_lua_cfunction) {
+  lua_wrapper l;
+  l.set("f", ret1);
+  EXPECT_EQ(l.eval_int("return f()"), 1);
+
+  l.set({"g", "f"}, argnum);
+  EXPECT_EQ(l.eval_int("return g.f()"), 0);
+  EXPECT_EQ(l.eval_int("return g.f(1, 2)"), 2);
+}
