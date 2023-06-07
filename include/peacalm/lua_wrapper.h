@@ -312,7 +312,7 @@ public:
       preload_libs();
     }
 
-    if (o.exfunc_) { register_functions(); }
+    if (o.exfunc_) { register_exfunctions(); }
 
     if (!o.libs_load_.empty()) {
       for (const luaL_Reg& l : o.libs_load_) {
@@ -367,11 +367,17 @@ public:
     pop(3);
   }
 
-  void register_functions() {
-    lua_register(L_, "IF", luafunc::IF);
-    lua_register(L_, "SET", luafunc::SET);
-    lua_register(L_, "COUNTER", luafunc::COUNTER);
-    lua_register(L_, "COUNTER0", luafunc::COUNTER0);
+  /// Register a global function.
+  void registerf(const char* fname, lua_cfunction_t f) {
+    lua_register(L_, fname, f);
+  }
+
+  /// Register extended functions.
+  void register_exfunctions() {
+    registerf("IF", luafunc::IF);
+    registerf("SET", luafunc::SET);
+    registerf("COUNTER", luafunc::COUNTER);
+    registerf("COUNTER0", luafunc::COUNTER0);
   }
 
   /// Release the ownership of contained Lua State.
