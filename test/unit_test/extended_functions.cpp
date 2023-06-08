@@ -15,7 +15,7 @@
 #include "main.h"
 
 TEST(extended_functions, IF) {
-  lua_wrapper l;
+  luaw l;
   EXPECT_EQ(l.eval_int("return IF(true, 1, 2)"), 1);
   EXPECT_EQ(l.eval_int("return IF(false, 1, 2)"), 2);
   EXPECT_EQ(l.eval_int("return IF(false, 1, '2')"), 2);
@@ -34,7 +34,7 @@ TEST(extended_functions, IF) {
 }
 
 TEST(extended_functions, SET) {
-  lua_wrapper l;
+  luaw l;
   EXPECT_EQ(l.eval_bool("return SET(1,2,4)[1]"), true);
   EXPECT_EQ(l.eval_bool("return SET(1,2,4)[3]"), false);
   EXPECT_EQ(l.eval_bool("return SET{1,2,4}[4]"), true);
@@ -60,7 +60,7 @@ TEST(extended_functions, SET) {
 }
 
 TEST(extended_functions, COUNTER) {
-  lua_wrapper l;
+  luaw l;
   EXPECT_EQ(l.eval_int("return COUNTER(1,2,4)[1]"), 1);
   EXPECT_EQ(l.eval_int("return COUNTER(1,2,4,1,2,1)[1]"), 3);
   EXPECT_EQ(l.eval_int("return COUNTER(1,2,4,1,2,1)[3]"), 0);
@@ -86,7 +86,7 @@ TEST(extended_functions, COUNTER) {
 }
 
 TEST(extended_functions, COUNTER0) {
-  lua_wrapper l;
+  luaw l;
   EXPECT_TRUE(l.eval_bool("return COUNTER0(1,2,3)[4] == 0"));
   EXPECT_TRUE(l.eval_bool("return COUNTER0(1,2,3,1)[4] == 0"));
   EXPECT_TRUE(l.eval_bool("return COUNTER0(1,2,3,2)[4] == 0"));

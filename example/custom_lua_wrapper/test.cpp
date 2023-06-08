@@ -12,7 +12,7 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-#include <peacalm/lua_wrapper.h>
+#include <peacalm/luaw.h>
 
 #include <cstdio>
 #include <iostream>
@@ -36,7 +36,7 @@ struct provider {
 using provider_type = std::unique_ptr<provider>;
 
 int main() {
-  peacalm::custom_lua_wrapper<provider_type> l;
+  peacalm::custom_luaw<provider_type> l;
   l.provider(std::make_unique<provider>());
   double ret = l.eval_double("return a*10 + b^c");
   std::cout << ret << std::endl;  // 18

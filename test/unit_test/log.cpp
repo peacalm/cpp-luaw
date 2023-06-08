@@ -15,7 +15,7 @@
 #include "main.h"
 
 TEST(log, disable_log) {
-  lua_wrapper l;
+  luaw l;
 
   l.set_string("x", "enable log once then disable!");
   bool disable_log = false, failed = false, exists = false;

@@ -12,7 +12,7 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-/// @deprecated Use custom_lua_wrapper instead.
+/// @deprecated Use custom_luaw instead.
 
 #include "main.h"
 
@@ -24,8 +24,8 @@ struct vprovider {
   ~vprovider() {
     // printf("~vprovider(%d)\n", def);
   }
-  void provide(const std::string &v, lua_wrapper *l) { l->set_integer(v, def); }
-  void provide(const std::vector<std::string> &vars, lua_wrapper *l) {
+  void provide(const std::string &v, luaw *l) { l->set_integer(v, def); }
+  void provide(const std::vector<std::string> &vars, luaw *l) {
     for (const auto &v : vars) provide(v, l);
   }
 };
@@ -34,8 +34,8 @@ std::set<std::string> toset(const std::vector<std::string> &v) {
   return std::set<std::string>(v.begin(), v.end());
 }
 
-TEST(lua_wrapper_crtp, detect_variable_names_eval) {
-  lua_wrapper_is_provider<vprovider> l;
+TEST(luaw_crtp, detect_variable_names_eval) {
+  luaw_is_provider<vprovider> l;
 
   EXPECT_EQ(toset(l.detect_variable_names("return a + b")), toset({"a", "b"}));
   EXPECT_EQ(toset(l.detect_variable_names("return a + 50")), toset({"a"}));
@@ -109,39 +109,39 @@ TEST(lua_wrapper_crtp, detect_variable_names_eval) {
   EXPECT_EQ(toset(l.detect_variable_names("return a + b.c.d")), toset({"a"}));
 }
 
-TEST(lua_wrapper_is_provider, auto_eval) {
+TEST(luaw_is_provider, auto_eval) {
   {
-    lua_wrapper_is_provider<vprovider> l;
+    luaw_is_provider<vprovider> l;
     EXPECT_EQ(l.auto_eval_int("return x"), 1);
   }
   {
-    lua_wrapper_is_provider<vprovider> l(luaL_newstate());
+    luaw_is_provider<vprovider> l(luaL_newstate());
     EXPECT_EQ(l.auto_eval_int("return a + b + c"), 3);
   }
   {
-    lua_wrapper_is_provider<vprovider> l(luaL_newstate(), 2);
+    luaw_is_provider<vprovider> l(luaL_newstate(), 2);
     EXPECT_EQ(l.auto_eval_int("return a + b + c"), 6);
   }
 }
 
-TEST(lua_wrapper_has_provider, auto_eval) {
+TEST(luaw_has_provider, auto_eval) {
   {
-    lua_wrapper_has_provider<vprovider> l;
+    luaw_has_provider<vprovider> l;
     EXPECT_EQ(l.auto_eval_int("return a"), 1);
   }
   {
-    lua_wrapper_has_provider<vprovider *> l(luaL_newstate());
+    luaw_has_provider<vprovider *> l(luaL_newstate());
     l.provider(new vprovider);
     EXPECT_EQ(l.auto_eval_int("return a + b"), 2);
     delete l.provider();
   }
   {
-    lua_wrapper_has_provider<std::shared_ptr<vprovider>> l{};
+    luaw_has_provider<std::shared_ptr<vprovider>> l{};
     l.provider(std::make_shared<vprovider>());
     EXPECT_EQ(l.auto_eval_int("return a + b + c"), 3);
   }
   {
-    lua_wrapper_has_provider<std::unique_ptr<vprovider>> l;
+    luaw_has_provider<std::unique_ptr<vprovider>> l;
     l.provider(std::make_unique<vprovider>(3));
     EXPECT_EQ(l.auto_eval_int("return a + b + c"), 9);
   }

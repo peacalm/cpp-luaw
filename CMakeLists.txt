@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.14)
 
-project(LuaWrapper
+project(Luaw
         VERSION 1.0
         DESCRIPTION "Lua wrapper for C++"
-        HOMEPAGE_URL "https://github.com/peacalm/cpp-lua_wrapper"
+        HOMEPAGE_URL "https://github.com/peacalm/cpp-luaw"
         LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 14)
@@ -13,10 +13,7 @@ SET(INCLUDE_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/include")
 SET(LIB_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/lib")
 SET(CMAKECONFIG_INSTALL_DIR "${LIB_INSTALL_DIR}/cmake/${PROJECT_NAME}")
 
-find_package(Lua)
-if (NOT LUA_FOUND)
-    message(FATAL_ERROR "Lua not found! Please install it first.")
-endif()
+find_package(Lua REQUIRED)
 
 option(BUILD_TEST "Build test." FALSE)
 

@@ -15,7 +15,7 @@
 #include "main.h"
 
 TEST(others, abs_index) {
-  lua_wrapper l;
+  luaw l;
   EXPECT_EQ(l.gettop(), 0);
   EXPECT_EQ(l.abs_index(0), 0);
   EXPECT_EQ(l.abs_index(1), 1);
@@ -37,7 +37,7 @@ TEST(others, abs_index) {
 }
 
 TEST(others, indexable) {
-  lua_wrapper l;
+  luaw l;
   EXPECT_EQ(l.gettop(), 0);
   l.dostring("t={} a=1 ");
   EXPECT_EQ(l.gettop(), 0);
@@ -81,7 +81,7 @@ TEST(others, indexable) {
   l.cleartop();
   l.gseek("a");
   EXPECT_FALSE(l.istable(1));
-  l.touchtb(lua_wrapper::metatable_tag{});
+  l.touchtb(luaw::metatable_tag{});
   EXPECT_EQ(l.gettop(), 2);
 
   EXPECT_FALSE(l.istable(1));

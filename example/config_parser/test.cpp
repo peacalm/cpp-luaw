@@ -12,12 +12,12 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-#include <peacalm/lua_wrapper.h>
+#include <peacalm/luaw.h>
 
 #include <iostream>
 
 int main() {
-  peacalm::lua_wrapper l;
+  peacalm::luaw l;
 
   if (l.dostring("a = 1 b = math.pi c = 10^12 + 123 d = 'good'") != LUA_OK) {
     l.log_error_in_stack();

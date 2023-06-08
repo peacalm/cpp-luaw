@@ -15,7 +15,7 @@
 #include "main.h"
 
 TEST(eval, eval) {
-  lua_wrapper l;
+  luaw l;
 
   // Error! Lua returns '', C++ returns default and prints an error log
   EXPECT_EQ(l.eval_bool("return ''"), false);
@@ -65,14 +65,14 @@ TEST(eval, eval) {
 }
 
 TEST(eval, eval_multi_ret) {
-  lua_wrapper l;
+  luaw l;
   EXPECT_EQ(l.eval_int("return 1,2,3"), 1);
   EXPECT_EQ(l.eval<long>("return 1,2,3"), 1);
   EXPECT_EQ(l.eval<std::string>("return 1,2,3"), "1");
 }
 
 TEST(eval, template_eval) {
-  lua_wrapper l;
+  luaw l;
   {
     const char *expr = "return {1,2,3}";
     auto        v    = l.eval<std::vector<unsigned>>(expr);
@@ -100,7 +100,7 @@ TEST(eval, template_eval) {
 }
 
 TEST(eval, eval_using_setted_global) {
-  lua_wrapper l;
+  luaw l;
   l.set_integer("a", 10);
   l.set_integer("b", 5);
   l.set_integer("c", 2);
@@ -118,7 +118,7 @@ TEST(eval, eval_using_setted_global) {
 }
 
 TEST(eval, tuple) {
-  lua_wrapper l;
+  luaw l;
   {
     bool failed;
     auto t = l.eval<std::tuple<bool, int, std::string>>(

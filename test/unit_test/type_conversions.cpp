@@ -15,7 +15,7 @@
 #include "main.h"
 
 TEST(type_conversions, simple_types) {
-  lua_wrapper l;
+  luaw l;
 
   // NONE
   std::cout << "Lua always convert NONE to 0" << std::endl;
@@ -196,7 +196,7 @@ TEST(type_conversions, simple_types) {
 }
 
 TEST(type_conversions, long_number_like_string) {
-  lua_wrapper l;
+  luaw        l;
   const char *s = "123456789012345678901234567890";
   double      d = std::stod(s);
   lua_pushstring(l.L(), s);
@@ -244,7 +244,7 @@ TEST(type_conversions, long_number_like_string) {
 }
 
 TEST(type_conversions, large_number) {
-  lua_wrapper l;
+  luaw l;
   l.reset();
   const char *s = "1921332203851725413";
   long long   i = std::stoll(s);
@@ -277,7 +277,7 @@ TEST(type_conversions, large_number) {
 }
 
 TEST(type_conversions, test_failed_exists) {
-  lua_wrapper l;
+  luaw l;
   {
     // none
     bool disable_log = false, failed = false, exists = false;
@@ -510,7 +510,7 @@ TEST(type_conversions, test_failed_exists) {
 }
 
 TEST(type_conversions, template_to_complex_types) {
-  lua_wrapper l;
+  luaw l;
   lua_pushinteger(l.L(), 1);
   EXPECT_EQ(l.to<int>(), 1);
   EXPECT_EQ(l.to<long>(), 1);
@@ -923,7 +923,7 @@ TEST(type_conversions, template_to_complex_types) {
 }
 
 TEST(type_conversions, to_tuple) {
-  lua_wrapper l;
+  luaw l;
   l.push(true);
   l.push(1);
   l.push(2.5);
@@ -966,7 +966,7 @@ TEST(type_conversions, to_tuple) {
 }
 
 TEST(type_conversions, to_void) {
-  lua_wrapper l;
+  luaw l;
   l.push(1);
   l.push(nullptr);
 
@@ -981,7 +981,7 @@ TEST(type_conversions, to_void) {
 }
 
 TEST(type_conversions, to_function) {
-  lua_wrapper l;
+  luaw l;
   l.dostring("f = function(a, b) return a + b end");
   l.getglobal("f");
   EXPECT_EQ(l.gettop(), 1);
@@ -991,8 +991,7 @@ TEST(type_conversions, to_function) {
 
   {
     bool failed, exists;
-    auto f =
-        l.to<lua_wrapper::function<int(int, int)>>(1, false, &failed, &exists);
+    auto f = l.to<luaw::function<int(int, int)>>(1, false, &failed, &exists);
 
     EXPECT_EQ(l.gettop(), sz);
     EXPECT_FALSE(failed);
@@ -1008,11 +1007,11 @@ TEST(type_conversions, to_function) {
     EXPECT_FALSE(f.failed());
   }
   {
-    // get a const lua_wrapper::function
+    // get a const luaw::function
 
     bool       failed, exists;
-    const auto f = l.to<const lua_wrapper::function<int(int, int)>>(
-        1, false, &failed, &exists);
+    const auto f =
+        l.to<const luaw::function<int(int, int)>>(1, false, &failed, &exists);
 
     EXPECT_EQ(l.gettop(), sz);
     EXPECT_FALSE(failed);
@@ -1029,8 +1028,7 @@ TEST(type_conversions, to_function) {
   }
   {
     bool failed, exists;
-    auto f =
-        l.to<lua_wrapper::function<int(int, int)>>(2, false, &failed, &exists);
+    auto f = l.to<luaw::function<int(int, int)>>(2, false, &failed, &exists);
 
     EXPECT_EQ(l.gettop(), sz);
     EXPECT_TRUE(failed);
@@ -1046,7 +1044,7 @@ TEST(type_conversions, to_function) {
     EXPECT_TRUE(f.failed());
   }
 
-  auto f2 = l.to<lua_wrapper::function<void(int, int)>>(1);
+  auto f2 = l.to<luaw::function<void(int, int)>>(1);
   f2(2, 3);
 
   auto f3 = l.to<std::function<int(int, int)>>(1);
@@ -1057,7 +1055,7 @@ TEST(type_conversions, to_function) {
 
   EXPECT_EQ(l.gettop(), sz);
   {
-    auto f = l.to<lua_wrapper::function<double(double &, double &)>>(1);
+    auto f = l.to<luaw::function<double(double &, double &)>>(1);
     EXPECT_EQ(l.gettop(), sz);
 
     double a = 2.25, b = 1.25;
@@ -1070,7 +1068,7 @@ TEST(type_conversions, to_function) {
 }
 
 TEST(type_conversions, to_function_tuple_result) {
-  lua_wrapper l;
+  luaw l;
   l.dostring("f = function(a, b) return a + b, a - b, a * b end");
   l.getglobal("f");
   EXPECT_EQ(l.gettop(), 1);
@@ -1078,7 +1076,7 @@ TEST(type_conversions, to_function_tuple_result) {
 
   {
     bool failed, exists;
-    auto f = l.to<lua_wrapper::function<std::tuple<int, int, int>(int, int)>>(
+    auto f = l.to<luaw::function<std::tuple<int, int, int>(int, int)>>(
         1, false, &failed, &exists);
 
     EXPECT_EQ(l.gettop(), sz);
@@ -1099,9 +1097,8 @@ TEST(type_conversions, to_function_tuple_result) {
   {
     // const tuple as result
     bool failed, exists;
-    auto f =
-        l.to<lua_wrapper::function<const std::tuple<int, int, int>(int, int)>>(
-            1, false, &failed, &exists);
+    auto f = l.to<luaw::function<const std::tuple<int, int, int>(int, int)>>(
+        1, false, &failed, &exists);
 
     EXPECT_EQ(l.gettop(), sz);
 
@@ -1121,9 +1118,8 @@ TEST(type_conversions, to_function_tuple_result) {
   {
     // result size 3 -> 4
     bool failed, exists;
-    auto f =
-        l.to<lua_wrapper::function<std::tuple<int, int, int, int>(int, int)>>(
-            1, false, &failed, &exists);
+    auto f = l.to<luaw::function<std::tuple<int, int, int, int>(int, int)>>(
+        1, false, &failed, &exists);
 
     EXPECT_EQ(l.gettop(), sz);
 
@@ -1143,7 +1139,7 @@ TEST(type_conversions, to_function_tuple_result) {
   {
     // result size 3 -> 2
     bool failed, exists;
-    auto f = l.to<lua_wrapper::function<std::tuple<int, int>(int, int)>>(
+    auto f = l.to<luaw::function<std::tuple<int, int>(int, int)>>(
         1, false, &failed, &exists);
 
     EXPECT_EQ(l.gettop(), sz);
@@ -1164,8 +1160,7 @@ TEST(type_conversions, to_function_tuple_result) {
   {
     // result size 3 -> 1
     bool failed, exists;
-    auto f =
-        l.to<lua_wrapper::function<int(int, int)>>(1, false, &failed, &exists);
+    auto f = l.to<luaw::function<int(int, int)>>(1, false, &failed, &exists);
 
     EXPECT_EQ(l.gettop(), sz);
     EXPECT_FALSE(failed);

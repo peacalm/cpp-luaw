@@ -12,12 +12,12 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-#include <peacalm/lua_wrapper.h>
+#include <peacalm/luaw.h>
 
 #include <iostream>
 
 int main() {
-  peacalm::lua_wrapper l;
-  std::cout << l.eval_string("return 'Hello ' .. 'LuaWrapper!'") << std::endl;
+  peacalm::luaw l;
+  std::cout << l.eval_string("return 'Hello ' .. 'Luaw!'") << std::endl;
   return 0;
 }

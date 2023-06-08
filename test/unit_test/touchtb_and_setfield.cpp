@@ -15,7 +15,7 @@
 #include "main.h"
 
 TEST(touchtb, touchtb) {
-  lua_wrapper l;
+  luaw l;
   l.gtouchtb("g");
   EXPECT_EQ(l.gettop(), 1);
   EXPECT_TRUE(l.istable());
@@ -37,7 +37,7 @@ TEST(touchtb, touchtb) {
 }
 
 TEST(setfield, setfield) {
-  lua_wrapper l;
+  luaw l;
   l.gseek_env().touchtb("g");
 
   EXPECT_EQ(l.gettop(), 2);
@@ -45,8 +45,7 @@ TEST(setfield, setfield) {
   l.setfield("a", 1);
   l.setfield("b", 2);
   l.setfield(1, "one");
-  l.setfield<lua_wrapper::function_tag>("fadd",
-                                        [](int a, int b) { return a + b; });
+  l.setfield<luaw::function_tag>("fadd", [](int a, int b) { return a + b; });
 
   EXPECT_EQ(l.gettop(), 2);
 
@@ -54,14 +53,14 @@ TEST(setfield, setfield) {
   EXPECT_EQ(l.get<int>({"g", "b"}), 2);
   EXPECT_EQ(l.gseek("g").seek(1).to<std::string>(), "one");
 
-  auto fadd = l.get<lua_wrapper::function<int(int, int)>>({"g", "fadd"});
+  auto fadd = l.get<luaw::function<int(int, int)>>({"g", "fadd"});
   EXPECT_EQ(fadd(1, 1), 2);
 
-  auto f = l.get<lua_wrapper::function<int(int, int)>>({"g", "f"});
+  auto f = l.get<luaw::function<int(int, int)>>({"g", "f"});
   EXPECT_EQ(f(1, 1), 0);
   EXPECT_TRUE(f.failed());
 
-  auto ff = l.get<lua_wrapper::function<int(int, int)>>({"g", "f", "ff"});
+  auto ff = l.get<luaw::function<int(int, int)>>({"g", "f", "ff"});
   EXPECT_EQ(ff(1, 1), 0);
   EXPECT_TRUE(ff.failed());
 
@@ -90,7 +89,7 @@ TEST(setfield, setfield) {
 }
 
 TEST(setfield, newtable_tag) {
-  lua_wrapper l;
+  luaw l;
   l.set({"g", "gg", "x"}, 1);
   l.gseek("g");
   l.setfield(1, 1);
@@ -103,7 +102,7 @@ TEST(setfield, newtable_tag) {
   EXPECT_EQ(l.to<std::vector<int>>(), (std::vector<int>{1, 2}));
 
   // set newtable
-  l.setfield("gg", lua_wrapper::newtable_tag{}, 1);
+  l.setfield("gg", luaw::newtable_tag{}, 1);
   EXPECT_TRUE(l.get<std::vector<int>>({"g", "gg"}).empty());
 
   EXPECT_EQ(l.gettop(), 2);
@@ -118,10 +117,10 @@ TEST(setfield, newtable_tag) {
   l.setfield(1, 1);
   l.setfield(2, 2);
 
-  l.set({"g", "gg"}, lua_wrapper::newtable_tag{});
+  l.set({"g", "gg"}, luaw::newtable_tag{});
   EXPECT_TRUE(l.get<std::vector<int>>({"g", "gg"}).empty());
 
   EXPECT_EQ(l.get<std::vector<int>>("g"), (std::vector<int>{1, 2}));
-  l.set("g", lua_wrapper::newtable_tag{});
+  l.set("g", luaw::newtable_tag{});
   EXPECT_TRUE(l.get<std::vector<int>>("g").empty());
 }
