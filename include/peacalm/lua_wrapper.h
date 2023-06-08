@@ -166,7 +166,7 @@ static inline int COUNTER0__index(lua_State* L) {
 // Like COUNTER but return 0 if key not exists.
 inline int COUNTER0(lua_State* L) {
   COUNTER(L);
-  if (luaL_newmetatable(L, "COUNTER0_mt") == 1) {
+  if (luaL_newmetatable(L, "COUNTER0_mt")) {
     lua_pushcfunction(L, COUNTER0__index);
     lua_setfield(L, -2, "__index");
   }
@@ -472,8 +472,12 @@ public:
     return ret;
   }
 
-  // Pushes onto the stack the value of the global name.
-  // Returns the type of that value.
+  /// Push the metatable in regristry with name `tname` onto stack, if not
+  /// exists, create one. Return whether created a new metatable.
+  bool touchmetatb(const char* tname) { return luaL_newmetatable(L_, tname); }
+
+  /// Pushes onto the stack the global value with given name.
+  /// Returns the type of that value.
   int getglobal(const char* name) { return lua_getglobal(L_, name); }
 
   int pcall(int n, int r, int f) { return lua_pcall(L_, n, r, f); }
