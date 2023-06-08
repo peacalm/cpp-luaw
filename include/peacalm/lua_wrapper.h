@@ -367,7 +367,7 @@ public:
     pop(3);
   }
 
-  /// Register a global function.
+  /// Register a global function. Equivalent to `set(fname, f)`.
   void registerf(const char* fname, lua_cfunction_t f) {
     lua_register(L_, fname, f);
   }
@@ -474,7 +474,7 @@ public:
 
   /// Push the metatable in regristry with name `tname` onto stack, if not
   /// exists, create one. Return whether created a new metatable.
-  bool touchmetatb(const char* tname) { return luaL_newmetatable(L_, tname); }
+  bool gtouchmetatb(const char* tname) { return luaL_newmetatable(L_, tname); }
 
   /// Pushes onto the stack the global value with given name.
   /// Returns the type of that value.
@@ -785,7 +785,7 @@ public:
   /// Push the metatable of the value at the given index onto the stack.
   /// If the value does not have a metatable, make a new metatable for it then
   /// push the metatable onto stack.
-  /// The way to make new metatable: If m.tname is empty, make a empty
+  /// The way to make new metatable: If m.tname is empty, make an empty
   /// metatable, else make a new metatable using `luaL_newmetatable(L_,
   /// m.tname)`.
   self_t& touchtb(metatable_tag m, int idx = -1) {
