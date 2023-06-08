@@ -51,8 +51,7 @@ static_assert(LUA_VERSION_NUM >= 504, "Lua version at least 5.4");
 
 namespace peacalm {
 
-namespace luafunc {
-// Useful Lua functions extended for Lua
+namespace luaexf {  // Useful extended functions for Lua
 
 // Short writing for if-elseif-else statement.
 // The number of arguments should be odd and at least 3.
@@ -174,7 +173,7 @@ inline int COUNTER0(lua_State* L) {
   return 1;
 }
 
-}  // namespace luafunc
+}  // namespace luaexf
 
 class lua_wrapper {
   using self_t = lua_wrapper;
@@ -374,10 +373,10 @@ public:
 
   /// Register extended functions.
   void register_exfunctions() {
-    registerf("IF", luafunc::IF);
-    registerf("SET", luafunc::SET);
-    registerf("COUNTER", luafunc::COUNTER);
-    registerf("COUNTER0", luafunc::COUNTER0);
+    registerf("IF", luaexf::IF);
+    registerf("SET", luaexf::SET);
+    registerf("COUNTER", luaexf::COUNTER);
+    registerf("COUNTER0", luaexf::COUNTER0);
   }
 
   /// Release the ownership of contained Lua State.
