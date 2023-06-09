@@ -1993,6 +1993,17 @@ struct luaw::pusher<std::nullptr_t> {
   }
 };
 
+// void*, as lightuserdata
+template <>
+struct luaw::pusher<void*> {
+  static const size_t size = 1;
+
+  static int push(luaw& l, void* v) {
+    lua_pushlightuserdata(l.L(), v);
+    return 1;
+  }
+};
+
 // std::pair
 template <typename T, typename U>
 struct luaw::pusher<std::pair<T, U>> {

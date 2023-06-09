@@ -341,3 +341,10 @@ TEST(push, newtable) {
   l.push(luaw::newtable_tag{});
   EXPECT_TRUE(l.to<std::vector<int>>().empty());
 }
+
+TEST(push, lightuserdata) {
+  luaw  l;
+  int   x = 0;
+  void *p = (void *)&x;
+  EXPECT_EQ(l.push(p), 1);
+}
