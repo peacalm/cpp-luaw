@@ -2697,8 +2697,23 @@ public:
     set_globale_metateble();
   }
 
-  // TODO: move ctor, move assign
+  // delete copy
+  custom_luaw(const custom_luaw&)            = delete;
+  custom_luaw& operator=(const custom_luaw&) = delete;
 
+  // support move
+  custom_luaw(custom_luaw&& l)
+      : base_t(std::move(l)), provider_(std::move(l.provider_)) {
+    set_globale_metateble();
+  }
+  custom_luaw& operator=(custom_luaw&& r) {
+    base_t::operator=(std::move(r));
+    provider_ = std::move(r.provider_);
+    set_globale_metateble();
+    return *this;
+  }
+
+  // provider getter and setter
   void              provider(const provider_t& p) { provider_ = p; }
   void              provider(provider_t&& p) { provider_ = std::move(p); }
   const provider_t& provider() const { return provider_; }

@@ -148,7 +148,3 @@ TEST(constructions, release_and_move_ctor_and_move_assign) {
     b.dostring("print('b is move assigned from a!')");
   }
 }
-
-// TODO:
-// TEST(custom_luaw, release_and_move_ctor_and_move_assign) {
-// }

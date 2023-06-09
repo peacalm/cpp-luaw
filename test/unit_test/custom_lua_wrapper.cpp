@@ -93,3 +93,69 @@ TEST(custom_luaw, eval_failed) {
     EXPECT_TRUE(failed);
   }
 }
+
+TEST(custom_luaw, move_ctor) {
+  {
+    custom_luaw<std::unique_ptr<dummy_provider>> l;
+    EXPECT_FALSE(l.provider());
+    l.provider(std::make_unique<dummy_provider>());
+    EXPECT_TRUE(l.provider());
+    EXPECT_EQ(l.eval_int("return a + b"), 2);
+
+    auto l2(std::move(l));
+    EXPECT_TRUE(l.L() == nullptr);
+    EXPECT_FALSE(l.provider());
+    EXPECT_TRUE(l2.provider());
+    EXPECT_EQ(l2.eval_int("return a + b"), 2);
+
+    custom_luaw<std::unique_ptr<dummy_provider>> l3;
+    l3 = std::move(l2);
+    EXPECT_TRUE(l2.L() == nullptr);
+    EXPECT_FALSE(l2.provider());
+    EXPECT_TRUE(l3.provider());
+    EXPECT_EQ(l3.eval_int("return a + b"), 2);
+  }
+  {
+    custom_luaw<std::shared_ptr<dummy_provider>> l;
+    EXPECT_FALSE(l.provider());
+    l.provider(std::make_shared<dummy_provider>());
+    EXPECT_TRUE(l.provider());
+    EXPECT_EQ(l.eval_int("return a + b"), 2);
+
+    auto l2(std::move(l));
+    EXPECT_TRUE(l.L() == nullptr);
+    EXPECT_FALSE(l.provider());
+    EXPECT_TRUE(l2.provider());
+    EXPECT_EQ(l2.eval_int("return a + b"), 2);
+
+    custom_luaw<std::shared_ptr<dummy_provider>> l3;
+    l3 = std::move(l2);
+    EXPECT_TRUE(l2.L() == nullptr);
+    EXPECT_FALSE(l2.provider());
+    EXPECT_TRUE(l3.provider());
+    EXPECT_EQ(l3.eval_int("return a + b"), 2);
+  }
+  {
+    custom_luaw<dummy_provider *> l;
+    EXPECT_FALSE(l.provider());
+    dummy_provider *p = new dummy_provider;
+    l.provider(p);
+    EXPECT_TRUE(l.provider());
+    EXPECT_EQ(l.eval_int("return a + b"), 2);
+
+    auto l2(std::move(l));
+    EXPECT_TRUE(l.L() == nullptr);
+    EXPECT_TRUE(l.provider());  // not clear if not smart pointer type
+    EXPECT_TRUE(l2.provider());
+    EXPECT_EQ(l2.eval_int("return a + b"), 2);
+
+    custom_luaw<dummy_provider *> l3;
+    l3 = std::move(l2);
+    EXPECT_TRUE(l2.L() == nullptr);
+    EXPECT_TRUE(l2.provider());  // not clear if not smart pointer type
+    EXPECT_TRUE(l3.provider());
+    EXPECT_EQ(l3.eval_int("return a + b"), 2);
+
+    delete p;
+  }
+}
