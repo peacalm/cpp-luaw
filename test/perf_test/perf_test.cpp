@@ -38,22 +38,19 @@ struct provider {
   bool cache = false;
   provider(bool c = false) : cache(c) {}
 
-  bool provide(lua_State* L, const char* vname) {
+  bool provide(luaw* l, const char* vname) {
     char s[2]  = {0, 0};
     bool found = false;
     for (int i = 0; i < 26; ++i) {
       s[0] = 'a' + i;
       if (strcmp(vname, s) == 0) {
-        lua_pushnumber(L, i + 1);
+        l->push(i + 1);
         found = true;
         break;
       }
     }
     if (!found) return false;
-    if (cache) {
-      lua_pushvalue(L, -1);
-      lua_setglobal(L, vname);
-    }
+    if (cache) l->copy_to_global(vname);
     return true;
   }
 

@@ -17,27 +17,30 @@
 struct dummy_provider {
   int def = 0;
   dummy_provider(int i = 1) : def(i) {}
-  bool provide(lua_State *L, const char *vname) {
-    lua_pushnumber(L, def);
+  bool provide(luaw *l, const char *vname) {
+    l->push(def);
     return true;
   }
 };
 
 struct bad_provider {
-  bool provide(lua_State *L, const char *vname) { return true; }
+  // error: pushes nothing
+  bool provide(luaw *l, const char *vname) { return true; }
 };
 
 struct bad_provider2 {
-  bool provide(lua_State *L, const char *vname) {
-    lua_pushnumber(L, 0);
-    lua_pushnumber(L, 1);
+  // error: pushes more than 1 value
+  bool provide(luaw *l, const char *vname) {
+    l->push(0);
+    l->push(1);
     return true;
   }
 };
 
 struct bad_provider3 {
-  bool provide(lua_State *L, const char *vname) {
-    lua_pushnumber(L, 0);
+  // error: returns false
+  bool provide(luaw *l, const char *vname) {
+    l->push(0);
     return false;
   }
 };

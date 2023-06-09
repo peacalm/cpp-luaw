@@ -21,15 +21,17 @@
 struct provider {
   provider() { puts("provider()"); }
   ~provider() { puts("~provider()"); }
-  bool provide(lua_State *L, const char *vname) {
+  bool provide(peacalm::luaw* l, const char* vname) {
     if (strcmp(vname, "a") == 0)
-      lua_pushinteger(L, 1);
+      l->push(1);
     else if (strcmp(vname, "b") == 0)
-      lua_pushinteger(L, 2);
+      l->push(2);
     else if (strcmp(vname, "c") == 0)
-      lua_pushinteger(L, 3);
+      l->push(3);
     else
       return false;
+    // If variables won't change, could set them to global:
+    // l->copy_to_global(vname);
     return true;
   }
 };

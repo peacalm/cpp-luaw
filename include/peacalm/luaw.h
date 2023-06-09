@@ -480,6 +480,9 @@ public:
   /// Returns the type of that value.
   int getglobal(const char* name) { return lua_getglobal(L_, name); }
 
+  /// Pops a value from the stack and sets it as the new value of global name.
+  void setglobal(const char* name) { lua_setglobal(L_, name); }
+
   int pcall(int n, int r, int f) { return lua_pcall(L_, n, r, f); }
 
   int         type(int i) const { return lua_type(L_, i); }
@@ -735,6 +738,15 @@ public:
   template <typename Hint, typename T>
   std::enable_if_t<!std::is_same<Hint, T>::value, int> push(T&& value) {
     return pusher<std::decay_t<Hint>>::push(*this, std::forward<T>(value));
+  }
+
+  /// Copy and push a value already in the stack.
+  void pushvalue(int idx = -1) { lua_pushvalue(L_, idx); }
+
+  /// Copy a value in stack to a global value with given name.
+  void copy_to_global(const char* name, int idx = -1) {
+    pushvalue(idx);
+    setglobal(name);
   }
 
   ///////////////////////// touch table ////////////////////////////////////////
@@ -2661,11 +2673,11 @@ struct is_ptr : __is_ptr<typename std::decay<T>::type> {};
  *
  * The underlying provider type should implement a member function:
  *
- * * `bool provide(lua_State* L, const char* vname);`
+ * * `bool provide(peacalm::luaw* l, const char* vname);`
  *
- * In this member function, it should push a value whose name is vname onto the
- * stack of L then return true. Otherwise return false if vname is illegal or
- * vname doesn't have a correct value.
+ * In this member function, it should push exactly one value whose name is vname
+ * onto the stack of L then return true. Otherwise return false if vname is
+ * illegal or vname doesn't have a correct value.
  *
  * @tparam VariableProviderPointer Should be a raw pointer type or
  * std::shared_ptr or std::unique_ptr.
@@ -2694,7 +2706,8 @@ public:
 
 private:
   bool provide(lua_State* L, const char* var_name) {
-    return provider() && provider()->provide(L, var_name);
+    luaw_fake l(L);
+    return provider() && provider()->provide(&l, var_name);
   }
 
   void set_globale_metateble() {
@@ -2957,7 +2970,7 @@ const std::unordered_set<std::string> luaw_crtp<Derived>::lua_key_words{
 
 // Usage examples of luaw_crtp
 // VariableProviderType should implement member function:
-//     void provide(const std::vector<std::string> &vars, luaw* l);
+// `void provide(const std::vector<std::string> &vars, peacalm::luaw* l);`
 
 // Usage template 1
 // Inherited raw variable provider type
