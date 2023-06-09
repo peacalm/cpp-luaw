@@ -175,6 +175,7 @@ inline int COUNTER0(lua_State* L) {
 
 }  // namespace luaef
 
+/// Basic Lua wrapper class.
 class luaw {
   using self_t = luaw;
 
@@ -190,7 +191,7 @@ public:
 
   // A callable wrapper for Lua functions. Like std::function and can convert to
   // std::function, but contains more status information.
-  // Used within get.
+  // Used within method get.
   template <typename T>
   class function;
 
@@ -215,7 +216,7 @@ public:
 
   // Indicate that convert a Lua value to nothing, the Lua value is useless.
   // Any Lua value can convert to this.
-  // Maybe used as a function formal parameter.
+  // Maybe used as a C++ function formal parameter.
   struct placeholder_tag {};
 
   // Initialization options for luaw
