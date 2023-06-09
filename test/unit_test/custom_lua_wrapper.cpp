@@ -42,8 +42,8 @@ struct bad_provider3 {
   }
 };
 
-TEST(custom_lua_wrapper, eval) {
-  custom_lua_wrapper<std::unique_ptr<dummy_provider>> l;
+TEST(custom_luaw, eval) {
+  custom_luaw<std::unique_ptr<dummy_provider>> l;
   l.provider(std::make_unique<dummy_provider>());
   EXPECT_EQ(l.eval_int("return a + b"), 2);
   l.provider(std::make_unique<dummy_provider>(2));
@@ -52,15 +52,15 @@ TEST(custom_lua_wrapper, eval) {
   EXPECT_EQ(l.eval_int("a = 4; return a + b"), 6);
 }
 
-TEST(custom_lua_wrapper, eval_failed) {
+TEST(custom_luaw, eval_failed) {
   {
-    custom_lua_wrapper<std::unique_ptr<dummy_provider>> l;
-    bool                                                failed;
+    custom_luaw<std::unique_ptr<dummy_provider>> l;
+    bool                                         failed;
     EXPECT_EQ(l.eval_int("return a + b", 0, false, &failed), 0);
     EXPECT_TRUE(failed);
   }
   {
-    custom_lua_wrapper<std::unique_ptr<dummy_provider>> l;
+    custom_luaw<std::unique_ptr<dummy_provider>> l;
     l.provider(std::make_unique<dummy_provider>());
     lua_pushlightuserdata(l.L(), (void *)0);
     lua_setfield(l.L(), LUA_REGISTRYINDEX, "this");
@@ -69,21 +69,21 @@ TEST(custom_lua_wrapper, eval_failed) {
     EXPECT_TRUE(failed);
   }
   {
-    custom_lua_wrapper<std::unique_ptr<bad_provider>> l;
+    custom_luaw<std::unique_ptr<bad_provider>> l;
     l.provider(std::make_unique<bad_provider>());
     bool failed;
     EXPECT_EQ(l.eval_int("return a + b", 0, false, &failed), 0);
     EXPECT_TRUE(failed);
   }
   {
-    custom_lua_wrapper<std::unique_ptr<bad_provider2>> l;
+    custom_luaw<std::unique_ptr<bad_provider2>> l;
     l.provider(std::make_unique<bad_provider2>());
     bool failed;
     EXPECT_EQ(l.eval_int("return a + b", 0, false, &failed), 0);
     EXPECT_TRUE(failed);
   }
   {
-    custom_lua_wrapper<std::unique_ptr<bad_provider3>> l;
+    custom_luaw<std::unique_ptr<bad_provider3>> l;
     l.provider(std::make_unique<bad_provider3>());
     bool failed;
     EXPECT_EQ(l.eval_int("return a + b", 0, false, &failed), 0);

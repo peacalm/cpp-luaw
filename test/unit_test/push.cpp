@@ -15,7 +15,7 @@
 #include "main.h"
 
 TEST(push, push) {
-  lua_wrapper l;
+  luaw l;
 
   // bool
   {
@@ -274,8 +274,8 @@ TEST(push, push) {
 }
 
 TEST(push, tuple) {
-  lua_wrapper l;
-  auto        t = std::make_tuple(1, 2.5, "str");
+  luaw l;
+  auto t = std::make_tuple(1, 2.5, "str");
   EXPECT_EQ(l.push(t), 3);
 
   EXPECT_EQ(l.gettop(), 3);
@@ -305,12 +305,12 @@ TEST(push, tuple) {
 void func(int) {}
 
 TEST(push, function) {
-  lua_wrapper l;
+  luaw l;
 
   EXPECT_EQ(l.push(func), 1);
   EXPECT_EQ(l.push(&func), 1);
-  EXPECT_EQ(l.push<lua_wrapper::function_tag>(func), 1);
-  EXPECT_EQ(l.push<lua_wrapper::function_tag>(&func), 1);
+  EXPECT_EQ(l.push<luaw::function_tag>(func), 1);
+  EXPECT_EQ(l.push<luaw::function_tag>(&func), 1);
   EXPECT_EQ(l.push<void(int)>(func), 1);
   EXPECT_EQ(l.push<void(int)>(&func), 1);
 
@@ -320,14 +320,14 @@ TEST(push, function) {
   std::function<void(int)> f = func;
   EXPECT_EQ(l.push(f), 1);
   EXPECT_EQ(l.push(std::move(f)), 1);
-  EXPECT_EQ(l.push<lua_wrapper::function_tag>(f), 1);
-  EXPECT_EQ(l.push<lua_wrapper::function_tag>(std::move(f)), 1);
+  EXPECT_EQ(l.push<luaw::function_tag>(f), 1);
+  EXPECT_EQ(l.push<luaw::function_tag>(std::move(f)), 1);
 
   auto l1 = [](int i) {};
   EXPECT_EQ(l.push(l1), 1);
   EXPECT_EQ(l.push([](int i) {}), 1);
   EXPECT_EQ(l.push<void(int)>([](int i) {}), 1);
-  EXPECT_EQ(l.push<lua_wrapper::function_tag>([](int i) {}), 1);
+  EXPECT_EQ(l.push<luaw::function_tag>([](int i) {}), 1);
 
   auto l2 = [](auto x) { return x; };
   EXPECT_EQ(l.push<int(int)>(l2), 1);
@@ -337,7 +337,7 @@ TEST(push, function) {
 }
 
 TEST(push, newtable) {
-  lua_wrapper l;
-  l.push(lua_wrapper::newtable_tag{});
+  luaw l;
+  l.push(luaw::newtable_tag{});
   EXPECT_TRUE(l.to<std::vector<int>>().empty());
 }

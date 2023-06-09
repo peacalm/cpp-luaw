@@ -20,7 +20,7 @@ static inline int always1__index(lua_State* L) {
 }
 
 TEST(metatable, seek_touchtb_setfield) {
-  lua_wrapper l;
+  luaw l;
 
   auto push_mt = [&]() {
     if (luaL_newmetatable(l.L(), "always1_mt") == 1) {
@@ -35,24 +35,24 @@ TEST(metatable, seek_touchtb_setfield) {
   l.dostring("a={} b={} c={}");
   l.gseek("a");
 
-  l.seek(lua_wrapper::metatable_tag{});
+  l.seek(luaw::metatable_tag{});
   EXPECT_TRUE(l.isnil());
   l.pop();
-  l.touchtb(lua_wrapper::metatable_tag{});
+  l.touchtb(luaw::metatable_tag{});
   EXPECT_TRUE(l.eval<bool>("return a.x == nil"));
 
   push_mt();
   l.gseek("b");
-  l.touchtb(lua_wrapper::metatable_tag{"always1_mt"});
+  l.touchtb(luaw::metatable_tag{"always1_mt"});
   EXPECT_TRUE(l.eval<bool>("return b.x == 1"));
 
   // setfiled using metatable_tag
 
   l.pop();
-  l.setfield(lua_wrapper::metatable_tag{}, nullptr);  // set nil to metatable
+  l.setfield(luaw::metatable_tag{}, nullptr);  // set nil to metatable
   EXPECT_TRUE(l.eval<bool>("return b.x == nil"));
 
-  l.touchtb(lua_wrapper::metatable_tag{});
+  l.touchtb(luaw::metatable_tag{});
   l.setfield("__index",
              std::unordered_map<std::string, int>{{"x", 1}, {"y", 2}});
   EXPECT_TRUE(l.eval<bool>("return b.x == 1"));
@@ -63,17 +63,17 @@ TEST(metatable, seek_touchtb_setfield) {
   l.gseek("c");
   std::unordered_map<std::string, std::unordered_map<std::string, int>> meta{
       {"__index", {{"x", 1}, {"y", 2}}}};
-  l.setfield(lua_wrapper::metatable_tag{}, meta);
+  l.setfield(luaw::metatable_tag{}, meta);
   EXPECT_TRUE(l.eval<bool>("return c.x == 1"));
   EXPECT_TRUE(l.eval<bool>("return c.y == 2"));
   EXPECT_TRUE(l.eval<bool>("return c.z == nil"));
 
   l.cleartop();
-  l.set("d", lua_wrapper::newtable_tag{});
+  l.set("d", luaw::newtable_tag{});
   EXPECT_TRUE(l.eval<bool>("return d.x == nil"));
   l.gseek("d");
-  l.setfield(lua_wrapper::metatable_tag{},
-             std::map<std::string, lua_wrapper::lua_cfunction_t>{
+  l.setfield(luaw::metatable_tag{},
+             std::map<std::string, luaw::lua_cfunction_t>{
                  {"__index", always1__index}});
   EXPECT_TRUE(l.eval<bool>("return d.x == 1"));
   EXPECT_TRUE(l.eval<bool>("return d.y == 1"));
@@ -81,17 +81,17 @@ TEST(metatable, seek_touchtb_setfield) {
   // ltouchtb using metatable_tag
 
   l.dostring("g = {gg = {} }");
-  l.ltouchtb("g", "gg", lua_wrapper::metatable_tag{"always1_mt"});
+  l.ltouchtb("g", "gg", luaw::metatable_tag{"always1_mt"});
   EXPECT_TRUE(l.eval<bool>("return g.gg.xxx == 1"));
 }
 
 TEST(metatable, lset) {
-  lua_wrapper l;
+  luaw l;
 
   {
     l.lset("a", "b", "c", 2);
     EXPECT_EQ(l.get_int({"a", "b", "c"}), 2);
-    l.lset("a", "b", lua_wrapper::metatable_tag{}, "__index", always1__index);
+    l.lset("a", "b", luaw::metatable_tag{}, "__index", always1__index);
     EXPECT_EQ(l.get_int({"a", "b", "c"}), 2);
     EXPECT_EQ(l.get_int({"a", "b", "d"}), 1);
   }
@@ -99,7 +99,7 @@ TEST(metatable, lset) {
   {
     l.lset("a",
            "aa",
-           lua_wrapper::metatable_tag{},
+           luaw::metatable_tag{},
            "__index",
            [](const std::map<std::string, std::string>& t,
               const std::string& k) { return k.size(); });
@@ -110,9 +110,8 @@ TEST(metatable, lset) {
 
   {
     int cnt = 0;
-    l.lset<int()>("b", "bb", lua_wrapper::metatable_tag{}, "__index", [&]() {
-      return ++cnt;
-    });
+    l.lset<int()>(
+        "b", "bb", luaw::metatable_tag{}, "__index", [&]() { return ++cnt; });
 
     EXPECT_EQ(l.get_int({"b", "bb", "x"}), 1);
     EXPECT_EQ(l.get_int({"b", "bb", "y"}), 2);
@@ -120,10 +119,10 @@ TEST(metatable, lset) {
   }
 
   {
-    l.lset<lua_wrapper::function_tag>(
+    l.lset<luaw::function_tag>(
         "b",
         "bb",
-        lua_wrapper::metatable_tag{},
+        luaw::metatable_tag{},
         "__index",
         [&](const std::map<std::string, std::string>& t, const std::string& k) {
           return k.size() * 2;
@@ -135,12 +134,12 @@ TEST(metatable, lset) {
 
   {
     // placeholder_tag
-    l.lset<lua_wrapper::function_tag>(
+    l.lset<luaw::function_tag>(
         "c",
         "cc",
-        lua_wrapper::metatable_tag{},
+        luaw::metatable_tag{},
         "__index",
-        [&](lua_wrapper::placeholder_tag, const std::string& k) {
+        [&](luaw::placeholder_tag, const std::string& k) {
           return k.size() * 2;
         });
 
@@ -150,13 +149,12 @@ TEST(metatable, lset) {
 
   {
     // placeholder_tag
-    l.lset<lua_wrapper::function_tag>(
+    l.lset<luaw::function_tag>(
         "d",
         "dd",
-        lua_wrapper::metatable_tag{},
+        luaw::metatable_tag{},
         "__index",
-        [&](const std::unordered_map<std::string, lua_wrapper::placeholder_tag>&
-                               m,
+        [&](const std::unordered_map<std::string, luaw::placeholder_tag>& m,
             const std::string& k) { return m.size() * 100 + k.size(); });
 
     EXPECT_EQ(l.get_int({"d", "dd", "x"}), 1);
@@ -171,11 +169,10 @@ TEST(metatable, lset) {
 
     EXPECT_EQ((l.get<std::unordered_map<std::string, int>>({"d", "dd"})),
               (std::unordered_map<std::string, int>{{"v1", 1}, {"v2", 2}}));
-    EXPECT_EQ(
-        (l.get<std::unordered_map<std::string, lua_wrapper::placeholder_tag>>(
-              {"d", "dd"})
-             .size()),
-        2);
+    EXPECT_EQ((l.get<std::unordered_map<std::string, luaw::placeholder_tag>>(
+                    {"d", "dd"})
+                   .size()),
+              2);
 
     EXPECT_EQ(l.get_int({"d", "dd", "y"}), 201);
     EXPECT_EQ(l.get_int({"d", "dd", "yy"}), 202);
@@ -184,42 +181,42 @@ TEST(metatable, lset) {
   {
     // different function formal parameter
 
-    l.lset<lua_wrapper::function_tag>(
+    l.lset<luaw::function_tag>(
         "d",
         "dd",
-        lua_wrapper::metatable_tag{},
+        luaw::metatable_tag{},
         "__index",
-        [&](std::unordered_map<std::string, lua_wrapper::placeholder_tag> m,
+        [&](std::unordered_map<std::string, luaw::placeholder_tag> m,
             std::string k) { return m.size() * 100 + k.size(); });
     EXPECT_EQ(l.get_int({"d", "dd", "y"}), 201);
     EXPECT_EQ(l.get_int({"d", "dd", "yy"}), 202);
 
-    l.lset<lua_wrapper::function_tag>(
+    l.lset<luaw::function_tag>(
         "d",
         "dd",
-        lua_wrapper::metatable_tag{},
+        luaw::metatable_tag{},
         "__index",
-        [&](const std::map<std::string, lua_wrapper::placeholder_tag>& m,
+        [&](const std::map<std::string, luaw::placeholder_tag>& m,
             const std::string& k) { return m.size() * 100 + k.size(); });
     EXPECT_EQ(l.get_int({"d", "dd", "y"}), 201);
     EXPECT_EQ(l.get_int({"d", "dd", "yy"}), 202);
 
-    l.lset<lua_wrapper::function_tag>(
+    l.lset<luaw::function_tag>(
         "d",
         "dd",
-        lua_wrapper::metatable_tag{},
+        luaw::metatable_tag{},
         "__index",
-        [&](std::unordered_map<std::string, lua_wrapper::placeholder_tag>&& m,
+        [&](std::unordered_map<std::string, luaw::placeholder_tag>&& m,
             std::string&& k) { return m.size() * 100 + k.size(); });
     EXPECT_EQ(l.get_int({"d", "dd", "y"}), 201);
     EXPECT_EQ(l.get_int({"d", "dd", "yy"}), 202);
 
-    l.lset<lua_wrapper::function_tag>(
+    l.lset<luaw::function_tag>(
         "d",
         "dd",
-        lua_wrapper::metatable_tag{},
+        luaw::metatable_tag{},
         "__index",
-        [&](const std::map<std::string, lua_wrapper::placeholder_tag>&& m,
+        [&](const std::map<std::string, luaw::placeholder_tag>&& m,
             const std::string&& k) { return m.size() * 100 + k.size(); });
     EXPECT_EQ(l.get_int({"d", "dd", "y"}), 201);
     EXPECT_EQ(l.get_int({"d", "dd", "yy"}), 202);
@@ -230,7 +227,7 @@ TEST(metatable, lset) {
     l.dostring("t={a=1,b=2}");
     EXPECT_EQ((l.get<std::map<std::string, int>>("t").size()), 2);
     bool failed, exists;
-    EXPECT_EQ((l.get<std::map<std::string, lua_wrapper::placeholder_tag>>(
+    EXPECT_EQ((l.get<std::map<std::string, luaw::placeholder_tag>>(
                     "t", false, &failed, &exists)
                    .size()),
               2);

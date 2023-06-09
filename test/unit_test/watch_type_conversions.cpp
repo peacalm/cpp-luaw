@@ -17,7 +17,7 @@
 #if 0
 
 TEST(watch_type_conversion, watch_lua_rule_and_my_rule) {
-  lua_wrapper l;
+  luaw l;
 
 #define full_watch(info)          \
   watch(info,                     \

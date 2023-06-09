@@ -15,7 +15,7 @@
 #include "main.h"
 
 TEST(set_and_get, simple_types) {
-  lua_wrapper l;
+  luaw l;
 
   l.set_boolean("b", true);
   l.set_integer("i", 5);
@@ -151,8 +151,8 @@ TEST(set_and_get, simple_types) {
 }
 
 TEST(set_and_get, template_get) {
-  lua_wrapper l;
-  bool        failed, exists;
+  luaw l;
+  bool failed, exists;
   l.dostring(
       "a = 1; b = {1,2}; c={'x', 'y', 'z'}; d={a=1,b=2}; e={ {a=1,b=2}, "
       "{a=2,b=1} }");
@@ -296,7 +296,7 @@ TEST(set_and_get, template_get) {
 }
 
 TEST(set_and_get, recursive_get) {
-  lua_wrapper l;
+  luaw l;
   l.dostring("a={b={c=3, d=2.0},b2=2, b3={1,2,1}} b=true s='s' d=2.5");
 
   EXPECT_EQ(l.get<int>({"a", "b", "c"}), 3);
@@ -436,7 +436,7 @@ TEST(set_and_get, recursive_get) {
 }
 
 TEST(set_and_get, template_set) {
-  lua_wrapper l;
+  luaw l;
   l.set("a", 1);
   EXPECT_EQ(l.get<int>("a"), 1);
 
@@ -523,7 +523,7 @@ struct Callable {
 };
 
 TEST(set_and_get, set_function) {
-  lua_wrapper l;
+  luaw l;
 
   // C function
   {
@@ -535,10 +535,10 @@ TEST(set_and_get, set_function) {
     l.set("f2", &echo);
     EXPECT_EQ(l.eval_int("return f2(2)"), 2);
 
-    l.set<lua_wrapper::function_tag>("f3", echo);
+    l.set<luaw::function_tag>("f3", echo);
     EXPECT_EQ(l.eval_int("return f3(3)"), 3);
 
-    l.set<lua_wrapper::function_tag>("f4", &echo);
+    l.set<luaw::function_tag>("f4", &echo);
     EXPECT_EQ(l.eval_int("return f4(4)"), 4);
 
     EXPECT_EQ(l.gettop(), 0);
@@ -550,7 +550,7 @@ TEST(set_and_get, set_function) {
     l.set("fadd", fadd);
     EXPECT_EQ(l.eval_int("return fadd(1, 1)"), 2);
 
-    l.set<lua_wrapper::function_tag>("fadd2", fadd);
+    l.set<luaw::function_tag>("fadd2", fadd);
     EXPECT_EQ(l.eval_int("return fadd2(1, 2)"), 3);
 
     EXPECT_EQ(l.gettop(), 0);
@@ -563,13 +563,13 @@ TEST(set_and_get, set_function) {
     l.set("lmul", lmul);
     EXPECT_EQ(l.eval_int("return lmul(1, 1)"), 1);
 
-    l.set<lua_wrapper::function_tag>("lmul2", lmul);
+    l.set<luaw::function_tag>("lmul2", lmul);
     EXPECT_EQ(l.eval_int("return lmul2(2, 3)"), 6);
 
     // not captureless
     int  w      = 10;
     auto ltimes = [&](int x) { return x * w; };
-    l.set<lua_wrapper::function_tag>("ltimes", ltimes);
+    l.set<luaw::function_tag>("ltimes", ltimes);
     EXPECT_EQ(l.eval_int("return ltimes(5)"), 50);
 
     // generic lambda
@@ -588,7 +588,7 @@ TEST(set_and_get, set_function) {
     l.set("lmerge", push);
     EXPECT_EQ(l.eval<std::vector<int>>("return lmerge({1,2,3}, {11,22})"),
               (std::vector<int>{1, 2, 3, 11, 22}));
-    l.set<lua_wrapper::function_tag>("lmerge", push);
+    l.set<luaw::function_tag>("lmerge", push);
     EXPECT_EQ(l.eval<std::vector<int>>("return lmerge({1,2,3}, {11,22})"),
               (std::vector<int>{1, 2, 3, 11, 22}));
 
@@ -597,13 +597,13 @@ TEST(set_and_get, set_function) {
 
   // custom object as function
   {
-    l.set<lua_wrapper::function_tag>("c", Callable{});
+    l.set<luaw::function_tag>("c", Callable{});
     EXPECT_EQ(l.eval_int("return c(1, 5)"), 105);
     EXPECT_EQ(l.eval_int("return c(false, true)"), 1);
     EXPECT_EQ(l.eval_int("return c('a', 'b')"), 0);
 
     Callable c(50, 3);
-    l.set<lua_wrapper::function_tag>("c2", c);
+    l.set<luaw::function_tag>("c2", c);
     EXPECT_EQ(l.eval_int("return c2(2, 1)"), 103);
 
     EXPECT_EQ(l.gettop(), 0);
@@ -621,13 +621,13 @@ TEST(set_and_get, set_function) {
 }
 
 TEST(set_and_get, function_return_tuple) {
-  lua_wrapper l;
+  luaw l;
   l.set("f", [](double n) { return std::make_tuple(true, n * n, n * n * n); });
   l.dostring("print(f(3))");
   EXPECT_EQ(l.gettop(), 0);
 
   int n = 2;
-  l.set<lua_wrapper::function_tag>(
+  l.set<luaw::function_tag>(
       "f", [&]() { return std::make_tuple(true, n * n, n * n * n); });
   l.dostring("print(f())");
   EXPECT_EQ(l.gettop(), 0);
@@ -638,7 +638,7 @@ TEST(set_and_get, function_return_tuple) {
 }
 
 TEST(set_and_get, recursive_set) {
-  lua_wrapper l;
+  luaw l;
   {
     std::vector<std::string> path{"g", "x", "y"};
     l.set(path, 1);
@@ -662,7 +662,7 @@ TEST(set_and_get, recursive_set) {
 }
 
 TEST(set_and_get, lget) {
-  lua_wrapper l;
+  luaw l;
   l.dostring("g={gg={{a=1,b=2},{a=10,b=20,c='s'}}}");
   EXPECT_EQ(l.gettop(), 0);
   EXPECT_EQ(l.lget<int>({}, "g", "gg", 1, "a"), 1);
@@ -689,10 +689,9 @@ TEST(set_and_get, lget) {
   EXPECT_TRUE(failed);
   EXPECT_TRUE(exists);
 
-  l.lset("a", "b", lua_wrapper::metatable_tag{}, "__name", "metatable");
-  EXPECT_EQ(
-      l.lget<std::string>({}, "a", "b", lua_wrapper::metatable_tag{}, "__name"),
-      "metatable");
+  l.lset("a", "b", luaw::metatable_tag{}, "__name", "metatable");
+  EXPECT_EQ(l.lget<std::string>({}, "a", "b", luaw::metatable_tag{}, "__name"),
+            "metatable");
 
   // l.lget<int>({}); // compile error
 }
@@ -709,13 +708,13 @@ int argnum(lua_State *L) {
 }
 
 TEST(set_and_get, registerf) {
-  lua_wrapper l;
+  luaw l;
   l.registerf("f", ret1);
   EXPECT_EQ(l.eval_int("return f()"), 1);
 }
 
 TEST(set_and_get, set_lua_cfunction) {
-  lua_wrapper l;
+  luaw l;
   l.set("f", ret1);
   EXPECT_EQ(l.eval_int("return f()"), 1);
 

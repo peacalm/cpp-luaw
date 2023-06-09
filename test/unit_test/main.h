@@ -26,6 +26,6 @@
 #define watch_with_std_cout(...)
 #endif
 
-#include "peacalm/lua_wrapper.h"
+#include "peacalm/luaw.h"
 
 using namespace peacalm;

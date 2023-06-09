@@ -15,7 +15,7 @@
 #include "main.h"
 
 TEST(seek, seek) {
-  lua_wrapper l;
+  luaw l;
   l.gseek("g");
   EXPECT_EQ(l.gettop(), 1);
   EXPECT_TRUE(l.isnil(-1));

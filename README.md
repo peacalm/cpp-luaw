@@ -1,6 +1,6 @@
-# Lua Wrapper for C++
+# Luaw : Lua Wrapper for C++
 
-[![Build](https://github.com/peacalm/cpp-lua_wrapper/actions/workflows/ci.yml/badge.svg)](https://github.com/peacalm/cpp-lua_wrapper/actions)
+[![Build](https://github.com/peacalm/cpp-luaw/actions/workflows/ci.yml/badge.svg)](https://github.com/peacalm/cpp-luaw/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 This library is a simple wrapper of Lua which makes interaction between Lua and 
@@ -99,7 +99,7 @@ const char*        get_c_str (@NAME_TYPE@ name, const char*                def =
 
 Example:
 ```C++
-peacalm::lua_wrapper l;
+peacalm::luaw l;
 l.dostring("a = 1 b = true c = 2.5 d = 'good'");
 int a = l.get_int("a");            // 1
 bool b = l.get_bool("b");          // true
@@ -144,7 +144,7 @@ template <typename T> T get(@NAME_TYPE@ name, bool disable_log = false, bool* fa
 
 Example:
 ```C++
-peacalm::lua_wrapper l;
+peacalm::luaw l;
 l.dostring("a = 1 b = true v={1,2}, v2={1,2.5}, v3={1,nil,3}, m={p1={1,2},p2={3,4}}");
 auto a = l.get<int>("a");          // 1
 auto as = l.get<std::string>("a"); // "1"
@@ -195,7 +195,7 @@ template <typename T> T get(@PATH_TYPE@ path, bool disable_log = false, bool* fa
 
 Example:
 ```C++
-peacalm::lua_wrapper l;
+peacalm::luaw l;
 l.dostring("a = 1 p={x=10,y=20} m={p1={1,2},p2={3,4}}");
 l.get_int({"a"});      // 1
 l.get_int({"ax"}, -1); // -1 (return user given default value)
@@ -219,27 +219,27 @@ The seek functions push the global value or field of a table onto stack:
 ```C++
 // Push the global environment onto the stack.
 // Equivalent to gseek("_G") if "_G" is not modified.
-lua_wrapper& gseek_env();
+luaw& gseek_env();
 
 // Global Seek: Get a global value by name and push it onto the stack, or 
 // push a nil if the name does not exist.
-lua_wrapper& gseek(const char* name);
-lua_wrapper& gseek(const std::string& name);
+luaw& gseek(const char* name);
+luaw& gseek(const std::string& name);
 
 // Push t[name] onto the stack where t is the value at the given index `idx`,
 // or push a nil if the operation fails.
-lua_wrapper& seek(const char* name, int idx = -1);
-lua_wrapper& seek(const std::string& name, int idx = -1);
+luaw& seek(const char* name, int idx = -1);
+luaw& seek(const std::string& name, int idx = -1);
 
 // Push t[n] onto the stack where t is the value at the given index `idx`, or
 // push a nil if the operation fails.
 // Note that index of list in Lua starts from 1.
-lua_wrapper& seek(int n, int idx = -1);
+luaw& seek(int n, int idx = -1);
 
 // Long Seek: Call gseek() for the first parameter, then call seek() for the 
 // rest parameters.
 template <typename T, typename... Ts>
-lua_wrapper& lseek(const T& t, const Ts&... ts);
+luaw& lseek(const T& t, const Ts&... ts);
 ```
 
 #### 3.2 The Type Conversion Functions
@@ -271,7 +271,7 @@ std::string        to_string (int idx = -1, const std::string&        def = "", 
 ##### 3.2.2 To Complex Type
 Conversion to complex C++ type.
 Note that there are no default value parameters in this function:
-* @sa [1.2 Get Global Variables with Complex Type](https://github.com/peacalm/cpp-lua_wrapper#12-get-global-variables-with-complex-type)
+* @sa [1.2 Get Global Variables with Complex Type](https://github.com/peacalm/cpp-luaw#12-get-global-variables-with-complex-type)
 ```C++
 // To complex type, without default value parameter
 template <typename T> T to(int idx = -1, bool disable_log = false, bool* failed = nullptr, bool* exists = nullptr);
@@ -279,7 +279,7 @@ template <typename T> T to(int idx = -1, bool disable_log = false, bool* failed 
 
 Example:
 ```C++
-peacalm::lua_wrapper l;
+peacalm::luaw l;
 l.dostring("g={a=1, gg={a=11,ggg={a='s'}}, list={1,2,3}, m={{a=1},{a=2}}}");
 
 int a = l.gseek("g").seek("a").to_int(); // g.a : 1
@@ -344,7 +344,7 @@ int dofile(const std::string& fname);
 Example:
 ```C++
 int main() {
-  peacalm::lua_wrapper l;
+  peacalm::luaw l;
   if (l.dofile("conf.lua") != LUA_OK) {
     l.log_error_in_stack();
     return 1;
@@ -392,7 +392,7 @@ template <typename T> T eval(@EXPR_TYPE@ expr, bool disable_log = false, bool* f
 
 Example:
 ```C++
-peacalm::lua_wrapper l;
+peacalm::luaw l;
 l.set_integer("a", 10);
 l.set_integer("b", 5);
 l.set_integer("c", 2);
@@ -405,10 +405,10 @@ auto si = l.eval<std::set<int>>("return {a, b, c}"); // {2,5,10}
 
 ```C++
 template <typename VariableProviderPointer>
-class custom_lua_wrapper;
+class custom_luaw;
 ```
 
-The class `custom_lua_wrapper` is derived from `lua_wrapper`, it can contain
+The class `custom_luaw` is derived from `luaw`, it can contain
 a user defined variable provider.
 When a global variable used in some expression does not 
 exist in Lua, then it will seek the variable from the provider.
@@ -443,7 +443,7 @@ struct provider {
 };
 using provider_type = std::unique_ptr<provider>;
 int main() {
-  peacalm::custom_lua_wrapper<provider_type> l;
+  peacalm::custom_luaw<provider_type> l;
   l.provider(std::make_unique<provider>()); // Install provider
   double ret = l.eval_double("return a*10 + b^c");
   std::cout << ret << std::endl;  // 18
@@ -462,8 +462,8 @@ sudo make install
 
 Build then install:
 ```bash
-git clone https://github.com/peacalm/cpp-lua_wrapper.git
-cd cpp-lua_wrapper
+git clone https://github.com/peacalm/cpp-luaw.git
+cd cpp-luaw
 mkdir build
 cd build
 cmake .. 
@@ -473,7 +473,7 @@ sudo make install
 Test is developed using GoogleTest, if GoogleTest is installed, then can run 
 test like:
 ```bash
-cd cpp-lua_wrapper/build
+cd cpp-luaw/build
 cmake .. -DBUILD_TEST=TRUE
 make
 ctest

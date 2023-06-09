@@ -30,7 +30,7 @@
 #define watch_with_std_cout(...)
 #endif
 
-#include "peacalm/lua_wrapper.h"
+#include "peacalm/luaw.h"
 
 using namespace peacalm;
 
@@ -57,7 +57,7 @@ struct provider {
     return true;
   }
 
-  void provide(const std::vector<std::string>& vars, lua_wrapper* l) {
+  void provide(const std::vector<std::string>& vars, luaw* l) {
     for (const auto& v : vars) {
       for (int i = 0; i < 26; ++i) {
         if (v == std::string{char('a' + i)}) {
@@ -73,32 +73,32 @@ const char* expr =
     "return a + b - c * d + e / f * g ^ h - x * p - q * n / s + v - m + c ^ k";
 const int rep = 100000;
 
-TEST(custom_lua_wrapper, re_init_eval) {
+TEST(custom_luaw, re_init_eval) {
   double ret;
   for (int i = 0; i < rep; ++i) {
-    custom_lua_wrapper<std::unique_ptr<provider>> l;
+    custom_luaw<std::unique_ptr<provider>> l;
     l.provider(std::make_unique<provider>(false));
     ret = l.eval_double(expr);
   }
   watch(ret);
 }
 
-TEST(custom_lua_wrapper, re_init_no_exfunc_eval) {
+TEST(custom_luaw, re_init_no_exfunc_eval) {
   double ret;
   for (int i = 0; i < rep; ++i) {
-    custom_lua_wrapper<std::unique_ptr<provider>> l(
-        lua_wrapper::opt{}.register_exfunc(false));
+    custom_luaw<std::unique_ptr<provider>> l(
+        luaw::opt{}.register_exfunc(false));
     l.provider(std::make_unique<provider>(false));
     ret = l.eval_double(expr);
   }
   watch(ret);
 }
 
-TEST(custom_lua_wrapper, re_init_nolib_eval) {
+TEST(custom_luaw, re_init_nolib_eval) {
   double ret;
   for (int i = 0; i < rep; ++i) {
-    custom_lua_wrapper<std::unique_ptr<provider>> l(
-        lua_wrapper::opt{}.ignore_libs().register_exfunc(false));
+    custom_luaw<std::unique_ptr<provider>> l(
+        luaw::opt{}.ignore_libs().register_exfunc(false));
     l.provider(std::make_unique<provider>(false));
     for (int i = 0; i < 26; ++i) {
       l.set_number(std::string{char('a' + i)}, i + 1);
@@ -108,34 +108,32 @@ TEST(custom_lua_wrapper, re_init_nolib_eval) {
   watch(ret);
 }
 
-TEST(custom_lua_wrapper, re_init_preload_eval) {
+TEST(custom_luaw, re_init_preload_eval) {
   double ret;
   for (int i = 0; i < rep; ++i) {
-    custom_lua_wrapper<std::unique_ptr<provider>> l(
-        lua_wrapper::opt{}.preload_libs());
+    custom_luaw<std::unique_ptr<provider>> l(luaw::opt{}.preload_libs());
     l.provider(std::make_unique<provider>(false));
     ret = l.eval_double(expr);
   }
   watch(ret);
 }
 
-TEST(custom_lua_wrapper, re_init_custom_load_eval) {
+TEST(custom_luaw, re_init_custom_load_eval) {
   double ret;
   for (int i = 0; i < rep; ++i) {
-    custom_lua_wrapper<std::unique_ptr<provider>> l(
-        lua_wrapper::opt{}.ignore_libs().custom_load(
-            {{LUA_GNAME, luaopen_base}}));
+    custom_luaw<std::unique_ptr<provider>> l(
+        luaw::opt{}.ignore_libs().custom_load({{LUA_GNAME, luaopen_base}}));
     l.provider(std::make_unique<provider>(false));
     ret = l.eval_double(expr);
   }
   watch(ret);
 }
 
-TEST(custom_lua_wrapper, re_init_raw_provider_ptr_eval) {
+TEST(custom_luaw, re_init_raw_provider_ptr_eval) {
   double    ret;
   provider* p = new provider;
   for (int i = 0; i < rep; ++i) {
-    custom_lua_wrapper<provider*> l;
+    custom_luaw<provider*> l;
     l.provider(p);
     ret = l.eval_double(expr);
   }
@@ -143,24 +141,24 @@ TEST(custom_lua_wrapper, re_init_raw_provider_ptr_eval) {
   delete p;
 }
 
-TEST(custom_lua_wrapper, eval_no_cache) {
-  custom_lua_wrapper<std::unique_ptr<provider>> l;
+TEST(custom_luaw, eval_no_cache) {
+  custom_luaw<std::unique_ptr<provider>> l;
   l.provider(std::make_unique<provider>(false));
   double ret;
   for (int i = 0; i < rep; ++i) { ret = l.eval_double(expr); }
   watch(ret);
 }
 
-TEST(custom_lua_wrapper, eval_cache) {
-  custom_lua_wrapper<std::unique_ptr<provider>> l;
+TEST(custom_luaw, eval_cache) {
+  custom_luaw<std::unique_ptr<provider>> l;
   l.provider(std::make_unique<provider>(true));
   double ret;
   for (int i = 0; i < rep; ++i) { ret = l.eval_double(expr); }
   watch(ret);
 }
 
-TEST(lua_wrapper_has_provider, eval_cache) {
-  lua_wrapper_has_provider<std::unique_ptr<provider>> l;
+TEST(luaw_has_provider, eval_cache) {
+  luaw_has_provider<std::unique_ptr<provider>> l;
   l.provider(std::make_unique<provider>(true));
   double ret;
   for (int i = 0; i < rep; ++i) { ret = l.auto_eval_double(expr); }
@@ -170,7 +168,7 @@ TEST(lua_wrapper_has_provider, eval_cache) {
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
 
-  std::cout << ">>> Running lua_wrapper perf test." << std::endl;
+  std::cout << ">>> Running Luaw perf test." << std::endl;
 
   int ret = RUN_ALL_TESTS();
 

@@ -12,7 +12,7 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-#include <peacalm/lua_wrapper.h>
+#include <peacalm/luaw.h>
 
 #include <iostream>
 #include <map>
@@ -33,7 +33,7 @@
 #endif
 
 int main() {
-  peacalm::lua_wrapper l;
+  peacalm::luaw l;
 
   int ret = l.dofile("conf.lua");
   if (ret != LUA_OK) {

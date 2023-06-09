@@ -175,8 +175,8 @@ inline int COUNTER0(lua_State* L) {
 
 }  // namespace luaexf
 
-class lua_wrapper {
-  using self_t = lua_wrapper;
+class luaw {
+  using self_t = luaw;
 
   template <typename T, typename = void>
   struct pusher;
@@ -218,7 +218,7 @@ public:
   // Maybe used as a function formal parameter.
   struct placeholder_tag {};
 
-  // Initialization options for lua_wrapper
+  // Initialization options for luaw
   class opt {
     enum libopt : char { ignore = 0, load = 1, preload = 2 };
 
@@ -277,15 +277,15 @@ public:
     lua_State*            L_      = nullptr;
     std::vector<luaL_Reg> libs_load_;
     std::vector<luaL_Reg> libs_preload_;
-    friend class lua_wrapper;
+    friend class luaw;
   };
 
-  lua_wrapper(const opt& o = opt{}) { init(o); }
-  lua_wrapper(lua_State* L) : L_(L) {}
-  lua_wrapper(const lua_wrapper&) = delete;
-  lua_wrapper(lua_wrapper&& l) : L_(l.release()) {}
-  lua_wrapper& operator=(const lua_wrapper&) = delete;
-  lua_wrapper& operator=(lua_wrapper&& r) {
+  luaw(const opt& o = opt{}) { init(o); }
+  luaw(lua_State* L) : L_(L) {}
+  luaw(const luaw&) = delete;
+  luaw(luaw&& l) : L_(l.release()) {}
+  luaw& operator=(const luaw&) = delete;
+  luaw& operator=(luaw&& r) {
     if (this == &r) {
       // do nothing
     } else if (L_ == r.L()) {
@@ -296,7 +296,7 @@ public:
     }
     return *this;
   }
-  ~lua_wrapper() { close(); }
+  ~luaw() { close(); }
 
   void init(const opt& o = opt{}) {
     if (o.L_) {
@@ -1518,15 +1518,14 @@ public:
 
 // This wrapper won't close state when destruct, and it could help set stack
 // size to final_topsz_ if final_topsz_ >= 0 when destruct.
-class lua_wrapper_fake : public lua_wrapper {
-  using base_t     = lua_wrapper;
+class luaw_fake : public luaw {
+  using base_t     = luaw;
   int final_topsz_ = -1;
 
 public:
-  lua_wrapper_fake(lua_State* L, int sz = -1)
-      : lua_wrapper(L), final_topsz_(sz) {}
+  luaw_fake(lua_State* L, int sz = -1) : luaw(L), final_topsz_(sz) {}
 
-  ~lua_wrapper_fake() {
+  ~luaw_fake() {
     if (final_topsz_ >= 0) base_t::settop(final_topsz_);
     base_t::release();
   }
@@ -1537,7 +1536,7 @@ public:
 
 ////////////////////////////////////////////////////////////////////////////////
 
-namespace lua_wrapper_detail {
+namespace luaw_detail {
 
 // void_t is defined in std since c++17
 template <typename T>
@@ -1681,31 +1680,30 @@ struct __is_stdtuple<std::tuple<Ts...>> : std::true_type {};
 template <typename T>
 using is_stdtuple = __is_stdtuple<std::decay_t<T>>;
 
-}  // namespace lua_wrapper_detail
+}  // namespace luaw_detail
 
 //////////////////// push impl ////////////////////////////////////////////////
 
 // primary pusher. guess whether it may be a lambda, push as function if true,
 // otherwise push as an user defined custom object.
 template <typename T, typename>
-struct lua_wrapper::pusher {
+struct luaw::pusher {
   static const size_t size = 1;
 
   template <typename Y>
-  static int push(lua_wrapper& l, Y&& v) {
-    using Tag =
-        std::conditional_t<lua_wrapper_detail::decay_maybe_lambda<Y>::value,
-                           function_tag,
-                           custom_tag>;
-    return lua_wrapper::pusher<Tag>::push(l, std::forward<Y>(v));
+  static int push(luaw& l, Y&& v) {
+    using Tag = std::conditional_t<luaw_detail::decay_maybe_lambda<Y>::value,
+                                   function_tag,
+                                   custom_tag>;
+    return luaw::pusher<Tag>::push(l, std::forward<Y>(v));
   }
 };
 
 // newtable_tag: push a new empty table
 template <>
-struct lua_wrapper::pusher<lua_wrapper::newtable_tag> {
+struct luaw::pusher<luaw::newtable_tag> {
   static const size_t size = 1;
-  static int          push(lua_wrapper& l, newtable_tag) {
+  static int          push(luaw& l, newtable_tag) {
              lua_newtable(l.L());
              return 1;
   }
@@ -1713,54 +1711,54 @@ struct lua_wrapper::pusher<lua_wrapper::newtable_tag> {
 
 // custom_tag: push as an user defined custom type
 template <>
-struct lua_wrapper::pusher<lua_wrapper::custom_tag> {
+struct luaw::pusher<luaw::custom_tag> {
   static const size_t size = 1;
 
   // TODO:
   // template <typename Y>
-  // static int push(lua_wrapper& l, Y&& v) {}
+  // static int push(luaw& l, Y&& v) {}
 };
 
 // function_tag: push as a function
 template <>
-struct lua_wrapper::pusher<lua_wrapper::function_tag> {
+struct luaw::pusher<luaw::function_tag> {
   static const size_t size = 1;
 
   template <typename F>
-  static int push(lua_wrapper& l, F&& f) {
+  static int push(luaw& l, F&& f) {
     using DecayF = std::decay_t<F>;
-    static_assert(lua_wrapper_detail::is_callable<DecayF>::value,
+    static_assert(luaw_detail::is_callable<DecayF>::value,
                   "Should push a callable value");
 
     // C function pointer type
     using CFunctionPtr =
-        std::conditional_t<lua_wrapper_detail::is_callable_class<DecayF>::value,
-                           lua_wrapper_detail::detect_c_callee_t<DecayF>,
+        std::conditional_t<luaw_detail::is_callable_class<DecayF>::value,
+                           luaw_detail::detect_c_callee_t<DecayF>,
                            DecayF>;
-    static_assert(lua_wrapper_detail::is_cfunction_pointer<CFunctionPtr>::value,
+    static_assert(luaw_detail::is_cfunction_pointer<CFunctionPtr>::value,
                   "Should get a C function pointer type");
-    return lua_wrapper::pusher<CFunctionPtr>::push(l, std::forward<F>(f));
+    return luaw::pusher<CFunctionPtr>::push(l, std::forward<F>(f));
   }
 };
 
 // std::function
 template <typename Return, typename... Args>
-struct lua_wrapper::pusher<std::function<Return(Args...)>> {
+struct luaw::pusher<std::function<Return(Args...)>> {
   static const size_t size = 1;
 
   template <typename F>
-  static int push(lua_wrapper& l, F&& f) {
+  static int push(luaw& l, F&& f) {
     using CFunctionPtr = Return (*)(Args...);
-    return lua_wrapper::pusher<CFunctionPtr>::push(l, std::forward<F>(f));
+    return luaw::pusher<CFunctionPtr>::push(l, std::forward<F>(f));
   }
 };
 
 // Lua C functions
 template <>
-struct lua_wrapper::pusher<lua_wrapper::lua_cfunction_t> {
+struct luaw::pusher<luaw::lua_cfunction_t> {
   static const size_t size = 1;
 
-  static int push(lua_wrapper& l, lua_cfunction_t f) {
+  static int push(luaw& l, lua_cfunction_t f) {
     lua_pushcfunction(l.L(), f);
     return 1;
   }
@@ -1768,14 +1766,14 @@ struct lua_wrapper::pusher<lua_wrapper::lua_cfunction_t> {
 
 // C funtions except lua_cfunction_t, also implementation for callable objects
 template <typename Return, typename... Args>
-struct lua_wrapper::pusher<Return (*)(Args...)> {
+struct luaw::pusher<Return (*)(Args...)> {
   static const size_t size = 1;
 
   // function object with non-trivially destructor
   template <typename F>
   static std::
       enable_if_t<!std::is_trivially_destructible<std::decay_t<F>>::value, int>
-      push(lua_wrapper& l, F&& f) {
+      push(luaw& l, F&& f) {
     using SolidF = std::remove_reference_t<F>;
 
     auto __call = [](lua_State* L) -> int {
@@ -1783,8 +1781,8 @@ struct lua_wrapper::pusher<Return (*)(Args...)> {
       PEACALM_LUAW_ASSERT(lua_isuserdata(L, 1));
       auto callee = static_cast<SolidF*>(lua_touserdata(L, 1));
       PEACALM_LUAW_ASSERT(callee);
-      lua_wrapper l(L);
-      int         ret_num = callback(l, *callee, 2, std::is_void<Return>{});
+      luaw l(L);
+      int  ret_num = callback(l, *callee, 2, std::is_void<Return>{});
       l.release();
       return ret_num;
     };
@@ -1820,15 +1818,15 @@ struct lua_wrapper::pusher<Return (*)(Args...)> {
   template <typename F>
   static std::
       enable_if_t<std::is_trivially_destructible<std::decay_t<F>>::value, int>
-      push(lua_wrapper& l, F&& f) {
+      push(luaw& l, F&& f) {
     using SolidF = std::remove_reference_t<F>;
 
     auto closure = [](lua_State* L) -> int {
       auto callee =
           static_cast<SolidF*>(lua_touserdata(L, lua_upvalueindex(1)));
       PEACALM_LUAW_ASSERT(callee);
-      lua_wrapper l(L);
-      int         ret_num = callback(l, *callee, 1, std::is_void<Return>{});
+      luaw l(L);
+      int  ret_num = callback(l, *callee, 1, std::is_void<Return>{});
       l.release();
       return ret_num;
     };
@@ -1842,13 +1840,13 @@ struct lua_wrapper::pusher<Return (*)(Args...)> {
   }
 
   // function pointer
-  static int push(lua_wrapper& l, Return (*f)(Args...)) {
+  static int push(luaw& l, Return (*f)(Args...)) {
     auto closure = [](lua_State* L) -> int {
       auto callee = reinterpret_cast<Return (*)(Args...)>(
           lua_touserdata(L, lua_upvalueindex(1)));
       PEACALM_LUAW_ASSERT(callee);
-      lua_wrapper l(L);
-      int         ret_num = callback(l, callee, 1, std::is_void<Return>{});
+      luaw l(L);
+      int  ret_num = callback(l, callee, 1, std::is_void<Return>{});
       l.release();
       return ret_num;
     };
@@ -1876,27 +1874,21 @@ private:
 
   // Return is void
   template <typename Callee>
-  static int callback(lua_wrapper& l,
-                      Callee&&     c,
-                      int          start_idx,
-                      std::true_type) {
+  static int callback(luaw& l, Callee&& c, int start_idx, std::true_type) {
     do_call(l, std::forward<Callee>(c), start_idx, 1, wrap<Args>{}...);
     return 0;
   }
 
   // Return is not void
   template <typename Callee>
-  static int callback(lua_wrapper& l,
-                      Callee&&     c,
-                      int          start_idx,
-                      std::false_type) {
+  static int callback(luaw& l, Callee&& c, int start_idx, std::false_type) {
     auto ret =
         do_call(l, std::forward<Callee>(c), start_idx, 1, wrap<Args>{}...);
     return l.push(ret);
   }
 
   template <typename Callee, typename FirstArg, typename... RestArgs>
-  static Return do_call(lua_wrapper&   l,
+  static Return do_call(luaw&          l,
                         Callee&&       c,
                         int            i,
                         int            counter,
@@ -1914,17 +1906,17 @@ private:
   }
 
   template <typename Callee>
-  static Return do_call(lua_wrapper& l, Callee&& c, int i, int counter) {
+  static Return do_call(luaw& l, Callee&& c, int i, int counter) {
     return c();
   }
 };
 
 // bool
 template <>
-struct lua_wrapper::pusher<bool> {
+struct luaw::pusher<bool> {
   static const size_t size = 1;
 
-  static int push(lua_wrapper& l, bool v) {
+  static int push(luaw& l, bool v) {
     lua_pushboolean(l.L(), v);
     return 1;
   }
@@ -1932,11 +1924,11 @@ struct lua_wrapper::pusher<bool> {
 
 // integer types
 template <typename IntType>
-struct lua_wrapper::pusher<IntType,
-                           std::enable_if_t<std::is_integral<IntType>::value>> {
+struct luaw::pusher<IntType,
+                    std::enable_if_t<std::is_integral<IntType>::value>> {
   static const size_t size = 1;
 
-  static int push(lua_wrapper& l, IntType v) {
+  static int push(luaw& l, IntType v) {
     lua_pushinteger(l.L(), v);
     return 1;
   }
@@ -1944,12 +1936,12 @@ struct lua_wrapper::pusher<IntType,
 
 // float number types
 template <typename FloatType>
-struct lua_wrapper::pusher<
+struct luaw::pusher<
     FloatType,
     std::enable_if_t<std::is_floating_point<FloatType>::value>> {
   static const size_t size = 1;
 
-  static int push(lua_wrapper& l, FloatType v) {
+  static int push(luaw& l, FloatType v) {
     lua_pushnumber(l.L(), v);
     return 1;
   }
@@ -1957,10 +1949,10 @@ struct lua_wrapper::pusher<
 
 // std::string
 template <>
-struct lua_wrapper::pusher<std::string> {
+struct luaw::pusher<std::string> {
   static const size_t size = 1;
 
-  static int push(lua_wrapper& l, const std::string& v) {
+  static int push(luaw& l, const std::string& v) {
     lua_pushstring(l.L(), v.c_str());
     return 1;
   }
@@ -1968,10 +1960,10 @@ struct lua_wrapper::pusher<std::string> {
 
 // const char*
 template <>
-struct lua_wrapper::pusher<const char*> {
+struct luaw::pusher<const char*> {
   static const size_t size = 1;
 
-  static int push(lua_wrapper& l, const char* v) {
+  static int push(luaw& l, const char* v) {
     lua_pushstring(l.L(), v);
     return 1;
   }
@@ -1979,10 +1971,10 @@ struct lua_wrapper::pusher<const char*> {
 
 // nullptr
 template <>
-struct lua_wrapper::pusher<std::nullptr_t> {
+struct luaw::pusher<std::nullptr_t> {
   static const size_t size = 1;
 
-  static int push(lua_wrapper& l, std::nullptr_t) {
+  static int push(luaw& l, std::nullptr_t) {
     lua_pushnil(l.L());
     return 1;
   }
@@ -1990,10 +1982,10 @@ struct lua_wrapper::pusher<std::nullptr_t> {
 
 // std::pair
 template <typename T, typename U>
-struct lua_wrapper::pusher<std::pair<T, U>> {
+struct luaw::pusher<std::pair<T, U>> {
   static const size_t size = 1;
 
-  static int push(lua_wrapper& l, const std::pair<T, U>& p) {
+  static int push(luaw& l, const std::pair<T, U>& p) {
     lua_newtable(l.L());
     l.push(p.first);
     lua_rawseti(l.L(), -2, 1);
@@ -2003,11 +1995,11 @@ struct lua_wrapper::pusher<std::pair<T, U>> {
   }
 };
 
-namespace lua_wrapper_detail {
+namespace luaw_detail {
 
 // Implementation for all list like containers
 template <typename Container>
-static int __push_list(lua_wrapper& l, const Container& v) {
+static int __push_list(luaw& l, const Container& v) {
   lua_newtable(l.L());
   int cnt = 0;
   for (auto b = v.begin(), e = v.end(); b != e; ++b) {
@@ -2020,7 +2012,7 @@ static int __push_list(lua_wrapper& l, const Container& v) {
 // Implementation for all set like containers
 // Make a Key-True table in Lua to represent set
 template <typename Container>
-static int __push_set(lua_wrapper& l, const Container& v) {
+static int __push_set(luaw& l, const Container& v) {
   lua_newtable(l.L());
   for (auto b = v.begin(), e = v.end(); b != e; ++b) {
     l.push(*b);
@@ -2032,7 +2024,7 @@ static int __push_set(lua_wrapper& l, const Container& v) {
 
 // Implementation for all map like containers
 template <typename Container>
-static int __push_map(lua_wrapper& l, const Container& v) {
+static int __push_map(luaw& l, const Container& v) {
   lua_newtable(l.L());
   for (auto b = v.begin(), e = v.end(); b != e; ++b) {
     l.push(b->first);
@@ -2042,97 +2034,97 @@ static int __push_map(lua_wrapper& l, const Container& v) {
   return 1;
 }
 
-}  // namespace lua_wrapper_detail
+}  // namespace luaw_detail
 
 // std::array
 template <typename T, std::size_t N>
-struct lua_wrapper::pusher<std::array<T, N>> {
+struct luaw::pusher<std::array<T, N>> {
   static const size_t size = 1;
 
-  static int push(lua_wrapper& l, const std::array<T, N>& v) {
-    return lua_wrapper_detail::__push_list(l, v);
+  static int push(luaw& l, const std::array<T, N>& v) {
+    return luaw_detail::__push_list(l, v);
   }
 };
 
 // std::vector
 template <typename T, typename Allocator>
-struct lua_wrapper::pusher<std::vector<T, Allocator>> {
+struct luaw::pusher<std::vector<T, Allocator>> {
   static const size_t size = 1;
 
-  static int push(lua_wrapper& l, const std::vector<T, Allocator>& v) {
-    return lua_wrapper_detail::__push_list(l, v);
+  static int push(luaw& l, const std::vector<T, Allocator>& v) {
+    return luaw_detail::__push_list(l, v);
   }
 };
 
 // std::deque
 template <typename T, typename Allocator>
-struct lua_wrapper::pusher<std::deque<T, Allocator>> {
+struct luaw::pusher<std::deque<T, Allocator>> {
   static const size_t size = 1;
 
-  static int push(lua_wrapper& l, const std::deque<T, Allocator>& v) {
-    return lua_wrapper_detail::__push_list(l, v);
+  static int push(luaw& l, const std::deque<T, Allocator>& v) {
+    return luaw_detail::__push_list(l, v);
   }
 };
 
 // std::forward_list
 template <typename T, typename Allocator>
-struct lua_wrapper::pusher<std::forward_list<T, Allocator>> {
+struct luaw::pusher<std::forward_list<T, Allocator>> {
   static const size_t size = 1;
 
-  static int push(lua_wrapper& l, const std::forward_list<T, Allocator>& v) {
-    return lua_wrapper_detail::__push_list(l, v);
+  static int push(luaw& l, const std::forward_list<T, Allocator>& v) {
+    return luaw_detail::__push_list(l, v);
   }
 };
 
 // std::list
 template <typename T, typename Allocator>
-struct lua_wrapper::pusher<std::list<T, Allocator>> {
+struct luaw::pusher<std::list<T, Allocator>> {
   static const size_t size = 1;
 
-  static int push(lua_wrapper& l, const std::list<T, Allocator>& v) {
-    return lua_wrapper_detail::__push_list(l, v);
+  static int push(luaw& l, const std::list<T, Allocator>& v) {
+    return luaw_detail::__push_list(l, v);
   }
 };
 
 // std::set
 template <typename Key, typename Compare, typename Allocator>
-struct lua_wrapper::pusher<std::set<Key, Compare, Allocator>> {
+struct luaw::pusher<std::set<Key, Compare, Allocator>> {
   static const size_t size = 1;
 
-  static int push(lua_wrapper& l, const std::set<Key, Compare, Allocator>& v) {
-    return lua_wrapper_detail::__push_set(l, v);
+  static int push(luaw& l, const std::set<Key, Compare, Allocator>& v) {
+    return luaw_detail::__push_set(l, v);
   }
 };
 
 // std::unordered_set
 template <typename Key, typename Hash, typename KeyEqual, typename Allocator>
-struct lua_wrapper::pusher<std::unordered_set<Key, Hash, KeyEqual, Allocator>> {
+struct luaw::pusher<std::unordered_set<Key, Hash, KeyEqual, Allocator>> {
   static const size_t size = 1;
 
-  static int push(lua_wrapper&                                              l,
+  static int push(luaw&                                                     l,
                   const std::unordered_set<Key, Hash, KeyEqual, Allocator>& v) {
-    return lua_wrapper_detail::__push_set(l, v);
+    return luaw_detail::__push_set(l, v);
   }
 };
 
 // std::map
 template <typename Key, typename Compare, typename Allocator>
-struct lua_wrapper::pusher<std::map<Key, Compare, Allocator>> {
+struct luaw::pusher<std::map<Key, Compare, Allocator>> {
   static const size_t size = 1;
 
-  static int push(lua_wrapper& l, const std::map<Key, Compare, Allocator>& v) {
-    return lua_wrapper_detail::__push_map(l, v);
+  static int push(luaw& l, const std::map<Key, Compare, Allocator>& v) {
+    return luaw_detail::__push_map(l, v);
   }
 };
 
 // std::unordered_map
 template <typename Key, typename Hash, typename KeyEqual, typename Allocator>
-struct lua_wrapper::pusher<std::unordered_map<Key, Hash, KeyEqual, Allocator>> {
+struct luaw::pusher<std::unordered_map<Key, Hash, KeyEqual, Allocator>> {
   static const size_t size = 1;
 
-  static int push(lua_wrapper&                                              l,
+  static int push(luaw&                                                     l,
                   const std::unordered_map<Key, Hash, KeyEqual, Allocator>& v) {
-    return lua_wrapper_detail::__push_map(l, v);
+    return luaw_detail::__push_map(l, v);
   }
 };
 
@@ -2140,10 +2132,10 @@ struct lua_wrapper::pusher<std::unordered_map<Key, Hash, KeyEqual, Allocator>> {
 // Push elements separately in order. One element takes one place in stack.
 // Any element of the tuple should not be a tuple anymore.
 template <typename... Ts>
-struct lua_wrapper::pusher<std::tuple<Ts...>> {
+struct luaw::pusher<std::tuple<Ts...>> {
   static const size_t size = std::tuple_size<std::tuple<Ts...>>::value;
 
-  static int push(lua_wrapper& l, const std::tuple<Ts...>& v) {
+  static int push(luaw& l, const std::tuple<Ts...>& v) {
     const size_t N = size;
     int ret_num    = __push<0, N>(l, v, std::integral_constant<bool, 0 < N>{});
     PEACALM_LUAW_ASSERT(ret_num == N);
@@ -2152,16 +2144,15 @@ struct lua_wrapper::pusher<std::tuple<Ts...>> {
 
 private:
   template <size_t I, size_t N, typename T>
-  static int __push(lua_wrapper& l, const T& t, std::true_type) {
-    static_assert(
-        !lua_wrapper_detail::is_stdtuple<std::tuple_element_t<I, T>>::value,
-        "Recursive tuple is not allowed");
+  static int __push(luaw& l, const T& t, std::true_type) {
+    static_assert(!luaw_detail::is_stdtuple<std::tuple_element_t<I, T>>::value,
+                  "Recursive tuple is not allowed");
     int x = l.push(std::get<I>(t));
     int y = __push<I + 1, N>(l, t, std::integral_constant<bool, I + 1 < N>{});
     return x + y;
   }
   template <size_t I, size_t N, typename T>
-  static int __push(lua_wrapper& l, const T& t, std::false_type) {
+  static int __push(luaw& l, const T& t, std::false_type) {
     return 0;
   }
 };
@@ -2169,26 +2160,26 @@ private:
 //////////////////// convertor impl ////////////////////////////////////////////
 
 template <typename T, typename>
-struct lua_wrapper::convertor {
+struct luaw::convertor {
   // empty
 };
 
 // to placeholder_tag
 template <>
-struct lua_wrapper::convertor<lua_wrapper::placeholder_tag> {
-  static lua_wrapper::placeholder_tag to(lua_wrapper& l,
-                                         int          idx         = -1,
-                                         bool         disable_log = false,
-                                         bool*        failed      = nullptr,
-                                         bool*        exists      = nullptr) {
+struct luaw::convertor<luaw::placeholder_tag> {
+  static luaw::placeholder_tag to(luaw& l,
+                                  int   idx         = -1,
+                                  bool  disable_log = false,
+                                  bool* failed      = nullptr,
+                                  bool* exists      = nullptr) {
     if (failed) *failed = false;
     if (exists) *exists = !l.isnoneornil(idx);
-    return lua_wrapper::placeholder_tag{};
+    return luaw::placeholder_tag{};
   }
 };
 
 template <typename Return, typename... Args>
-class lua_wrapper::function<Return(Args...)> {
+class luaw::function<Return(Args...)> {
   // component
   lua_State*           L_ = nullptr;
   std::shared_ptr<int> ref_sptr_;
@@ -2221,7 +2212,7 @@ public:
         *failed = true;
       } else {
         // check more whether it's callable
-        lua_wrapper_fake l(L);
+        luaw_fake l(L);
         *failed = !l.callable(idx);
       }
     }
@@ -2248,8 +2239,8 @@ public:
       return Return();
     }
 
-    lua_wrapper_fake l(L_, lua_gettop(L_));
-    int              sz = l.gettop();
+    luaw_fake l(L_, lua_gettop(L_));
+    int       sz = l.gettop();
     lua_rawgeti(L_, LUA_REGISTRYINDEX, *ref_sptr_);
     if (l.isnoneornil()) {
       function_failed_ = true;
@@ -2261,7 +2252,7 @@ public:
     }
 
     int narg      = push_args(l, args...);
-    int nret      = lua_wrapper::pusher<std::decay_t<Return>>::size;
+    int nret      = luaw::pusher<std::decay_t<Return>>::size;
     int pcall_ret = l.pcall(narg, nret, 0);
 
     PEACALM_LUAW_ASSERT(l.gettop() >= sz);
@@ -2278,64 +2269,63 @@ public:
   }
 
 private:
-  static int push_args(lua_wrapper& l) { return 0; }
+  static int push_args(luaw& l) { return 0; }
 
   template <typename FirstArg, typename... RestArgs>
-  static int push_args(lua_wrapper& l, FirstArg&& farg, RestArgs&&... rargs) {
+  static int push_args(luaw& l, FirstArg&& farg, RestArgs&&... rargs) {
     int x = l.push(std::forward<FirstArg>(farg));
     int y = push_args(l, std::forward<RestArgs>(rargs)...);
     return x + y;
   }
 };
 
-// to lua_wrapper::function
+// to luaw::function
 template <typename Return, typename... Args>
-struct lua_wrapper::convertor<lua_wrapper::function<Return(Args...)>> {
-  using result_t = lua_wrapper::function<Return(Args...)>;
-  static result_t to(lua_wrapper& l,
-                     int          idx         = -1,
-                     bool         disable_log = false,
-                     bool*        failed      = nullptr,
-                     bool*        exists      = nullptr) {
+struct luaw::convertor<luaw::function<Return(Args...)>> {
+  using result_t = luaw::function<Return(Args...)>;
+  static result_t to(luaw& l,
+                     int   idx         = -1,
+                     bool  disable_log = false,
+                     bool* failed      = nullptr,
+                     bool* exists      = nullptr) {
     return result_t(l.L(), idx, disable_log, failed, exists);
   }
 };
 
 // to std::function
 template <typename Return, typename... Args>
-struct lua_wrapper::convertor<std::function<Return(Args...)>> {
+struct luaw::convertor<std::function<Return(Args...)>> {
   using result_t = std::function<Return(Args...)>;
-  static result_t to(lua_wrapper& l,
-                     int          idx         = -1,
-                     bool         disable_log = false,
-                     bool*        failed      = nullptr,
-                     bool*        exists      = nullptr) {
-    return result_t(
-        lua_wrapper::convertor<lua_wrapper::function<Return(Args...)>>::to(
-            l, idx, disable_log, failed, exists));
+  static result_t to(luaw& l,
+                     int   idx         = -1,
+                     bool  disable_log = false,
+                     bool* failed      = nullptr,
+                     bool* exists      = nullptr) {
+    return result_t(luaw::convertor<luaw::function<Return(Args...)>>::to(
+        l, idx, disable_log, failed, exists));
   }
 };
 
 // to bool
 template <>
-struct lua_wrapper::convertor<bool> {
-  static bool to(lua_wrapper& l,
-                 int          idx         = -1,
-                 bool         disable_log = false,
-                 bool*        failed      = nullptr,
-                 bool*        exists      = nullptr) {
+struct luaw::convertor<bool> {
+  static bool to(luaw& l,
+                 int   idx         = -1,
+                 bool  disable_log = false,
+                 bool* failed      = nullptr,
+                 bool* exists      = nullptr) {
     return l.to_bool(idx, bool{}, disable_log, failed, exists);
   }
 };
 
 // to integers
 template <typename T>
-struct lua_wrapper::convertor<T, std::enable_if_t<std::is_integral<T>::value>> {
-  static T to(lua_wrapper& l,
-              int          idx         = -1,
-              bool         disable_log = false,
-              bool*        failed      = nullptr,
-              bool*        exists      = nullptr) {
+struct luaw::convertor<T, std::enable_if_t<std::is_integral<T>::value>> {
+  static T to(luaw& l,
+              int   idx         = -1,
+              bool  disable_log = false,
+              bool* failed      = nullptr,
+              bool* exists      = nullptr) {
     auto ret = l.to_llong(idx, 0, disable_log, failed, exists);
     return static_cast<T>(ret);
   }
@@ -2343,32 +2333,32 @@ struct lua_wrapper::convertor<T, std::enable_if_t<std::is_integral<T>::value>> {
 
 // to float numbers
 template <>
-struct lua_wrapper::convertor<float> {
-  static float to(lua_wrapper& l,
-                  int          idx         = -1,
-                  bool         disable_log = false,
-                  bool*        failed      = nullptr,
-                  bool*        exists      = nullptr) {
+struct luaw::convertor<float> {
+  static float to(luaw& l,
+                  int   idx         = -1,
+                  bool  disable_log = false,
+                  bool* failed      = nullptr,
+                  bool* exists      = nullptr) {
     return l.to_float(idx, float{}, disable_log, failed, exists);
   }
 };
 template <>
-struct lua_wrapper::convertor<double> {
-  static double to(lua_wrapper& l,
-                   int          idx         = -1,
-                   bool         disable_log = false,
-                   bool*        failed      = nullptr,
-                   bool*        exists      = nullptr) {
+struct luaw::convertor<double> {
+  static double to(luaw& l,
+                   int   idx         = -1,
+                   bool  disable_log = false,
+                   bool* failed      = nullptr,
+                   bool* exists      = nullptr) {
     return l.to_double(idx, double{}, disable_log, failed, exists);
   }
 };
 template <>
-struct lua_wrapper::convertor<long double> {
-  static long double to(lua_wrapper& l,
-                        int          idx         = -1,
-                        bool         disable_log = false,
-                        bool*        failed      = nullptr,
-                        bool*        exists      = nullptr) {
+struct luaw::convertor<long double> {
+  static long double to(luaw& l,
+                        int   idx         = -1,
+                        bool  disable_log = false,
+                        bool* failed      = nullptr,
+                        bool* exists      = nullptr) {
     return l.to_ldouble(idx, (long double){}, disable_log, failed, exists);
   }
 };
@@ -2377,12 +2367,12 @@ struct lua_wrapper::convertor<long double> {
 // To avoid implicitly modifying number to string in stack, which may cause
 // panic while doing lua_next, we copy the value first before call lua_tostring.
 template <>
-struct lua_wrapper::convertor<std::string> {
-  static std::string to(lua_wrapper& l,
-                        int          idx         = -1,
-                        bool         disable_log = false,
-                        bool*        failed      = nullptr,
-                        bool*        exists      = nullptr) {
+struct luaw::convertor<std::string> {
+  static std::string to(luaw& l,
+                        int   idx         = -1,
+                        bool  disable_log = false,
+                        bool* failed      = nullptr,
+                        bool* exists      = nullptr) {
     if (exists) *exists = !l.isnoneornil(idx);
     if (l.isstring(idx)) {
       lua_pushvalue(l.L(), idx);  // make a copy, so, it's safe
@@ -2403,13 +2393,13 @@ struct lua_wrapper::convertor<std::string> {
 
 // to std::pair by (t[1],t[2]) where t should be a table
 template <typename T, typename U>
-struct lua_wrapper::convertor<std::pair<T, U>> {
+struct luaw::convertor<std::pair<T, U>> {
   using result_t = std::pair<T, U>;
-  static result_t to(lua_wrapper& l,
-                     int          idx         = -1,
-                     bool         disable_log = false,
-                     bool*        failed      = nullptr,
-                     bool*        exists      = nullptr) {
+  static result_t to(luaw& l,
+                     int   idx         = -1,
+                     bool  disable_log = false,
+                     bool* failed      = nullptr,
+                     bool* exists      = nullptr) {
     if (exists) *exists = !l.isnoneornil(idx);
     if (l.isnoneornil(idx)) {
       if (failed) *failed = false;
@@ -2423,10 +2413,10 @@ struct lua_wrapper::convertor<std::pair<T, U>> {
     // Allow elements do not exist, {} means a pair with initial values
     bool ffailed, sfailed;
     lua_geti(l.L(), idx, 1);
-    auto first = lua_wrapper::convertor<T>::to(l, -1, disable_log, &ffailed);
+    auto first = luaw::convertor<T>::to(l, -1, disable_log, &ffailed);
     l.pop();
     lua_geti(l.L(), idx, 2);
-    auto second = lua_wrapper::convertor<U>::to(l, -1, disable_log, &sfailed);
+    auto second = luaw::convertor<U>::to(l, -1, disable_log, &sfailed);
     l.pop();
     if (failed) *failed = (ffailed || sfailed);
     return result_t{first, second};
@@ -2436,13 +2426,13 @@ struct lua_wrapper::convertor<std::pair<T, U>> {
 // to std::vector
 // NOTICE: Discard nil in list! e.g. {1,2,nil,4} -> vector<int>{1,2,4}
 template <typename T, typename Allocator>
-struct lua_wrapper::convertor<std::vector<T, Allocator>> {
+struct luaw::convertor<std::vector<T, Allocator>> {
   using result_t = std::vector<T, Allocator>;
-  static result_t to(lua_wrapper& l,
-                     int          idx         = -1,
-                     bool         disable_log = false,
-                     bool*        failed      = nullptr,
-                     bool*        exists      = nullptr) {
+  static result_t to(luaw& l,
+                     int   idx         = -1,
+                     bool  disable_log = false,
+                     bool* failed      = nullptr,
+                     bool* exists      = nullptr) {
     if (exists) *exists = !l.isnoneornil(idx);
     if (l.isnoneornil(idx)) {
       if (failed) *failed = false;
@@ -2460,8 +2450,8 @@ struct lua_wrapper::convertor<std::vector<T, Allocator>> {
     for (int i = 1; i <= sz; ++i) {
       lua_geti(l.L(), idx, i);
       bool subfailed, subexists;
-      auto subret = lua_wrapper::convertor<T>::to(
-          l, -1, disable_log, &subfailed, &subexists);
+      auto subret =
+          luaw::convertor<T>::to(l, -1, disable_log, &subfailed, &subexists);
       // Only add elements exist and conversion succeeded
       if (!subfailed && subexists) ret.push_back(std::move(subret));
       if (subfailed && failed) *failed = true;
@@ -2473,13 +2463,13 @@ struct lua_wrapper::convertor<std::vector<T, Allocator>> {
 
 // to std::set
 template <typename Key, typename Compare, typename Allocator>
-struct lua_wrapper::convertor<std::set<Key, Compare, Allocator>> {
+struct luaw::convertor<std::set<Key, Compare, Allocator>> {
   using result_t = std::set<Key, Compare, Allocator>;
-  static result_t to(lua_wrapper& l,
-                     int          idx         = -1,
-                     bool         disable_log = false,
-                     bool*        failed      = nullptr,
-                     bool*        exists      = nullptr) {
+  static result_t to(luaw& l,
+                     int   idx         = -1,
+                     bool  disable_log = false,
+                     bool* failed      = nullptr,
+                     bool* exists      = nullptr) {
     auto v =
         l.to<std::vector<Key, Allocator>>(idx, disable_log, failed, exists);
     return result_t(v.begin(), v.end());
@@ -2488,29 +2478,28 @@ struct lua_wrapper::convertor<std::set<Key, Compare, Allocator>> {
 
 // to std::unordered_set
 template <typename Key, typename Hash, typename KeyEqual, typename Allocator>
-struct lua_wrapper::convertor<
-    std::unordered_set<Key, Hash, KeyEqual, Allocator>> {
+struct luaw::convertor<std::unordered_set<Key, Hash, KeyEqual, Allocator>> {
   using result_t = std::unordered_set<Key, Hash, KeyEqual, Allocator>;
-  static result_t to(lua_wrapper& l,
-                     int          idx         = -1,
-                     bool         disable_log = false,
-                     bool*        failed      = nullptr,
-                     bool*        exists      = nullptr) {
+  static result_t to(luaw& l,
+                     int   idx         = -1,
+                     bool  disable_log = false,
+                     bool* failed      = nullptr,
+                     bool* exists      = nullptr) {
     auto v =
         l.to<std::vector<Key, Allocator>>(idx, disable_log, failed, exists);
     return result_t(v.begin(), v.end());
   }
 };
 
-namespace lua_wrapper_detail {
+namespace luaw_detail {
 
 template <typename T>
-T __tom(lua_wrapper& l,
-        int          idx         = -1,
-        bool         disable_log = false,
-        bool*        failed      = nullptr,
-        bool*        exists      = nullptr,
-        const char*  tname       = "map") {
+T __tom(luaw&       l,
+        int         idx         = -1,
+        bool        disable_log = false,
+        bool*       failed      = nullptr,
+        bool*       exists      = nullptr,
+        const char* tname       = "map") {
   if (exists) *exists = !l.isnoneornil(idx);
   if (l.isnoneornil(idx)) {
     if (failed) *failed = false;
@@ -2539,33 +2528,32 @@ T __tom(lua_wrapper& l,
   return ret;
 }
 
-}  // namespace lua_wrapper_detail
+}  // namespace luaw_detail
 
 // to std::map
 template <typename Key, typename Compare, typename Allocator>
-struct lua_wrapper::convertor<std::map<Key, Compare, Allocator>> {
+struct luaw::convertor<std::map<Key, Compare, Allocator>> {
   using result_t = std::map<Key, Compare, Allocator>;
-  static result_t to(lua_wrapper& l,
-                     int          idx         = -1,
-                     bool         disable_log = false,
-                     bool*        failed      = nullptr,
-                     bool*        exists      = nullptr) {
-    return lua_wrapper_detail::__tom<result_t>(
+  static result_t to(luaw& l,
+                     int   idx         = -1,
+                     bool  disable_log = false,
+                     bool* failed      = nullptr,
+                     bool* exists      = nullptr) {
+    return luaw_detail::__tom<result_t>(
         l, idx, disable_log, failed, exists, "map");
   }
 };
 
 // to std::unordered_map
 template <typename Key, typename Hash, typename KeyEqual, typename Allocator>
-struct lua_wrapper::convertor<
-    std::unordered_map<Key, Hash, KeyEqual, Allocator>> {
+struct luaw::convertor<std::unordered_map<Key, Hash, KeyEqual, Allocator>> {
   using result_t = std::unordered_map<Key, Hash, KeyEqual, Allocator>;
-  static result_t to(lua_wrapper& l,
-                     int          idx         = -1,
-                     bool         disable_log = false,
-                     bool*        failed      = nullptr,
-                     bool*        exists      = nullptr) {
-    return lua_wrapper_detail::__tom<result_t>(
+  static result_t to(luaw& l,
+                     int   idx         = -1,
+                     bool  disable_log = false,
+                     bool* failed      = nullptr,
+                     bool* exists      = nullptr) {
+    return luaw_detail::__tom<result_t>(
         l, idx, disable_log, failed, exists, "unordered_map");
   }
 };
@@ -2573,13 +2561,13 @@ struct lua_wrapper::convertor<
 // to std::tuple
 // The result tuple shoule not contain any tuple any more.
 template <typename... Ts>
-struct lua_wrapper::convertor<std::tuple<Ts...>> {
+struct luaw::convertor<std::tuple<Ts...>> {
   using result_t = std::tuple<Ts...>;
-  static result_t to(lua_wrapper& l,
-                     int          idx         = -1,
-                     bool         disable_log = false,
-                     bool*        failed      = nullptr,
-                     bool*        exists      = nullptr) {
+  static result_t to(luaw& l,
+                     int   idx         = -1,
+                     bool  disable_log = false,
+                     bool* failed      = nullptr,
+                     bool* exists      = nullptr) {
     constexpr size_t N = std::tuple_size<result_t>::value;
     result_t         ret;
     __to<0, N>(ret,
@@ -2596,14 +2584,13 @@ private:
   template <size_t I, size_t N, typename T>
   static void __to(T& ret,
                    std::true_type,
-                   lua_wrapper& l,
-                   int          idx,
-                   bool         disable_log = false,
-                   bool*        failed      = nullptr,
-                   bool*        exists      = nullptr) {
-    static_assert(
-        !lua_wrapper_detail::is_stdtuple<std::tuple_element_t<I, T>>::value,
-        "Recursive tuple is not allowed");
+                   luaw& l,
+                   int   idx,
+                   bool  disable_log = false,
+                   bool* failed      = nullptr,
+                   bool* exists      = nullptr) {
+    static_assert(!luaw_detail::is_stdtuple<std::tuple_element_t<I, T>>::value,
+                  "Recursive tuple is not allowed");
 
     bool thisfailed, thisexists;
     std::get<I>(ret) = l.to<std::tuple_element_t<I, T>>(
@@ -2625,11 +2612,11 @@ private:
   template <size_t I, size_t N, typename T>
   static void __to(T& ret,
                    std::false_type,
-                   lua_wrapper& l,
-                   int          idx         = -1,
-                   bool         disable_log = false,
-                   bool*        failed      = nullptr,
-                   bool*        exists      = nullptr) {
+                   luaw& l,
+                   int   idx         = -1,
+                   bool  disable_log = false,
+                   bool* failed      = nullptr,
+                   bool* exists      = nullptr) {
     if (failed) *failed = false;
     if (exists) *exists = false;
   }
@@ -2637,12 +2624,12 @@ private:
 
 // to void
 template <>
-struct lua_wrapper::convertor<void> {
-  static void to(lua_wrapper& l,
-                 int          idx         = -1,
-                 bool         disable_log = false,
-                 bool*        failed      = nullptr,
-                 bool*        exists      = nullptr) {
+struct luaw::convertor<void> {
+  static void to(luaw& l,
+                 int   idx         = -1,
+                 bool  disable_log = false,
+                 bool* failed      = nullptr,
+                 bool* exists      = nullptr) {
     if (failed) *failed = false;
     if (exists) *exists = !l.isnoneornil(idx);
     return void();
@@ -2651,7 +2638,7 @@ struct lua_wrapper::convertor<void> {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-namespace lua_wrapper_detail {
+namespace luaw_detail {
 template <typename T>
 struct __is_ptr : std::false_type {};
 template <typename T>
@@ -2662,12 +2649,12 @@ template <typename T, typename D>
 struct __is_ptr<std::unique_ptr<T, D>> : std::true_type {};
 template <typename T>
 struct is_ptr : __is_ptr<typename std::decay<T>::type> {};
-}  // namespace lua_wrapper_detail
+}  // namespace luaw_detail
 
 /**
  * @brief A Lua wrapper with custom variable provider.
  *
- * Derived from lua_wrapper, it can contain a user defined variable provider.
+ * Derived from luaw, it can contain a user defined variable provider.
  * When a global variable used in some expression does not exist in Lua,
  * then it will seek the variable from the provider.
  *
@@ -2683,17 +2670,17 @@ struct is_ptr : __is_ptr<typename std::decay<T>::type> {};
  * std::shared_ptr or std::unique_ptr.
  */
 template <typename VariableProviderPointer>
-class custom_lua_wrapper : public lua_wrapper {
-  using base_t     = lua_wrapper;
+class custom_luaw : public luaw {
+  using base_t     = luaw;
   using provider_t = VariableProviderPointer;
-  static_assert(lua_wrapper_detail::is_ptr<provider_t>::value,
+  static_assert(luaw_detail::is_ptr<provider_t>::value,
                 "VariableProviderPointer should be pointer type");
-  using pointer_t      = custom_lua_wrapper*;
+  using pointer_t      = custom_luaw*;
   provider_t provider_ = nullptr;
 
 public:
   template <typename... Args>
-  custom_lua_wrapper(Args&&... args) : base_t(std::forward<Args>(args)...) {
+  custom_luaw(Args&&... args) : base_t(std::forward<Args>(args)...) {
     set_globale_metateble();
   }
 
@@ -2754,13 +2741,13 @@ private:
 // Derived class needs to implement:
 //     void provide(const std::vector<std::string>& vars)
 template <typename Derived>
-class lua_wrapper_crtp : public lua_wrapper {
+class luaw_crtp : public luaw {
   static const std::unordered_set<std::string> lua_key_words;
-  using base_t = lua_wrapper;
+  using base_t = luaw;
 
 public:
   template <typename... Args>
-  lua_wrapper_crtp(Args&&... args) : base_t(std::forward<Args>(args)...) {}
+  luaw_crtp(Args&&... args) : base_t(std::forward<Args>(args)...) {}
 
   // Set global variables to Lua
   void prepare(const char* expr) {
@@ -2961,31 +2948,30 @@ public:
 };
 
 template <typename Derived>
-const std::unordered_set<std::string> lua_wrapper_crtp<Derived>::lua_key_words{
+const std::unordered_set<std::string> luaw_crtp<Derived>::lua_key_words{
     "nil",      "true",  "false",    "and",   "or",     "not",
     "if",       "then",  "elseif",   "else",  "end",    "for",
     "do",       "while", "repeat",   "until", "return", "break",
     "continue", "goto",  "function", "in",    "local"};
 
-// Usage examples of lua_wrapper_crtp
+// Usage examples of luaw_crtp
 // VariableProviderType should implement member function:
-//     void provide(const std::vector<std::string> &vars, lua_wrapper* l);
+//     void provide(const std::vector<std::string> &vars, luaw* l);
 
 // Usage template 1
 // Inherited raw variable provider type
 template <typename VariableProviderType>
-class lua_wrapper_is_provider
+class luaw_is_provider
     : public VariableProviderType,
-      public lua_wrapper_crtp<lua_wrapper_is_provider<VariableProviderType>> {
-  using base_t =
-      lua_wrapper_crtp<lua_wrapper_is_provider<VariableProviderType>>;
+      public luaw_crtp<luaw_is_provider<VariableProviderType>> {
+  using base_t     = luaw_crtp<luaw_is_provider<VariableProviderType>>;
   using provider_t = VariableProviderType;
 
 public:
-  lua_wrapper_is_provider() {}
+  luaw_is_provider() {}
 
   template <typename... Args>
-  lua_wrapper_is_provider(lua_State* L, Args&&... args)
+  luaw_is_provider(lua_State* L, Args&&... args)
       : base_t(L), provider_t(std::forward<Args>(args)...) {}
 
   const provider_t& provider() const {
@@ -3003,18 +2989,16 @@ public:
 // or T*, or std::shared_ptr<T> or std::unique_ptr<T>.
 // Should install provider before use.
 template <typename VariableProviderType>
-class lua_wrapper_has_provider
-    : public lua_wrapper_crtp<lua_wrapper_has_provider<VariableProviderType>> {
-  using base_t =
-      lua_wrapper_crtp<lua_wrapper_has_provider<VariableProviderType>>;
+class luaw_has_provider
+    : public luaw_crtp<luaw_has_provider<VariableProviderType>> {
+  using base_t     = luaw_crtp<luaw_has_provider<VariableProviderType>>;
   using provider_t = VariableProviderType;
 
   provider_t provider_;
 
 public:
   template <typename... Args>
-  lua_wrapper_has_provider(Args&&... args)
-      : base_t(std::forward<Args>(args)...) {}
+  luaw_has_provider(Args&&... args) : base_t(std::forward<Args>(args)...) {}
 
   void              provider(const provider_t& p) { provider_ = p; }
   void              provider(provider_t&& p) { provider_ = std::move(p); }
@@ -3022,7 +3006,7 @@ public:
   provider_t&       provider() { return provider_; }
 
   void provide(const std::vector<std::string>& vars) {
-    __provide(vars, lua_wrapper_detail::is_ptr<provider_t>{});
+    __provide(vars, luaw_detail::is_ptr<provider_t>{});
   }
 
 private:

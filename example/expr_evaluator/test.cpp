@@ -12,13 +12,13 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-#include <peacalm/lua_wrapper.h>
+#include <peacalm/luaw.h>
 
 #include <iostream>
 #include <string>
 
 int main() {
-  peacalm::lua_wrapper l;
+  peacalm::luaw l;
   l.set_integer("a", 10);
   l.set_integer("b", 5);
   l.set_integer("c", 2);
