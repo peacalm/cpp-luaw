@@ -739,7 +739,7 @@ public:
 
   ///////////////////////// touch table ////////////////////////////////////////
 
-  /// Push the table with given name onto stack. If not exists, make one.
+  /// Push the table with given name onto stack. If not exists, create one.
   self_t& gtouchtb(const char* name) {
     lua_getglobal(L_, name);
     if (istable()) return *this;
@@ -752,7 +752,7 @@ public:
   self_t& gtouchtb(const std::string& name) { return gtouchtb(name.c_str()); }
 
   /// Push the table t[name] onto stack, where t is a table at given index.
-  /// If t[name] is not a table, make a new one.
+  /// If t[name] is not a table, create a new one.
   self_t& touchtb(const char* name, int idx = -1) {
     int aidx = abs_index(idx);
     PEACALM_LUAW_INDEXABLE_ASSERT(indexable_and_newindexable(aidx));
@@ -769,7 +769,7 @@ public:
   }
 
   /// Push the table t[n] onto stack, where t is a table at given index.
-  /// If t[n] is not a table, make a new one.
+  /// If t[n] is not a table, create a new one.
   self_t& touchtb(int n, int idx = -1) {
     int aidx = abs_index(idx);
     PEACALM_LUAW_INDEXABLE_ASSERT(indexable_and_newindexable(aidx));
@@ -783,10 +783,10 @@ public:
   }
 
   /// Push the metatable of the value at the given index onto the stack.
-  /// If the value does not have a metatable, make a new metatable for it then
+  /// If the value does not have a metatable, create a new metatable for it then
   /// push the metatable onto stack.
-  /// The way to make new metatable: If m.tname is empty, make an empty
-  /// metatable, else make a new metatable using `luaL_newmetatable(L_,
+  /// The way to create new metatable: If m.tname is empty, create an empty
+  /// metatable, else create a new metatable using `luaL_newmetatable(L_,
   /// m.tname)`.
   self_t& touchtb(metatable_tag m, int idx = -1) {
     if (lua_getmetatable(L_, idx) == 0) {
