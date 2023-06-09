@@ -426,7 +426,7 @@ illegal or vname doesn't have a correct value.
 Example:
 ```C++
 struct provider {
-  bool provide(luaw* l, const char *vname) {
+  bool provide(peacalm::luaw* l, const char *vname) {
     if (strcmp(vname, "a") == 0)
       l->push(1);
     else if (strcmp(vname, "b") == 0)
