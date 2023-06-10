@@ -1,4 +1,3 @@
-
 // Copyright (c) 2023 Shuangquan Li. All Rights Reserved.
 //
 // Licensed under the MIT License (the "License"); you may not use this file
