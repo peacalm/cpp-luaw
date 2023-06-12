@@ -4,18 +4,780 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 This library is a simple wrapper of Lua which makes interaction between Lua and 
-C++ easier. It can be used as a config file parser or a dynamic expression evaluator.
+C++ easier.
+
+It can be used as a binder, a config file parser or a dynamic expression evaluator.
 
 Features:
-* Get values from Lua to C++
-* Set values from C++ to Lua
-* Evaluate Lua expression in C++ to get values
+* Get Lua values in C++
+* Set C++ values to Lua
+* Get and call Lua functions in C++
+* Bind C++ functions(also lambda, std::function or callable objects) to Lua
+* Bind C++ classes to Lua
+* Evaluate Lua expressions in C++ to get values
 * If a variable provider is provided, it can automatically seek variabls from 
 provider while evaluate expressions.
 
 This lib depends only on Lua:
 * Lua version >= 5.4
 * C++ version >= C++14
+
+## Detailed Features
+
+<table style="width: 200%; table-layout: fixed;">
+<colgroup>
+    <col span="1" style="width: 45%;">
+    <col span="1" style="width: 10%;">
+</colgroup>
+
+<tr>
+  <th> Feature ++++++++++++++++++++++++++++++++++++++++ </th>
+  <th> Supported? </th>
+  <th> Example </th>
+</tr>
+
+
+<tr>
+  <td> <ul><li> Get Lua values in C++ </li></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+// Define a luaw instance, which following examples use
+peacalm::luaw l;
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Get simple type values (bool/integer/float number/string) </li></ul></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+l.dostring("i = 1; b = true; f = 2.5; s = 'luastring';");
+int i = l.get<int>("i");
+bool b = l.get<bool>("b");
+double f = l.get<double>("f");
+std::string s = l.get<std::string>("s");
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Get complex container type values 
+  (std::pair, std::tuple, std::vector, std::map, std::unordered_map, std::set, std::unordered_set, std::deque, std::list, std::forward_list) </li></ul></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+l.dostring("a = {1,2,3}; b = {x=1,y=2}; c = {x={1,2},y={3,4}}; d = {true, 1, 'str'}");
+auto a = l.get<std::vector<int>>("a");
+auto b = l.get<std::map<std::string, int>>("b");
+auto c = l.get<std::unordered_map<std::string, std::vector<int>>>("c");
+auto d = l.get<std::tuple<bool, int, std::string>>("d");
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Tells whether the target exists or whether the operation failed </li></ul></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+bool failed, exists;
+auto i = l.get<int>("i", /* disable log */ false, &failed, &exists);
+if (failed) {
+  // failure handers
+}
+if (!exists) {
+  // ...
+}
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Support a default value on target not exists or operation failed </li></ul></ul> </td>
+  <td> ✅ Only for simple types (get_xxx) </td>
+  <td>
+
+```C++
+// API supports default value is defined as get_xxx:
+auto i = l.get_int("i", -1); // default value of i is -1
+auto s = l.get_string("s", "def"); // default value of s is 'def'
+
+// Donot support defult value for containers:
+// auto a = l.get<std::vector<int>>("a", /* disable log */ false, &failed, &exists);
+```
+  </td>
+</tr>
+
+
+<tr>
+  <td> <ul><li> Set C++ values to Lua</li></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+// Define a luaw instance, which following examples use
+peacalm::luaw l;
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Set simple type values (bool/integer/float number/string) </li></ul></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+l.set("b", true);
+l.set("i", 123);
+l.set("f", 123.45);
+l.set("s", "cstr");
+l.set("s2", std::string("std::string"));
+// Alternative writings may use: 
+// set_boolean/set_integer/set_number/set_string
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Set complex container type values 
+  (std::pair, std::tuple, std::vector, std::map, std::unordered_map, std::set, std::unordered_set, std::deque, std::list, std::forward_list) </li></ul></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+// All containers map to Lua table
+l.set("a", std::vector<int>{1,2,3});
+l.set("b", std::map<std::string, int>{{"a",1},{"b",2}});
+l.set("c", std::make_pair("c", true));
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Set nullptr to Lua (Equivalent to set nil to a variable in Lua) </li></ul></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+// Equivalent to run "x = nil" in Lua
+l.set("x", nullptr);
+// Alternative writing:
+l.set_nil("x");
+```
+  </td>
+</tr>
+
+
+<tr>
+  <td> <ul><li> Get and call Lua functions in C++ </li></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```Lua
+-- functions defined in Lua
+fadd = function(a, b) return a + b end
+frem = function(a, b) return a // b, a % b end
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Call a Lua function directly </li></ul></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+// should provide result type
+int s = l.callf<int>("fadd", 1, 2); // c = 1 + 2
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Get a std::function object represents the Lua function </li></ul></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+auto f = l.get<std::function<int(int, int)>>("fadd");
+int s = f(1,2);
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Knows whether the call to Lua function succeeded (Get a peacalm::luaw::function object represents the Lua function) </li></ul></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+auto f = l.get<peacalm::luaw::function<int(int, int)>>("fadd");
+int s = f(1,2);
+// after call, check status:
+if (f.failed()) {
+  // error handlers
+}
+// see more details using:
+// f.function_failed();
+// f.function_exists();
+// f.result_failed();
+// f.result_exists();
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Get/Call a Lua function with multiple results </li></ul></ul> </td>
+  <td> ✅ use std::tuple </td>
+  <td>
+
+```C++
+// call it directly
+auto q = l.callf<std::tuple<int, int>>("frem", 7, 3); // q == make_tuple(2, 1)
+
+// get a function object first
+auto f = l.get<peacalm::luaw::function<std::tuple<int,int>(int, int)>>("frem");
+auto q2 = f(7, 3);
+```
+  </td>
+</tr>
+
+
+<tr>
+  <td> <ul><li> Bind C++ functions(also lambda, std::function or callable objects) to Lua </li></ul> </td>
+  <td> ✅ </td>
+  <td>
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Bind C style functions to Lua</li></ul></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+// The C function following examples may use
+int fadd(int x, int y) { return a + b; }
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><ul><li> Set C function directly </li></ul></ul></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+l.set("fadd", fadd);
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><ul><li> Set C function pointer </li></ul></ul></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+l.set("fadd", &fadd);
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><ul><li> Set C function reference </li></ul></ul></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+auto& ref = fadd;
+l.set("fadd", ref);
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><ul><li> Set C function with arbitrary number of arguments </li></ul></ul></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+int add_many(int a, int b, int c, int d, /* define any number of arguments */) {
+  // ...
+}
+int main() {
+  peacalm::luaw l;
+  l.set("add_many", add_many);
+}
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><ul><li> Set C style variadic function </li></ul></ul></ul> </td>
+  <td> ❌ </td>
+  <td>
+
+```C++
+// a function like printf
+int vf(const char* s, ...) { /* some codes */ }
+// l.set("vf", vf); // error! not supported
+```
+  </td>
+</tr>
+
+
+<tr>
+  <td> <ul><ul><li> Bind C++ template functions to Lua </li></ul></ul> </td>
+  <td> ✅ should specialize or provide hint type</td>
+  <td>
+
+```C++
+template <typename T>
+T tadd(T a, T b) {
+  return a + b;
+}
+int main() {
+  peacalm::luaw l;
+  // explicitly specialize the function
+  l.set("tadd", tadd<int>);
+  // or provide the function proto type as hint
+  l.set<double(double, double)>("tadd2", tadd);
+}
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Bind C++ lambdas to Lua </li></ul></ul> </td>
+  <td> ✅ </td>
+  <td>
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><ul><li> Set captureless lambdas to Lua </li></ul></ul></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+// May not provide hint type
+l.set("add", [](int a, int b) { return a + b; });
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><ul><li> Set not-captureless lambdas to Lua </li></ul></ul></ul> </td>
+  <td> ✅ Should provide hint type </td>
+  <td>
+
+```C++
+int x = 1;
+auto f = [&](int a) { return a + x; };
+// provide a function type hint: int(int)
+l.set<int(int)>("add", f);
+// Alternative writing: could use luaw::function_tag as hint type
+l.set<peacalm::luaw::function_tag>("add", f);
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><ul><li> Set generic lambdas to Lua </li></ul></ul></ul> </td>
+  <td> ✅ Should provide hint type </td>
+  <td>
+
+```C++
+// generic lambda
+auto f = [](auto a, auto b) { return a + b; }
+
+// Should provide a function proto type as hint
+l.set<int(int, int)>("add", f);
+
+// The lambda object can be reused with other function proto types
+l.set<double(double, double)>("add2", f);
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Set std::function to Lua </li></ul></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+std::function<int(int, int)> f = [](auto a, auto b) { return a + b; };
+l.set("f", std::move(f)); // or l.set("f", f);
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Support C++ function with multiple returns </li></ul></ul> </td>
+  <td> ✅ use std::tuple </td>
+  <td>
+
+```C++
+std::tuple<int, int> rem(int a, int b) { return std::make_tuple(a / b, a % b); }
+l.set("rem", rem);
+l.dostring("q, r = rem(7, 3)"); // q == 2, r == 1
+```
+  </td>
+</tr>
+
+
+<tr>
+  <td> <ul><li> Bind C++ classes to Lua </li></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+// The C++ custom class to register
+struct Obj {
+  int       i  = 1;
+  const int ci = 1;
+
+  Obj() {}
+  Obj(int v, int cv = 1) : i(v), ci(cv) {}
+  
+  int geti() const { return i; }
+  int plus() { return ++i; }
+  int plus(int d) { i += d; return i; }
+};
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Register constructor </li></ul></ul> </td>
+  <td> ✅ should provide hint type </td>
+  <td>
+
+```C++
+l.register_ctor<Obj()>("NewObj");     // default constructor
+l.register_ctor<Obj(int)>("NewObj1"); // constructor with 1 argument
+l.register_ctor<Obj(int, int)>("NewObj2"); // constructor with 2 argument
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Register constructor to const object</li></ul></ul> </td>
+  <td> ✅ should provide hint type </td>
+  <td>
+
+```C++
+// the constructors will generate a const instance of Obj in Lua
+using ConstObj = const Obj;
+l.register_ctor<ConstObj()>("NewConstObj");     // default constructor
+l.register_ctor<ConstObj(int)>("NewConstObj1"); // constructor with 1 argument
+l.register_ctor<ConstObj(int, int)>("NewConstObj2"); // constructor with 2 argument
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Register member variable </li></ul></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+l.register_member("i", &Obj::i);
+l.register_member("ci", &Obj::ci);
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Register member function </li></ul></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+l.register_member("geti", &Obj::geti);
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Register overloaded member function </li></ul></ul> </td>
+  <td> ✅ should provide hint type </td>
+  <td>
+
+```C++
+l.register_member<int (Obj::*)()>("plus", &Obj::plus);
+l.register_member<int (Obj::*)(int)>("plusby", &Obj::plus);
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Register dynamic members (members whose name is dynamically defined in Lua, like keys of a table) </li></ul></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+// if type of dynamic members are unknown, use luaw::luavalueref
+struct Foo {
+  std::unordered_map<std::string, peacalm::luaw::luavalueref> m;
+};
+peacalm::luaw::luavalueref foo_dm_getter(const Foo* o, const std::string& k) {
+  auto entry = o->m.find(k);
+  if (entry != o->m.end()) { return entry->second; }
+  return peacalm::luaw::luavalueref();
+}
+void foo_dm_setter(Foo* o, const std::string& k, const peacalm::luaw::luavalueref& v) {
+  o->m[k] = v;
+}
+int main() {
+  peacalm::luaw l;
+  l.register_dynamic_member(foo_dm_getter, foo_dm_setter);
+  // ...
+}
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Register fake member variables (members who are not really member of the class) </li></ul></ul> </td>
+  <td> ✅ should provide a member type as hint </td>
+  <td>
+
+```C++
+// fake a const member "id" whose value is the object's address
+l.register_member<void* const Obj::*>(
+    "id", [](const volatile Obj* p) { return (void*)p; });
+
+Obj o;
+l.set("o", &o);
+assert(l.eval<void*>("return o.id") == (void*)(&o));
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Register fake member functions </li></ul></ul> </td>
+  <td> ✅ should provide a member type as hint </td>
+  <td>
+
+```C++
+// fake a member function "seti" for class Obj
+l.register_member<void (Obj ::*)(int)>(
+  "seti", [](Obj* p, int v) { p->i = v; });
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Set class instance directly </li></ul></ul> </td>
+  <td> ✅  </td>
+  <td>
+
+```C++
+Obj o;
+l.set("o", o); // by copy
+// or
+l.set("o", std::move(o)); // by move
+// or
+l.set("o", Obj{});
+// the variable "o" can access members of Obj registered in Lua scripts.
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Set class instance by raw pointer </li></ul></ul> </td>
+  <td> ✅  </td>
+  <td>
+
+```C++
+Obj o;
+l.set("o", &o);
+// the variable "o" can access members of Obj registered in Lua scripts.
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Set class instance by smart pointer </li></ul></ul> </td>
+  <td> ✅  </td>
+  <td>
+
+```C++
+// shared_ptr
+auto o = std::make_shared<Obj>();
+l.set("o", o);
+// unique_ptr
+l.set("o", std::make_unique<Obj>());
+// the variable "o" can access members of Obj registered in Lua scripts.
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Set class instance by pointer of smart pointer </li></ul></ul> </td>
+  <td> ✅  </td>
+  <td>
+
+```C++
+// pointer of shared_ptr
+auto o = std::make_shared<Obj>();
+l.set("o", &o);
+// pointer of unique_ptr
+auto o = std::make_unique<Obj>();
+l.set("o", &o);
+// the variable "o" can access members of Obj registered in Lua scripts.
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Set class instance by unique_ptr with custom deleter (will share the same metatable with that unique_ptr with default deleter) </li></ul></ul> </td>
+  <td> ✅  </td>
+  <td>
+
+```C++
+struct ObjDeleter {
+  void operator()(Obj* p) const { delete p; }
+};
+std::unique_ptr<Obj, ObjDeleter> o(new Obj, ObjDeleter{});
+l.set("o", &o);
+// or
+l.set("o", std::move(o));
+// the variable "o" can access members of Obj registered in Lua scripts.
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Const and volatile properties of objects, member variables and member functions are kept in Lua </li></ul></ul> </td>
+  <td> ✅  </td>
+  <td>
+
+```C++
+l.register_ctor<Obj()>("NewObj");
+l.register_ctor<std::add_const_t<Obj>()>("NewConstObj");
+l.register_member("i", &Obj::i);
+l.register_member("ci", &Obj::ci);
+l.register_member<int (Obj::*)()>("plus", &Obj::plus);
+
+// const property of member ci is kept
+int retcode = l.dostring("o = NewObj(); o.ci = 3");
+assert(retcode != LUA_OK);
+l.log_error_out();
+// error log: Const member cannot be changed: ci
+
+const Obj o{};
+l.set("o", &o); // "o" is pointer of const Obj
+l.eval<void>("o:plus()"); // call a nonconst member function
+// error log: Nonconst member function: plus
+
+l.eval<void>("o = NewConstObj(); o:plus()");
+// error log: Nonconst member function: plus
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><li> Evaluate a Lua script and get results </li></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+int ret = l.eval<int>("return 1");
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Return simple type result (bool/integer/float number/string) </li></ul></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+bool b = l.eval_bool("return 1 > 0");
+int i = l.eval_int("return 1 + 2");
+double d = l.eval_double("return 1.2 * 3.4");
+std::string s = l.eval_string("return 'hello' .. ' world' ");
+
+// Alternative writing:
+bool = l.eval<bool>("return 1 > 0");
+int i = l.eval<int>("return 1 + 2");
+// ...
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Return complex type result (std::pair, std::tuple, std::vector, std::map, std::unordered_map, std::set, std::unordered_set, std::deque, std::list, std::forward_list) </li></ul></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+auto v = l.eval<std::vector<int>>("return {1,2,3}");
+auto m = l.eval<std::unordered_map<std::string, int>>("return {x=1,y=2}");
+```
+  </td>
+</tr>
+
+
+<tr>
+  <td> <ul><ul><li> Return multiple values </li></ul></ul> </td>
+  <td> ✅ use std::tuple </td>
+  <td>
+
+```C++
+auto ret = l.eval<std::tuple<int, int, int>>("return 1,2,3");
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Return void </li></ul></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+// Equivalent to l.dostring
+l.eval<void>("a=1 b=2");
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Tells whether the eval operation failed </li></ul></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+bool failed;
+int ret = l.eval<int>("return a + b",  /* disable log */ false, &failed);
+if (failed) {
+  // error handler
+}
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Support a defult value used for operation failed </li></ul></ul> </td>
+  <td> ✅ Only supported by eval simple types (eval_xxx) </td>
+  <td>
+
+```C++
+int ret = l.eval_int("return a + b", /* disable log */ false, /* default value */ -1);
+```
+  </td>
+</tr>
+
+</table>
 
 ## Value Conversions
 
