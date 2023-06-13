@@ -334,6 +334,9 @@ TEST(push, function) {
   EXPECT_EQ(l.push<double(double)>(l2), 1);
   EXPECT_EQ(l.push<int(double)>(l2), 1);
   EXPECT_EQ(l.push<double(int)>(l2), 1);
+
+  // variadic function
+  // l.push(printf); // error
 }
 
 TEST(push, newtable) {

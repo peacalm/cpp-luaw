@@ -1923,6 +1923,12 @@ private:
   }
 };
 
+// variadic function, not supported
+template <typename Return, typename... Args>
+struct luaw::pusher<Return (*)(Args..., ...)> {
+  // write nothing to let compile fail
+};
+
 // bool
 template <>
 struct luaw::pusher<bool> {
