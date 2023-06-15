@@ -36,6 +36,19 @@ TEST(touchtb, touchtb) {
   l.settop(0);
 }
 
+TEST(touchtb, retouch) {
+  luaw l;
+  l.gtouchtb("g");
+  EXPECT_EQ(l.gettop(), 1);
+  EXPECT_TRUE(l.istable());
+  l.setfield("x", 123);
+  l.settop(0);
+
+  l.gtouchtb("g");
+  l.seek("x");
+  EXPECT_EQ(l.to_int(), 123);
+}
+
 TEST(setfield, setfield) {
   luaw l;
   l.gseek_env().touchtb("g");

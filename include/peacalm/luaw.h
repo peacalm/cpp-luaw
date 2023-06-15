@@ -477,7 +477,10 @@ public:
 
   /// Pushes onto the stack the global value with given name.
   /// Returns the type of that value.
-  int getglobal(const char* name) { return lua_getglobal(L_, name); }
+  int getglobal(const char* name) {
+    PEACALM_LUAW_ASSERT(name);
+    return lua_getglobal(L_, name);
+  }
 
   /// Pops a value from the stack and sets it as the new value of global name.
   void setglobal(const char* name) {
@@ -780,12 +783,12 @@ public:
 
   /// Push the table with given name onto stack. If not exists, create one.
   self_t& gtouchtb(const char* name) {
-    lua_getglobal(L_, name);
+    getglobal(name);
     if (istable()) return *this;
     pop();
     lua_newtable(L_);
-    lua_setglobal(L_, name);
-    lua_getglobal(L_, name);
+    pushvalue(-1);  // make a copy
+    setglobal(name);
     return *this;
   }
   self_t& gtouchtb(const std::string& name) { return gtouchtb(name.c_str()); }
@@ -1100,7 +1103,7 @@ public:
 
   void set_integer(const char* name, long long value) {
     lua_pushinteger(L_, value);
-    lua_setglobal(L_, name);
+    setglobal(name);
   }
   void set_integer(const std::string& name, long long value) {
     set_integer(name.c_str(), value);
@@ -1108,7 +1111,7 @@ public:
 
   void set_number(const char* name, double value) {
     lua_pushnumber(L_, value);
-    lua_setglobal(L_, name);
+    setglobal(name);
   }
   void set_number(const std::string& name, double value) {
     set_number(name.c_str(), value);
@@ -1116,7 +1119,7 @@ public:
 
   void set_boolean(const char* name, bool value) {
     lua_pushboolean(L_, static_cast<int>(value));
-    lua_setglobal(L_, name);
+    setglobal(name);
   }
   void set_boolean(const std::string& name, bool value) {
     set_boolean(name.c_str(), value);
@@ -1124,13 +1127,13 @@ public:
 
   void set_nil(const char* name) {
     lua_pushnil(L_);
-    lua_setglobal(L_, name);
+    setglobal(name);
   }
   void set_nil(const std::string& name) { set_nil(name.c_str()); }
 
   void set_string(const char* name, const char* value) {
     lua_pushstring(L_, value);
-    lua_setglobal(L_, name);
+    setglobal(name);
   }
   void set_string(const std::string& name, const char* value) {
     set_string(name.c_str(), value);
@@ -1168,7 +1171,7 @@ public:
                       bool        disable_log = false,                     \
                       bool*       failed      = nullptr,                   \
                       bool*       exists      = nullptr) {                            \
-    lua_getglobal(L_, name);                                               \
+    getglobal(name);                                                       \
     type ret = to_##typename(-1, def, disable_log, failed, exists);        \
     pop();                                                                 \
     return ret;                                                            \
@@ -1202,7 +1205,7 @@ public:
                         bool        disable_log = false,
                         bool*       failed      = nullptr,
                         bool*       exists      = nullptr) {
-    lua_getglobal(L_, name);
+    getglobal(name);
     return to_c_str(-1, def, disable_log, failed, exists);
   }
   const char* get_c_str(const std::string& name,
