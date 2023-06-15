@@ -351,3 +351,14 @@ TEST(push, lightuserdata) {
   void *p = (void *)&x;
   EXPECT_EQ(l.push(p), 1);
 }
+
+TEST(push, nullptr) {
+  luaw l;
+
+  l.push(nullptr);
+  EXPECT_TRUE(l.isnil());
+
+  const volatile std::nullptr_t n = 0;
+  l.push(n);
+  EXPECT_TRUE(l.isnil());
+}

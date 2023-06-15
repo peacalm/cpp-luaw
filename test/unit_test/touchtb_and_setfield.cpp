@@ -124,3 +124,48 @@ TEST(setfield, newtable_tag) {
   l.set("g", luaw::newtable_tag{});
   EXPECT_TRUE(l.get<std::vector<int>>("g").empty());
 }
+
+TEST(touchtb, nullptr) {
+  luaw l;
+  l.gseek_env();
+  // l.touchtb(nullptr);                             // error
+  // l.touchtb(std::add_const_t<std::nullptr_t>{});  // error
+  // l.touchtb(std::add_cv_t<std::nullptr_t>{});     // error
+}
+
+TEST(setfield, nullptr) {
+  int  a, b, c;
+  luaw l;
+  l.dostring("t = {a=0}");
+  l.gseek("t");
+
+  // l.setfield(nullptr, 1);                                // error
+  // l.setfield(std::add_const_t<std::nullptr_t>{}, true);  // error
+  // l.setfield(std::add_cv_t<std::nullptr_t>{}, "x");      // error
+
+  auto f = [&](int x) { return x + a; };
+  // l.setfield(nullptr, f);            // error
+  // l.setfield<int(int)>(nullptr, f);  // error
+}
+
+TEST(setfield, lightuerdata_as_key) {
+  int  a, b, c;
+  luaw l;
+  l.dostring("t = {a=0}");
+  l.gseek("t");
+
+  l.setfield(0, 0);
+  l.setfield((void*)(&a), 1);
+  l.setfield((void*)(nullptr), 2);
+
+  // l.setfield((const char*)(nullptr), 3); // runtime error
+  // l.push((const char*)(nullptr)); // runtime error
+
+  l.dostring("for k,v in pairs(t) do print(k, v) end ");
+
+  EXPECT_EQ(l.lget<int>({}, "t", (void*)(&a)), 1);
+  EXPECT_EQ(l.lget<int>({}, "t", (void*)(nullptr)), 2);
+
+  l.lset("t", (void*)(nullptr), (void*)(&b), 5);
+  EXPECT_EQ(l.lget<int>({}, "t", (void*)(nullptr), (void*)(&b)), 5);
+}

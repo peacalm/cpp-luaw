@@ -480,7 +480,10 @@ public:
   int getglobal(const char* name) { return lua_getglobal(L_, name); }
 
   /// Pops a value from the stack and sets it as the new value of global name.
-  void setglobal(const char* name) { lua_setglobal(L_, name); }
+  void setglobal(const char* name) {
+    PEACALM_LUAW_ASSERT(name);
+    lua_setglobal(L_, name);
+  }
 
   int pcall(int n, int r, int f) { return lua_pcall(L_, n, r, f); }
 
@@ -699,6 +702,22 @@ public:
     return *this;
   }
 
+  /// Push t[p] onto the stack where t is the value at the given index `idx`,
+  /// or push a nil if the operation fails.
+  self_t& seek(void* p, int idx = -1) {
+    if (gettop() > 0 && istable(idx)) {
+      int aidx = abs_index(idx);
+      pushlightuserdata(p);
+      lua_gettable(L_, aidx);
+    } else {
+      pushnil();
+    }
+    return *this;
+  }
+
+  /// Seeking by nullptr is meanless.
+  self_t& seek(std::nullptr_t, int idx = -1) = delete;
+
   /// Push the metatable of the value at the given index onto the stack if it
   /// has a metatable, otherwise push a nil.
   self_t& seek(metatable_tag, int idx = -1) {
@@ -802,6 +821,25 @@ public:
     return *this;
   }
 
+  /// Push the table t[p] onto stack, where t is a table at given index.
+  /// If t[p] is not a table, create a new one.
+  self_t& touchtb(void* p, int idx = -1) {
+    int aidx = abs_index(idx);
+    PEACALM_LUAW_INDEXABLE_ASSERT(indexable_and_newindexable(aidx));
+    pushlightuserdata(p);
+    lua_gettable(L_, aidx);
+    if (istable()) return *this;
+    pop();
+    lua_newtable(L_);
+    pushlightuserdata(p);
+    lua_pushvalue(L_, -2);
+    lua_settable(L_, aidx);
+    return *this;
+  }
+
+  /// nullptr represents nil, using nil as key is invalid.
+  self_t& touchtb(std::nullptr_t, int idx = -1) = delete;
+
   /// Push the metatable of the value at the given index onto the stack.
   /// If the value does not have a metatable, create a new metatable for it then
   /// push the metatable onto stack.
@@ -847,6 +885,7 @@ public:
   /// Set t[key] = value, where t is a table at given index.
   template <typename T>
   void setfield(const char* key, T&& value, int idx = -1) {
+    PEACALM_LUAW_ASSERT(key);
     PEACALM_LUAW_INDEXABLE_ASSERT(newindexable(idx));
     int aidx = abs_index(idx);
     push(std::forward<T>(value));
@@ -863,12 +902,21 @@ public:
     push(std::forward<T>(value));
     lua_seti(L_, aidx, key);
   }
+  template <typename T>
+  void setfield(void* key, T&& value, int idx = -1) {
+    PEACALM_LUAW_INDEXABLE_ASSERT(newindexable(idx));
+    int aidx = abs_index(idx);
+    pushlightuserdata(key);
+    push(std::forward<T>(value));
+    lua_settable(L_, aidx);
+  }
 
   /// Set field with an user given hint type.
   template <typename Hint, typename T>
   std::enable_if_t<!std::is_same<Hint, T>::value> setfield(const char* key,
                                                            T&&         value,
                                                            int idx = -1) {
+    PEACALM_LUAW_ASSERT(key);
     PEACALM_LUAW_INDEXABLE_ASSERT(newindexable(idx));
     int aidx = abs_index(idx);
     push<Hint>(std::forward<T>(value));
@@ -888,6 +936,16 @@ public:
     push<Hint>(std::forward<T>(value));
     lua_seti(L_, aidx, key);
   }
+  template <typename Hint, typename T>
+  std::enable_if_t<!std::is_same<Hint, T>::value> setfield(void* key,
+                                                           T&&   value,
+                                                           int   idx = -1) {
+    PEACALM_LUAW_INDEXABLE_ASSERT(newindexable(idx));
+    int aidx = abs_index(idx);
+    pushlightuserdata(key);
+    push<Hint>(std::forward<T>(value));
+    lua_settable(L_, aidx);
+  }
 
   /// Set the parameter value as metatable for the value at given index.
   /// Setting nullptr as metatable means setting nil to metatable.
@@ -906,6 +964,12 @@ public:
     lua_setmetatable(L_, aidx);
   }
 
+  /// Using nullptr as key is invalid.
+  template <typename T>
+  void setfield(std::nullptr_t, T&& value, int idx = -1) = delete;
+  template <typename Hint, typename T>
+  void setfield(std::nullptr_t, T&& value, int idx = -1) = delete;
+
   ///////////////////////// set global variables ///////////////////////////////
 
   /**
@@ -916,7 +980,7 @@ public:
   template <typename T>
   void set(const char* name, T&& value) {
     push(std::forward<T>(value));
-    lua_setglobal(L_, name);
+    setglobal(name);
   }
   template <typename T>
   void set(const std::string& name, T&& value) {
@@ -928,7 +992,7 @@ public:
   std::enable_if_t<!std::is_same<Hint, T>::value> set(const char* name,
                                                       T&&         value) {
     push<Hint>(std::forward<T>(value));
-    lua_setglobal(L_, name);
+    setglobal(name);
   }
   template <typename Hint, typename T>
   std::enable_if_t<!std::is_same<Hint, T>::value> set(const std::string& name,

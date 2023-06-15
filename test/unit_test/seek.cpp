@@ -142,13 +142,18 @@ TEST(seek, seek) {
   // nullptr
   l.gseek(nullptr);
   EXPECT_EQ(l.to_int(), 0);
-  l.seek(nullptr);
+  l.seek((const char*)nullptr);
   EXPECT_EQ(l.to_int(), 0);
   l.gseek(std::string{});
   EXPECT_EQ(l.to_int(), 0);
   l.gseek("g");
-  l.seek(nullptr);
+  l.seek((const char*)nullptr);
   EXPECT_EQ(l.to_int(), 0);
+
+  l.gseek("g");
+  // l.seek(nullptr);  // error
+  const volatile std::nullptr_t cvnullptr = 0;
+  // l.seek(cvnullptr);  // error
 
   l.settop(0);
 }
