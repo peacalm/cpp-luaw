@@ -835,7 +835,7 @@ public:
     pop();
     lua_newtable(L_);
     pushlightuserdata(p);
-    lua_pushvalue(L_, -2);
+    pushvalue(-2);
     lua_settable(L_, aidx);
     return *this;
   }
@@ -2483,7 +2483,7 @@ struct luaw::convertor<std::string> {
                         bool* exists      = nullptr) {
     if (exists) *exists = !l.isnoneornil(idx);
     if (l.isstring(idx)) {
-      lua_pushvalue(l.L(), idx);  // make a copy, so, it's safe
+      l.pushvalue(idx);  // make a copy, so, it's safe
       std::string ret = lua_tostring(l.L(), -1);
       l.pop();
       if (failed) *failed = false;
