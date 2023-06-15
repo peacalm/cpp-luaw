@@ -326,7 +326,7 @@ public:
       luaL_requiref(L_, LUA_LOADLIBNAME, luaopen_package, 1);
       lua_getfield(L_, -1, "preload");
       for (const luaL_Reg& l : o.libs_preload_) {
-        lua_pushcfunction(L_, l.func);
+        pushcfunction(l.func);
         lua_setfield(L_, -2, l.name);
       }
       pop(3);
@@ -360,7 +360,7 @@ public:
                                            {LUA_DBLIBNAME, luaopen_debug},
                                            {NULL, NULL}};
     for (const luaL_Reg* p = preloadlibs; p->func; ++p) {
-      lua_pushcfunction(L_, p->func);
+      pushcfunction(p->func);
       lua_setfield(L_, -2, p->name);
     }
     pop(3);
@@ -673,7 +673,7 @@ public:
     if (name) {
       getglobal(name);
     } else {
-      lua_pushnil(L_);
+      pushnil();
     }
     return *this;
   }
@@ -685,7 +685,7 @@ public:
     if (gettop() > 0 && istable(idx) && name) {
       lua_getfield(L_, idx, name);
     } else {
-      lua_pushnil(L_);
+      pushnil();
     }
     return *this;
   }
@@ -700,7 +700,7 @@ public:
     if (gettop() > 0 && istable(idx)) {
       lua_geti(L_, idx, n);
     } else {
-      lua_pushnil(L_);
+      pushnil();
     }
     return *this;
   }
@@ -724,7 +724,7 @@ public:
   /// Push the metatable of the value at the given index onto the stack if it
   /// has a metatable, otherwise push a nil.
   self_t& seek(metatable_tag, int idx = -1) {
-    if (lua_getmetatable(L_, idx) == 0) { lua_pushnil(L_); }
+    if (lua_getmetatable(L_, idx) == 0) { pushnil(); }
     return *this;
   }
 
@@ -784,7 +784,7 @@ public:
 
   // Pushes the thread represented by L onto the stack. Returns 1 if this thread
   // is the main thread of its state.
-  int pushthread() { lua_pushthread(L_); }
+  int pushthread() { return lua_pushthread(L_); }
 
   ///////////////////////// touch table ////////////////////////////////////////
 
@@ -1133,7 +1133,7 @@ public:
   }
 
   void set_nil(const char* name) {
-    lua_pushnil(L_);
+    pushnil();
     setglobal(name);
   }
   void set_nil(const std::string& name) { set_nil(name.c_str()); }
@@ -1854,7 +1854,7 @@ struct luaw::pusher<luaw::lua_cfunction_t> {
   static const size_t size = 1;
 
   static int push(luaw& l, lua_cfunction_t f) {
-    lua_pushcfunction(l.L(), f);
+    l.pushcfunction(f);
     return 1;
   }
 };
@@ -1898,10 +1898,10 @@ struct luaw::pusher<Return (*)(Args...)> {
     // build metatable
     lua_newtable(l.L());
 
-    lua_pushcfunction(l.L(), __call);
+    l.pushcfunction(__call);
     lua_setfield(l.L(), -2, "__call");
 
-    lua_pushcfunction(l.L(), __gc);
+    l.pushcfunction(__gc);
     lua_setfield(l.L(), -2, "__gc");
 
     lua_setmetatable(l.L(), -2);
@@ -1929,7 +1929,7 @@ struct luaw::pusher<Return (*)(Args...)> {
     auto faddr = static_cast<SolidF*>(lua_newuserdata(l.L(), sizeof(f)));
     new (faddr) SolidF(std::forward<F>(f));
 
-    lua_pushcclosure(l.L(), closure, 1);
+    l.pushcclosure(closure, 1);
 
     return 1;
   }
@@ -1945,8 +1945,8 @@ struct luaw::pusher<Return (*)(Args...)> {
       l.release();
       return ret_num;
     };
-    lua_pushlightuserdata(l.L(), reinterpret_cast<void*>(f));
-    lua_pushcclosure(l.L(), closure, 1);
+    l.pushlightuserdata(reinterpret_cast<void*>(f));
+    l.pushcclosure(closure, 1);
     return 1;
   }
 
@@ -2078,7 +2078,7 @@ struct luaw::pusher<std::nullptr_t> {
   static const size_t size = 1;
 
   static int push(luaw& l, std::nullptr_t) {
-    lua_pushnil(l.L());
+    l.pushnil();
     return 1;
   }
 };
@@ -2090,7 +2090,7 @@ struct luaw::pusher<T*,
   static const size_t size = 1;
 
   static int push(luaw& l, T* v) {
-    lua_pushlightuserdata(l.L(), const_cast<void*>(v));
+    l.pushlightuserdata(const_cast<void*>(v));
     return 1;
   }
 };
@@ -2628,7 +2628,7 @@ T __tom(luaw&       l,
   T ret;
   if (failed) *failed = false;
   int absidx = l.abs_index(idx);
-  lua_pushnil(l.L());
+  l.pushnil();
   while (lua_next(l.L(), absidx) != 0) {
     bool kfailed, kexists, vfailed, vexists;
     auto key = l.to<typename T::key_type>(-2, disable_log, &kfailed, &kexists);
@@ -2851,11 +2851,11 @@ private:
   void set_globale_metateble() {
     lua_pushglobaltable(L());
     if (lua_getmetatable(L(), -1) == 0) { lua_newtable(L()); }
-    lua_pushcfunction(L(), _G__index);
+    pushcfunction(_G__index);
     lua_setfield(L(), -2, "__index");
     lua_setmetatable(L(), -2);
     pop();
-    lua_pushlightuserdata(L(), (void*)this);
+    pushlightuserdata((void*)this);
     lua_setfield(L(), LUA_REGISTRYINDEX, "this");
   }
 
