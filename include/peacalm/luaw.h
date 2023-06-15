@@ -773,11 +773,18 @@ public:
   /// Push a C closure function with n upvalues.
   void pushcclosure(lua_cfunction_t f, int n) { lua_pushcclosure(L_, f, n); }
 
+  /// Push lightuserdata. Equivalent to `push(f)`.
+  void pushcfunction(lua_cfunction_t f) { lua_pushcfunction(L_, f); }
+
   /// Push lightuserdata. Equivalent to `push(p)`.
   void pushlightuserdata(void* p) { lua_pushlightuserdata(L_, p); }
 
   /// Push nil. Equivalent to `push(nullptr)`.
   void pushnil() { lua_pushnil(L_); }
+
+  // Pushes the thread represented by L onto the stack. Returns 1 if this thread
+  // is the main thread of its state.
+  int pushthread() { lua_pushthread(L_); }
 
   ///////////////////////// touch table ////////////////////////////////////////
 
