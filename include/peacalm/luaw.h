@@ -748,6 +748,15 @@ public:
     setglobal(name);
   }
 
+  /// Push a C closure function with n upvalues.
+  void pushcclosure(lua_cfunction_t f, int n) { lua_pushcclosure(L_, f, n); }
+
+  /// Push lightuserdata. Equivalent to `push(p)`.
+  void pushlightuserdata(void* p) { lua_pushlightuserdata(L_, p); }
+
+  /// Push nil. Equivalent to `push(nullptr)`.
+  void pushnil() { lua_pushnil(L_); }
+
   ///////////////////////// touch table ////////////////////////////////////////
 
   /// Push the table with given name onto stack. If not exists, create one.
@@ -1982,6 +1991,8 @@ struct luaw::pusher<const char*> {
   static const size_t size = 1;
 
   static int push(luaw& l, const char* v) {
+    // lua_pushstring will push nil if v is NULL, we forbid this
+    PEACALM_LUAW_ASSERT(v);
     lua_pushstring(l.L(), v);
     return 1;
   }
@@ -1998,13 +2009,14 @@ struct luaw::pusher<std::nullptr_t> {
   }
 };
 
-// void*, as lightuserdata
-template <>
-struct luaw::pusher<void*> {
+// void* and cf-qualified void *, as lightuserdata
+template <typename T>
+struct luaw::pusher<T*,
+                    std::enable_if_t<std::is_void<std::decay_t<T>>::value>> {
   static const size_t size = 1;
 
-  static int push(luaw& l, void* v) {
-    lua_pushlightuserdata(l.L(), v);
+  static int push(luaw& l, T* v) {
+    lua_pushlightuserdata(l.L(), const_cast<void*>(v));
     return 1;
   }
 };
@@ -2662,6 +2674,27 @@ struct luaw::convertor<void> {
     if (failed) *failed = false;
     if (exists) *exists = !l.isnoneornil(idx);
     return void();
+  }
+};
+
+// to void* and cv-qualified void*
+template <typename T>
+struct luaw::convertor<T*,
+                       std::enable_if_t<std::is_void<std::decay_t<T>>::value>> {
+  static T* to(luaw& l,
+               int   idx         = -1,
+               bool  disable_log = false,
+               bool* failed      = nullptr,
+               bool* exists      = nullptr) {
+    if (l.isnoneornil(idx)) {
+      if (exists) *exists = false;
+      if (failed) *failed = false;
+      return nullptr;
+    }
+    if (exists) *exists = true;
+    void* p = lua_touserdata(l.L(), idx);
+    if (failed) *failed = !p;
+    return const_cast<T*>(p);
   }
 };
 

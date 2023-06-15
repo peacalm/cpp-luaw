@@ -1067,7 +1067,7 @@ TEST(type_conversions, to_function) {
   }
 }
 
-TEST(type_conversions, to_function_tuple_result) {
+TEST(type_conversions, to_function_with_tuple_result) {
   luaw l;
   l.dostring("f = function(a, b) return a + b, a - b, a * b end");
   l.getglobal("f");
@@ -1175,4 +1175,65 @@ TEST(type_conversions, to_function_tuple_result) {
     EXPECT_TRUE(f.result_exists());
     EXPECT_FALSE(f.failed());
   }
+}
+
+TEST(type_conversions, to_pointer) {
+  luaw       l;
+  static int x = 0;
+  l.pushlightuserdata(&x);
+  l.push(nullptr);
+  l.push(123);
+
+  bool failed, exists;
+
+  // void*
+
+  EXPECT_EQ(l.to<void *>(1, false, &failed, &exists), (void *)(&x));
+  EXPECT_EQ(failed, false);
+  EXPECT_EQ(exists, true);
+
+  EXPECT_EQ(l.to<const void *>(1, false, &failed, &exists), (const void *)(&x));
+  EXPECT_EQ(failed, false);
+  EXPECT_EQ(exists, true);
+
+  EXPECT_EQ(l.to<volatile void *>(1, false, &failed, &exists),
+            (volatile void *)(&x));
+  EXPECT_EQ(failed, false);
+  EXPECT_EQ(exists, true);
+
+  // nil
+
+  EXPECT_FALSE(l.to<void *>(2, false, &failed, &exists));
+  EXPECT_EQ(failed, false);
+  EXPECT_EQ(exists, false);
+  EXPECT_FALSE(l.to<const void *>(2, false, &failed, &exists));
+  EXPECT_EQ(failed, false);
+  EXPECT_EQ(exists, false);
+  EXPECT_FALSE(l.to<volatile void *>(2, false, &failed, &exists));
+  EXPECT_EQ(failed, false);
+  EXPECT_EQ(exists, false);
+
+  // integer
+
+  EXPECT_FALSE(l.to<void *>(3, false, &failed, &exists));
+  EXPECT_EQ(failed, true);
+  EXPECT_EQ(exists, true);
+  EXPECT_FALSE(l.to<const void *>(3, false, &failed, &exists));
+  EXPECT_EQ(failed, true);
+  EXPECT_EQ(exists, true);
+  EXPECT_FALSE(l.to<volatile void *>(3, false, &failed, &exists));
+  EXPECT_EQ(failed, true);
+  EXPECT_EQ(exists, true);
+
+  // none
+
+  EXPECT_FALSE(l.to<void *>(8, false, &failed, &exists));
+  EXPECT_EQ(failed, false);
+  EXPECT_EQ(exists, false);
+  EXPECT_FALSE(l.to<const void *>(8, false, &failed, &exists));
+  EXPECT_EQ(failed, false);
+  EXPECT_EQ(exists, false);
+  EXPECT_FALSE(l.to<volatile void *>(8, false, &failed, &exists));
+  EXPECT_EQ(failed, false);
+  EXPECT_EQ(exists, false);
 }
