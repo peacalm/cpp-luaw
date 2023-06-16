@@ -370,6 +370,7 @@ public:
 
   /// Register a global function. Equivalent to `set(fname, f)`.
   void register_gf(const char* fname, lua_cfunction_t f) {
+    PEACALM_LUAW_ASSERT(fname);
     lua_register(L_, fname, f);
   }
 

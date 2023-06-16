@@ -711,6 +711,7 @@ TEST(set_and_get, register_gf) {
   luaw l;
   l.register_gf("f", ret1);
   EXPECT_EQ(l.eval_int("return f()"), 1);
+  // l.register_gf(0, ret1);  // error
 }
 
 TEST(set_and_get, set_lua_cfunction) {
