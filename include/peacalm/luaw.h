@@ -390,6 +390,7 @@ public:
     return ret;
   }
 
+  // Get and set lua_State.
   lua_State* L() const { return L_; }
   void       L(lua_State* L) { L_ = L; }
 
@@ -398,6 +399,7 @@ public:
     return idx < 0 && -idx <= gettop() ? gettop() + idx + 1 : idx;
   }
 
+  // Stack operations
   void pop(int n = 1) { lua_pop(L_, n); }
   int  gettop() const { return lua_gettop(L_); }
   void settop(int idx) { lua_settop(L_, idx); }
@@ -434,8 +436,16 @@ public:
   /// value pushed.
   int gettable(int idx) { return lua_gettable(L_, idx); }
 
+  /// Similar to lua_gettable, but does a raw access (i.e., without
+  /// metamethods). The value at index must be a table.
+  int rawget(int idx) { return lua_rawget(L_, idx); }
+
   /// Pop k,v on top and set t[k]=v, where t at idx.
   void settable(int idx) { lua_settable(L_, idx); }
+
+  /// Similar to lua_settable, but does a raw assignment (i.e., without
+  /// metamethods). The value at index must be a table.
+  void rawset(int idx) { lua_rawset(L_, idx); }
 
   /// Whether the value at idx is indexable.
   bool indexable(int idx = -1) const {
