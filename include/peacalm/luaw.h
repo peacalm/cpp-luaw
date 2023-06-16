@@ -430,6 +430,14 @@ public:
   bool isthread(int idx = -1)        const { return lua_isthread(L_, idx); }
   // clang-format on
 
+  /// Pop a k on top and push t[k], where t at idx. Return the type of the
+  /// value pushed.
+  int gettable(int idx) { return lua_gettable(L_, idx); }
+
+  /// Pop k,v on top and set t[k]=v, where t at idx.
+  void settable(int idx) { lua_settable(L_, idx); }
+
+  /// Whether the value at idx is indexable.
   bool indexable(int idx = -1) const {
     if (istable(idx)) return true;
     if (lua_getmetatable(L_, idx) == 0) return false;
@@ -441,6 +449,7 @@ public:
     return ret;
   }
 
+  /// Whether the value at idx is newindexable.
   bool newindexable(int idx = -1) const {
     if (istable(idx)) return true;
     if (lua_getmetatable(L_, idx) == 0) return false;
@@ -452,6 +461,7 @@ public:
     return ret;
   }
 
+  /// Whether the value at idx is indexable and newindexable.
   bool indexable_and_newindexable(int idx = -1) const {
     if (istable(idx)) return true;
     if (lua_getmetatable(L_, idx) == 0) return false;
@@ -464,6 +474,7 @@ public:
     return ret;
   }
 
+  /// Whether the value at idx is callable.
   bool callable(int idx = -1) const {
     if (isfunction(idx)) return true;
     if (lua_getmetatable(L_, idx) == 0) return false;
@@ -714,7 +725,7 @@ public:
     if (gettop() > 0 && istable(idx)) {
       int aidx = abs_index(idx);
       pushlightuserdata(p);
-      lua_gettable(L_, aidx);
+      gettable(aidx);
     } else {
       pushnil();
     }
@@ -843,13 +854,13 @@ public:
     int aidx = abs_index(idx);
     PEACALM_LUAW_INDEXABLE_ASSERT(indexable_and_newindexable(aidx));
     pushlightuserdata(p);
-    lua_gettable(L_, aidx);
+    gettable(aidx);
     if (istable()) return *this;
     pop();
     lua_newtable(L_);
     pushlightuserdata(p);
     pushvalue(-2);
-    lua_settable(L_, aidx);
+    settable(aidx);
     return *this;
   }
 
@@ -924,7 +935,7 @@ public:
     int aidx = abs_index(idx);
     pushlightuserdata(key);
     push(std::forward<T>(value));
-    lua_settable(L_, aidx);
+    settable(aidx);
   }
 
   /// Set field with an user given hint type.
@@ -960,7 +971,7 @@ public:
     int aidx = abs_index(idx);
     pushlightuserdata(key);
     push<Hint>(std::forward<T>(value));
-    lua_settable(L_, aidx);
+    settable(aidx);
   }
 
   /// Set the parameter value as metatable for the value at given index.
