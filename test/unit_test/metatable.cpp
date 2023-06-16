@@ -49,12 +49,11 @@ TEST(metatable, seek_touchtb_setfield) {
   // setfiled using metatable_tag
 
   l.pop();
-  l.setfield(luaw::metatable_tag{}, nullptr);  // set nil to metatable
+  l.setkv(luaw::metatable_tag{}, nullptr);  // set nil to metatable
   EXPECT_TRUE(l.eval<bool>("return b.x == nil"));
 
   l.touchtb(luaw::metatable_tag{});
-  l.setfield("__index",
-             std::unordered_map<std::string, int>{{"x", 1}, {"y", 2}});
+  l.setkv("__index", std::unordered_map<std::string, int>{{"x", 1}, {"y", 2}});
   EXPECT_TRUE(l.eval<bool>("return b.x == 1"));
   EXPECT_TRUE(l.eval<bool>("return b.y == 2"));
   EXPECT_TRUE(l.eval<bool>("return b.z == nil"));
@@ -63,7 +62,7 @@ TEST(metatable, seek_touchtb_setfield) {
   l.gseek("c");
   std::unordered_map<std::string, std::unordered_map<std::string, int>> meta{
       {"__index", {{"x", 1}, {"y", 2}}}};
-  l.setfield(luaw::metatable_tag{}, meta);
+  l.setkv(luaw::metatable_tag{}, meta);
   EXPECT_TRUE(l.eval<bool>("return c.x == 1"));
   EXPECT_TRUE(l.eval<bool>("return c.y == 2"));
   EXPECT_TRUE(l.eval<bool>("return c.z == nil"));
@@ -72,9 +71,9 @@ TEST(metatable, seek_touchtb_setfield) {
   l.set("d", luaw::newtable_tag{});
   EXPECT_TRUE(l.eval<bool>("return d.x == nil"));
   l.gseek("d");
-  l.setfield(luaw::metatable_tag{},
-             std::map<std::string, luaw::lua_cfunction_t>{
-                 {"__index", always1__index}});
+  l.setkv(luaw::metatable_tag{},
+          std::map<std::string, luaw::lua_cfunction_t>{
+              {"__index", always1__index}});
   EXPECT_TRUE(l.eval<bool>("return d.x == 1"));
   EXPECT_TRUE(l.eval<bool>("return d.y == 1"));
 

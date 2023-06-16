@@ -41,7 +41,7 @@ TEST(touchtb, retouch) {
   l.gtouchtb("g");
   EXPECT_EQ(l.gettop(), 1);
   EXPECT_TRUE(l.istable());
-  l.setfield("x", 123);
+  l.setkv("x", 123);
   l.settop(0);
 
   l.gtouchtb("g");
@@ -49,16 +49,16 @@ TEST(touchtb, retouch) {
   EXPECT_EQ(l.to_int(), 123);
 }
 
-TEST(setfield, setfield) {
+TEST(setkv, setkv) {
   luaw l;
   l.gseek_env().touchtb("g");
 
   EXPECT_EQ(l.gettop(), 2);
 
-  l.setfield("a", 1);
-  l.setfield("b", 2);
-  l.setfield(1, "one");
-  l.setfield<luaw::function_tag>("fadd", [](int a, int b) { return a + b; });
+  l.setkv("a", 1);
+  l.setkv("b", 2);
+  l.setkv(1, "one");
+  l.setkv<luaw::function_tag>("fadd", [](int a, int b) { return a + b; });
 
   EXPECT_EQ(l.gettop(), 2);
 
@@ -82,7 +82,7 @@ TEST(setfield, setfield) {
 
   l.gseek_env();
   std::vector<int> x{1, 2, 3};
-  l.setfield("x", x);
+  l.setkv("x", x);
   EXPECT_EQ(l.get<std::vector<int>>("x"), x);
 
   l.set({"g", "gg"}, 1);
@@ -101,21 +101,21 @@ TEST(setfield, setfield) {
   EXPECT_EQ(l.get<std::function<int(int, int)>>({"g", "gg", "fadd"})(1, 1), 2);
 }
 
-TEST(setfield, newtable_tag) {
+TEST(setkv, newtable_tag) {
   luaw l;
   l.set({"g", "gg", "x"}, 1);
   l.gseek("g");
-  l.setfield(1, 1);
-  l.setfield(2, 2);
+  l.setkv(1, 1);
+  l.setkv(2, 2);
   l.seek("gg");
-  l.setfield(1, 1);
-  l.setfield(2, 2);
+  l.setkv(1, 1);
+  l.setkv(2, 2);
   EXPECT_EQ(l.gettop(), 2);
   EXPECT_EQ(l.get<std::vector<int>>({"g", "gg"}), (std::vector<int>{1, 2}));
   EXPECT_EQ(l.to<std::vector<int>>(), (std::vector<int>{1, 2}));
 
   // set newtable
-  l.setfield("gg", luaw::newtable_tag{}, 1);
+  l.setkv("gg", luaw::newtable_tag{}, 1);
   EXPECT_TRUE(l.get<std::vector<int>>({"g", "gg"}).empty());
 
   EXPECT_EQ(l.gettop(), 2);
@@ -127,8 +127,8 @@ TEST(setfield, newtable_tag) {
   // re-seek gg, new it is emtpy
   EXPECT_EQ(l.to<std::vector<int>>(), (std::vector<int>{}));
 
-  l.setfield(1, 1);
-  l.setfield(2, 2);
+  l.setkv(1, 1);
+  l.setkv(2, 2);
 
   l.set({"g", "gg"}, luaw::newtable_tag{});
   EXPECT_TRUE(l.get<std::vector<int>>({"g", "gg"}).empty());
@@ -146,32 +146,32 @@ TEST(touchtb, nullptr) {
   // l.touchtb(std::add_cv_t<std::nullptr_t>{});     // error
 }
 
-TEST(setfield, nullptr) {
+TEST(setkv, nullptr) {
   int  a, b, c;
   luaw l;
   l.dostring("t = {a=0}");
   l.gseek("t");
 
-  // l.setfield(nullptr, 1);                                // error
-  // l.setfield(std::add_const_t<std::nullptr_t>{}, true);  // error
-  // l.setfield(std::add_cv_t<std::nullptr_t>{}, "x");      // error
+  // l.setkv(nullptr, 1);                                // error
+  // l.setkv(std::add_const_t<std::nullptr_t>{}, true);  // error
+  // l.setkv(std::add_cv_t<std::nullptr_t>{}, "x");      // error
 
   auto f = [&](int x) { return x + a; };
-  // l.setfield(nullptr, f);            // error
-  // l.setfield<int(int)>(nullptr, f);  // error
+  // l.setkv(nullptr, f);            // error
+  // l.setkv<int(int)>(nullptr, f);  // error
 }
 
-TEST(setfield, lightuerdata_as_key) {
+TEST(setkv, lightuerdata_as_key) {
   int  a, b, c;
   luaw l;
   l.dostring("t = {a=0}");
   l.gseek("t");
 
-  l.setfield(0, 0);
-  l.setfield((void*)(&a), 1);
-  l.setfield((void*)(nullptr), 2);
+  l.setkv(0, 0);
+  l.setkv((void*)(&a), 1);
+  l.setkv((void*)(nullptr), 2);
 
-  // l.setfield((const char*)(nullptr), 3); // runtime error
+  // l.setkv((const char*)(nullptr), 3); // runtime error
   // l.push((const char*)(nullptr)); // runtime error
 
   l.dostring("for k,v in pairs(t) do print(k, v) end ");

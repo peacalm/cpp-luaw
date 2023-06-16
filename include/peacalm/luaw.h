@@ -911,7 +911,7 @@ public:
 
   /// Set t[key] = value, where t is a table at given index.
   template <typename T>
-  void setfield(const char* key, T&& value, int idx = -1) {
+  void setkv(const char* key, T&& value, int idx = -1) {
     PEACALM_LUAW_ASSERT(key);
     PEACALM_LUAW_INDEXABLE_ASSERT(newindexable(idx));
     int aidx = abs_index(idx);
@@ -919,18 +919,18 @@ public:
     lua_setfield(L_, aidx, key);
   }
   template <typename T>
-  void setfield(const std::string& key, T&& value, int idx = -1) {
-    setfield(key.c_str(), std::forward<T>(value), idx);
+  void setkv(const std::string& key, T&& value, int idx = -1) {
+    setkv(key.c_str(), std::forward<T>(value), idx);
   }
   template <typename T>
-  void setfield(int key, T&& value, int idx = -1) {
+  void setkv(int key, T&& value, int idx = -1) {
     PEACALM_LUAW_INDEXABLE_ASSERT(newindexable(idx));
     int aidx = abs_index(idx);
     push(std::forward<T>(value));
     lua_seti(L_, aidx, key);
   }
   template <typename T>
-  void setfield(void* key, T&& value, int idx = -1) {
+  void setkv(void* key, T&& value, int idx = -1) {
     PEACALM_LUAW_INDEXABLE_ASSERT(newindexable(idx));
     int aidx = abs_index(idx);
     pushlightuserdata(key);
@@ -940,9 +940,9 @@ public:
 
   /// Set field with an user given hint type.
   template <typename Hint, typename T>
-  std::enable_if_t<!std::is_same<Hint, T>::value> setfield(const char* key,
-                                                           T&&         value,
-                                                           int idx = -1) {
+  std::enable_if_t<!std::is_same<Hint, T>::value> setkv(const char* key,
+                                                        T&&         value,
+                                                        int         idx = -1) {
     PEACALM_LUAW_ASSERT(key);
     PEACALM_LUAW_INDEXABLE_ASSERT(newindexable(idx));
     int aidx = abs_index(idx);
@@ -950,23 +950,24 @@ public:
     lua_setfield(L_, aidx, key);
   }
   template <typename Hint, typename T>
-  std::enable_if_t<!std::is_same<Hint, T>::value> setfield(
-      const std::string& key, T&& value, int idx = -1) {
-    setfield<Hint>(key.c_str(), std::forward<T>(value), idx);
+  std::enable_if_t<!std::is_same<Hint, T>::value> setkv(const std::string& key,
+                                                        T&& value,
+                                                        int idx = -1) {
+    setkv<Hint>(key.c_str(), std::forward<T>(value), idx);
   }
   template <typename Hint, typename T>
-  std::enable_if_t<!std::is_same<Hint, T>::value> setfield(int key,
-                                                           T&& value,
-                                                           int idx = -1) {
+  std::enable_if_t<!std::is_same<Hint, T>::value> setkv(int key,
+                                                        T&& value,
+                                                        int idx = -1) {
     PEACALM_LUAW_INDEXABLE_ASSERT(newindexable(idx));
     int aidx = abs_index(idx);
     push<Hint>(std::forward<T>(value));
     lua_seti(L_, aidx, key);
   }
   template <typename Hint, typename T>
-  std::enable_if_t<!std::is_same<Hint, T>::value> setfield(void* key,
-                                                           T&&   value,
-                                                           int   idx = -1) {
+  std::enable_if_t<!std::is_same<Hint, T>::value> setkv(void* key,
+                                                        T&&   value,
+                                                        int   idx = -1) {
     PEACALM_LUAW_INDEXABLE_ASSERT(newindexable(idx));
     int aidx = abs_index(idx);
     pushlightuserdata(key);
@@ -977,15 +978,15 @@ public:
   /// Set the parameter value as metatable for the value at given index.
   /// Setting nullptr as metatable means setting nil to metatable.
   template <typename T>
-  void setfield(metatable_tag, T&& value, int idx = -1) {
+  void setkv(metatable_tag, T&& value, int idx = -1) {
     int aidx = abs_index(idx);
     push(std::forward<T>(value));
     lua_setmetatable(L_, aidx);
   }
   template <typename Hint, typename T>
-  std::enable_if_t<!std::is_same<Hint, T>::value> setfield(metatable_tag,
-                                                           T&& value,
-                                                           int idx = -1) {
+  std::enable_if_t<!std::is_same<Hint, T>::value> setkv(metatable_tag,
+                                                        T&& value,
+                                                        int idx = -1) {
     int aidx = abs_index(idx);
     push<Hint>(std::forward<T>(value));
     lua_setmetatable(L_, aidx);
@@ -993,9 +994,9 @@ public:
 
   /// Using nullptr as key is invalid.
   template <typename T>
-  void setfield(std::nullptr_t, T&& value, int idx = -1) = delete;
+  void setkv(std::nullptr_t, T&& value, int idx = -1) = delete;
   template <typename Hint, typename T>
-  void setfield(std::nullptr_t, T&& value, int idx = -1) = delete;
+  void setkv(std::nullptr_t, T&& value, int idx = -1) = delete;
 
   ///////////////////////// set global variables ///////////////////////////////
 
@@ -1093,7 +1094,7 @@ public:
 private:
   template <typename Hint, typename First, typename Second>
   void __lset(First&& f, Second&& s) {
-    setfield<Hint>(std::forward<First>(f), std::forward<Second>(s));
+    setkv<Hint>(std::forward<First>(f), std::forward<Second>(s));
   }
 
   template <typename Hint, typename First, typename Second, typename... Rests>
@@ -1112,7 +1113,7 @@ private:
     while (true) {
       auto nx = std::next(it, 1);
       if (nx == e) {
-        setfield<Hint>(*it, std::forward<T>(value));
+        setkv<Hint>(*it, std::forward<T>(value));
         break;
       } else {
         touchtb(*it);

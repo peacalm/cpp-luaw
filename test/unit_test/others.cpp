@@ -97,7 +97,7 @@ TEST(others, indexable) {
   EXPECT_FALSE(l.callable(2));
 
   EXPECT_EQ(l.gettop(), 2);
-  l.setfield("__index", []() { return 1; });
+  l.setkv("__index", []() { return 1; });
   EXPECT_EQ(l.gettop(), 2);
 
   EXPECT_FALSE(l.istable(1));
@@ -109,7 +109,7 @@ TEST(others, indexable) {
   EXPECT_EQ(l.gettop(), 2);
 
   //
-  l.setfield("__newindex", []() { return 1; });
+  l.setkv("__newindex", []() { return 1; });
   EXPECT_EQ(l.gettop(), 2);
 
   EXPECT_FALSE(l.istable(1));
@@ -121,7 +121,7 @@ TEST(others, indexable) {
   EXPECT_EQ(l.gettop(), 2);
 
   //
-  l.setfield("__call", []() { return 1; });
+  l.setkv("__call", []() { return 1; });
   EXPECT_EQ(l.gettop(), 2);
 
   EXPECT_FALSE(l.istable(1));
