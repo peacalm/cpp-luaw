@@ -31,7 +31,7 @@ TEST(constructions, opt) {
     EXPECT_EQ(l.gettop(), 0);
   }
   {
-    luaw l(luaw::opt{}.ignore_libs().register_exfunc(false));
+    luaw l(luaw::opt{}.ignore_libs().register_exfunctions(false));
     EXPECT_EQ(l.eval_int("--[[error]] return IF(true, 1, 2)"), 0);
     EXPECT_EQ(l.gettop(), 0);
   }

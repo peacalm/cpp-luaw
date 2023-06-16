@@ -84,7 +84,7 @@ TEST(custom_luaw, re_init_no_exfunc_eval) {
   double ret;
   for (int i = 0; i < rep; ++i) {
     custom_luaw<std::unique_ptr<provider>> l(
-        luaw::opt{}.register_exfunc(false));
+        luaw::opt{}.register_exfunctions(false));
     l.provider(std::make_unique<provider>(false));
     ret = l.eval_double(expr);
   }
@@ -95,7 +95,7 @@ TEST(custom_luaw, re_init_nolib_eval) {
   double ret;
   for (int i = 0; i < rep; ++i) {
     custom_luaw<std::unique_ptr<provider>> l(
-        luaw::opt{}.ignore_libs().register_exfunc(false));
+        luaw::opt{}.ignore_libs().register_exfunctions(false));
     l.provider(std::make_unique<provider>(false));
     for (int i = 0; i < 26; ++i) {
       l.set_number(std::string{char('a' + i)}, i + 1);

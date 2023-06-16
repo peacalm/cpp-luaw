@@ -243,7 +243,7 @@ public:
     }
 
     // Register extended functions
-    opt& register_exfunc(bool r) {
+    opt& register_exfunctions(bool r) {
       exfunc_ = r;
       return *this;
     }
