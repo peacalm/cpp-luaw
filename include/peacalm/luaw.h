@@ -208,7 +208,7 @@ public:
   // table to Lua.
   struct newtable_tag {};
 
-  // Used as a key for seek/touchtb/setfield/lset, indicate that we're
+  // Used as a key for seek/touchtb/setkv/lset, indicate that we're
   // getting/setting a value's metatable.
   struct metatable_tag {
     const char* tname;
