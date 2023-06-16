@@ -29,7 +29,6 @@ target_include_directories(${TARGET} PUBLIC
 
 target_link_libraries(${TARGET} PUBLIC ${GTEST_LIBRARIES} ${LUA_LIBRARIES})
 
-add_test(NAME ${TARGET} COMMAND ${TARGET})
-
+# add_test(NAME ${TARGET} COMMAND ${TARGET})
 include(GoogleTest)
 gtest_discover_tests(${TARGET})
