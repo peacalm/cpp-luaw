@@ -19,7 +19,7 @@ static inline int always1__index(lua_State* L) {
   return 1;
 }
 
-TEST(metatable, seek_touchtb_setfield) {
+TEST(metatable, seek_touchtb_setkv) {
   luaw l;
 
   auto push_mt = [&]() {
