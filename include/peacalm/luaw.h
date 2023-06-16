@@ -1888,7 +1888,7 @@ struct luaw::pusher<Return (*)(Args...)> {
       push(luaw& l, F&& f) {
     using SolidF = std::remove_reference_t<F>;
 
-    auto __call = [](lua_State* L) -> int {
+    lua_cfunction_t __call = [](lua_State* L) -> int {
       PEACALM_LUAW_ASSERT(lua_gettop(L) >= 1);
       PEACALM_LUAW_ASSERT(lua_isuserdata(L, 1));
       auto callee = static_cast<SolidF*>(lua_touserdata(L, 1));
@@ -1899,7 +1899,7 @@ struct luaw::pusher<Return (*)(Args...)> {
       return ret_num;
     };
 
-    auto __gc = [](lua_State* L) -> int {
+    lua_cfunction_t __gc = [](lua_State* L) -> int {
       PEACALM_LUAW_ASSERT(lua_gettop(L) == 1);
       PEACALM_LUAW_ASSERT(lua_isuserdata(L, 1));
       auto fptr = static_cast<SolidF*>(lua_touserdata(L, 1));
