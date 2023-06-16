@@ -436,16 +436,21 @@ public:
   /// value pushed.
   int gettable(int idx) { return lua_gettable(L_, idx); }
 
-  /// Similar to lua_gettable, but does a raw access (i.e., without
-  /// metamethods). The value at index must be a table.
-  int rawget(int idx) { return lua_rawget(L_, idx); }
+  int geti(int idx, lua_integer_t n) { return lua_geti(L_, idx, n); }
 
   /// Pop k,v on top and set t[k]=v, where t at idx.
   void settable(int idx) { lua_settable(L_, idx); }
 
-  /// Similar to lua_settable, but does a raw assignment (i.e., without
-  /// metamethods). The value at index must be a table.
+  void seti(int idx, lua_integer_t n) { lua_seti(L_, idx, n); }
+
+  // Similar to lua_gettable/lua_settable/..., but does a raw assignment (i.e.,
+  // without metamethods). The value at index must be a table.
+  int  rawget(int idx) { return lua_rawget(L_, idx); }
+  int  rawgeti(int idx, lua_integer_t n) { return lua_rawgeti(L_, idx, n); }
+  int  rawgetp(int idx, const void* p) { return lua_rawgetp(L_, idx, p); }
   void rawset(int idx) { lua_rawset(L_, idx); }
+  void rawseti(int idx, lua_integer_t n) { lua_rawseti(L_, idx, n); }
+  void rawsetp(int idx, const void* p) { lua_rawsetp(L_, idx, p); }
 
   /// Whether the value at idx is indexable.
   bool indexable(int idx = -1) const {
