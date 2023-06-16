@@ -187,6 +187,8 @@ class luaw {
 
 public:
   using lua_cfunction_t = lua_CFunction;  // int (*)(lua_State *L)
+  using lua_number_t    = lua_Number;     // double as default
+  using lua_integer_t   = lua_Integer;    // long long as default
 
   // A callable wrapper for Lua functions. Like std::function and can convert to
   // std::function, but contains more status information.
@@ -663,7 +665,7 @@ public:
   /// Push the global environment onto the stack.
   /// Equivalent to gseek("_G") if "_G" is not modified.
   self_t& gseek_env() {
-    lua_pushglobaltable(L_);
+    pushglobaltable();
     return *this;
   }
 
@@ -785,6 +787,9 @@ public:
   // Pushes the thread represented by L onto the stack. Returns 1 if this thread
   // is the main thread of its state.
   int pushthread() { return lua_pushthread(L_); }
+
+  /// Pushes the global environment onto the stack.
+  void pushglobaltable() { lua_pushglobaltable(L_); }
 
   ///////////////////////// touch table ////////////////////////////////////////
 
@@ -2849,7 +2854,7 @@ private:
   }
 
   void set_globale_metateble() {
-    lua_pushglobaltable(L());
+    pushglobaltable();
     if (lua_getmetatable(L(), -1) == 0) { lua_newtable(L()); }
     pushcfunction(_G__index);
     lua_setfield(L(), -2, "__index");
