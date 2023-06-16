@@ -707,9 +707,9 @@ int argnum(lua_State *L) {
   return 1;
 }
 
-TEST(set_and_get, registerf) {
+TEST(set_and_get, register_gf) {
   luaw l;
-  l.registerf("f", ret1);
+  l.register_gf("f", ret1);
   EXPECT_EQ(l.eval_int("return f()"), 1);
 }
 

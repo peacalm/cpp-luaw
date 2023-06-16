@@ -369,16 +369,16 @@ public:
   }
 
   /// Register a global function. Equivalent to `set(fname, f)`.
-  void registerf(const char* fname, lua_cfunction_t f) {
+  void register_gf(const char* fname, lua_cfunction_t f) {
     lua_register(L_, fname, f);
   }
 
   /// Register extended functions.
   void register_exfunctions() {
-    registerf("IF", luaexf::IF);
-    registerf("SET", luaexf::SET);
-    registerf("COUNTER", luaexf::COUNTER);
-    registerf("COUNTER0", luaexf::COUNTER0);
+    register_gf("IF", luaexf::IF);
+    register_gf("SET", luaexf::SET);
+    register_gf("COUNTER", luaexf::COUNTER);
+    register_gf("COUNTER0", luaexf::COUNTER0);
   }
 
   /// Release the ownership of contained Lua State.
