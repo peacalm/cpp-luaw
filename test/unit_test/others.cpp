@@ -34,6 +34,9 @@ TEST(others, abs_index) {
   EXPECT_EQ(l.abs_index(-3), 1);
   EXPECT_EQ(l.abs_index(-4), -4);
   EXPECT_EQ(l.abs_index(-5), -5);
+
+  // LUA_REGISTRYINDEX won't change
+  EXPECT_EQ(l.abs_index(LUA_REGISTRYINDEX), LUA_REGISTRYINDEX);
 }
 
 TEST(others, indexable) {
