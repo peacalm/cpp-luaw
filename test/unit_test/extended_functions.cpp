@@ -33,6 +33,13 @@ TEST(extended_functions, IF) {
   EXPECT_EQ(l.gettop(), 0);
 }
 
+TEST(extended_functions, IF_failed) {
+  luaw l;
+  EXPECT_EQ(l.eval_int("return IF(1)"), 0);
+  EXPECT_EQ(l.eval_int("return IF(1,2)"), 0);
+  EXPECT_EQ(l.eval_int("return IF(1,2,3,4)"), 0);
+}
+
 TEST(extended_functions, SET) {
   luaw l;
   EXPECT_EQ(l.eval_bool("return SET(1,2,4)[1]"), true);

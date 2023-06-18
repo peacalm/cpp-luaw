@@ -65,9 +65,7 @@ inline int IF(lua_State* L) {
   if (n < 3 || (~n & 1)) {
     const char* s = n < 3 ? "IF: At least 3 arguments"
                           : "IF: The number of arguments should be odd";
-    lua_pushstring(L, s);
-    lua_error(L);
-    return 0;
+    return luaL_error(L, s);
   }
   int ret = n;
   for (int i = 1; i < n; i += 2) {
@@ -2510,8 +2508,8 @@ private:
     bool failed, exists;
     auto param = l.to<std::decay_t<FirstArg>>(i, false, &failed, &exists);
     if (failed) {
-      lua_pushfstring(l.L(), "The %dth argument conversion failed", counter);
-      lua_error(l.L());
+      luaL_error(l.L(), "The %dth argument conversion failed", counter);
+      return Return();  // never runs here
     }
     bind<Callee, FirstArg, RestArgs...> b(std::forward<Callee>(c),
                                           std::move(param));
@@ -3383,21 +3381,17 @@ private:
     lua_getfield(L, LUA_REGISTRYINDEX, "this");
     pointer_t p = (pointer_t)lua_touserdata(L, -1);
     if (!p) {
-      lua_pushstring(L, "Pointer 'this' not found");
-      lua_error(L);
+      return luaL_error(L, "Pointer 'this' not found");
     } else if (!p->provider()) {
-      lua_pushstring(L, "Need install provider");
-      lua_error(L);
+      return luaL_error(L, "Need install provider");
     } else {
       int sz = lua_gettop(L);
       if (!p->provide(L, name)) {
-        lua_pushfstring(L, "Provide failed: %s", name);
-        lua_error(L);
+        return luaL_error(L, "Provide failed: %s", name);
       }
       int diff = lua_gettop(L) - sz;
       if (diff != 1) {
-        lua_pushfstring(L, "Should push exactly one value, given %d", diff);
-        lua_error(L);
+        return luaL_error(L, "Should push exactly one value, given %d", diff);
       }
     }
     return 1;
