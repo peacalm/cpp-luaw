@@ -887,12 +887,12 @@ public:
   self_t& touchtb(int n, int idx = -1) {
     int aidx = abs_index(idx);
     PEACALM_LUAW_INDEXABLE_ASSERT(indexable_and_newindexable(aidx));
-    lua_geti(L_, aidx, n);
+    geti(aidx, n);
     if (istable() || indexable_and_newindexable()) return *this;
     pop();
     lua_newtable(L_);
-    lua_seti(L_, aidx, n);
-    lua_geti(L_, aidx, n);
+    seti(aidx, n);
+    geti(aidx, n);
     return *this;
   }
 
@@ -976,7 +976,7 @@ public:
     PEACALM_LUAW_INDEXABLE_ASSERT(newindexable(idx));
     int aidx = abs_index(idx);
     push(std::forward<T>(value));
-    lua_seti(L_, aidx, key);
+    seti(aidx, key);
   }
   template <typename T>
   void setkv(void* key, T&& value, int idx = -1) {
@@ -1011,7 +1011,7 @@ public:
     PEACALM_LUAW_INDEXABLE_ASSERT(newindexable(idx));
     int aidx = abs_index(idx);
     push<Hint>(std::forward<T>(value));
-    lua_seti(L_, aidx, key);
+    seti(aidx, key);
   }
   template <typename Hint, typename T>
   std::enable_if_t<!std::is_same<Hint, T>::value> setkv(void* key,
@@ -3074,10 +3074,10 @@ struct luaw::convertor<std::pair<T, U>> {
     }
     // Allow elements do not exist, {} means a pair with initial values
     bool ffailed, sfailed;
-    lua_geti(l.L(), idx, 1);
+    l.geti(idx, 1);
     auto first = luaw::convertor<T>::to(l, -1, disable_log, &ffailed);
     l.pop();
-    lua_geti(l.L(), idx, 2);
+    l.geti(idx, 2);
     auto second = luaw::convertor<U>::to(l, -1, disable_log, &sfailed);
     l.pop();
     if (failed) *failed = (ffailed || sfailed);
@@ -3110,7 +3110,7 @@ struct luaw::convertor<std::vector<T, Allocator>> {
     int sz = luaL_len(l.L(), idx);
     ret.reserve(sz);
     for (int i = 1; i <= sz; ++i) {
-      lua_geti(l.L(), idx, i);
+      l.geti(idx, i);
       bool subfailed, subexists;
       auto subret =
           luaw::convertor<T>::to(l, -1, disable_log, &subfailed, &subexists);
