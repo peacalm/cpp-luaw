@@ -225,6 +225,19 @@ public:
   // Maybe used as a C++ function formal parameter.
   struct placeholder_tag {};
 
+  // Stack balance guarder.
+  // Automatically set stack to a specific size when destruct.
+  class guarder {
+    lua_State* L_;
+    int        topsz_;
+
+  public:
+    guarder(lua_State* L, int topsz) : L_(L), topsz_(topsz) {}
+    ~guarder() { lua_settop(L_, topsz_); }
+  };
+
+  guarder make_guarder() const { return guarder(L_, gettop()); }
+
   // Initialization options for luaw
   class opt {
     enum libopt : char { ignore = 0, load = 1, preload = 2 };
@@ -1632,36 +1645,35 @@ public:
    *
    * @tparam T The result type user expected. T can be any type composited by
    * bool, integer types, float number type, std::string, std::vector, std::set,
-   * std::unordered_set, std::map, std::unordered_map, std::pair.
-   * @param [in] expr Lua expression, which must have a return value. Only the
-   * first one is used if multiple values returned.
+   * std::unordered_set, std::map, std::unordered_map, std::pair, std::tuple.
+   * What's more, T can be void or std::tuple<> to represent a expression who
+   * has no results or we don't use the results.
+   * @param [in] expr Lua expression, which can have no return, one return or
+   * multiple returns.
    * @param [in] disable_log Whether print a log when exception occurs.
    * @param [out] failed Will be set whether the operation is failed if this
    * pointer is not nullptr. If T is a container type, it regards the operation
    * as failed if any element failed.
-   * @return The expression's result in type T.
+   * @return The expression's result in type T. If T is not void or
+   * std::tuple<>, the expression must provide results.
    */
   template <typename T>
   T eval(const char* expr, bool disable_log = false, bool* failed = nullptr) {
-    static_assert(!std::is_same<std::decay_t<T>, void>::value,
-                  "void is not supported, try std::tuple<> instead");
-
-    int sz = gettop();
+    auto _g = make_guarder();
+    int  sz = gettop();
     if (dostring(expr) != LUA_OK) {
       if (failed) *failed = true;
       if (!disable_log) log_error_in_stack();
-      settop(sz);
-      return T{};
+      return T();
     }
     PEACALM_LUAW_ASSERT(gettop() >= sz);
-    if (gettop() <= sz && !std::is_same<std::decay_t<T>, std::tuple<>>::value) {
+    if (gettop() <= sz && !std::is_same<std::decay_t<T>, std::tuple<>>::value &&
+        !std::is_same<std::decay_t<T>, void>::value) {
       if (failed) *failed = true;
       if (!disable_log) log_error("No return");
-      return T{};
+      return T();
     }
-    auto ret = to<T>(sz + 1, disable_log, failed);
-    settop(sz);
-    return ret;
+    return to<T>(sz + 1, disable_log, failed);
   }
   template <typename T>
   T eval(const std::string& expr,
