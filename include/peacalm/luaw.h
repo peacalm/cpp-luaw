@@ -459,11 +459,22 @@ public:
   int gettable(int idx) { return lua_gettable(L_, idx); }
 
   int geti(int idx, lua_integer_t n) { return lua_geti(L_, idx, n); }
+  int getp(int idx, const void* p) {
+    pushlightuserdata(p);
+    return gettable(idx);
+  }
 
   /// Pop k,v on top and set t[k]=v, where t at idx.
   void settable(int idx) { lua_settable(L_, idx); }
 
   void seti(int idx, lua_integer_t n) { lua_seti(L_, idx, n); }
+  void setp(int idx, const void* p) {
+    int aidx = abs(idx);
+    pushlightuserdata(p);
+    pushvalue(-2);
+    settable(aidx);
+    pop();
+  }
 
   // Similar to lua_gettable/lua_settable/..., but does a raw assignment (i.e.,
   // without metamethods). The value at index must be a table.
@@ -825,7 +836,7 @@ public:
   void pushcfunction(lua_cfunction_t f) { lua_pushcfunction(L_, f); }
 
   /// Push lightuserdata. Equivalent to `push(p)`.
-  void pushlightuserdata(void* p) { lua_pushlightuserdata(L_, p); }
+  void pushlightuserdata(const void* p) { lua_pushlightuserdata(L_, (void*)p); }
 
   /// Push nil. Equivalent to `push(nullptr)`.
   void pushnil() { lua_pushnil(L_); }
