@@ -2616,9 +2616,9 @@ struct luaw::pusher<std::pair<T, U>> {
   static int push(luaw& l, const std::pair<T, U>& p) {
     lua_newtable(l.L());
     l.push(p.first);
-    lua_rawseti(l.L(), -2, 1);
+    l.rawseti(-2, 1);
     l.push(p.second);
-    lua_rawseti(l.L(), -2, 2);
+    l.rawseti(-2, 2);
     return 1;
   }
 };
@@ -2632,7 +2632,7 @@ static int __push_list(luaw& l, const Container& v) {
   int cnt = 0;
   for (auto b = v.begin(), e = v.end(); b != e; ++b) {
     l.push(*b);
-    lua_rawseti(l.L(), -2, ++cnt);
+    l.rawseti(-2, ++cnt);
   }
   return 1;
 }
@@ -2645,7 +2645,7 @@ static int __push_set(luaw& l, const Container& v) {
   for (auto b = v.begin(), e = v.end(); b != e; ++b) {
     l.push(*b);
     lua_pushboolean(l.L(), 1);
-    lua_rawset(l.L(), -3);
+    l.rawset(-3);
   }
   return 1;
 }
@@ -2657,7 +2657,7 @@ static int __push_map(luaw& l, const Container& v) {
   for (auto b = v.begin(), e = v.end(); b != e; ++b) {
     l.push(b->first);
     l.push(b->second);
-    lua_rawset(l.L(), -3);
+    l.rawset(-3);
   }
   return 1;
 }
@@ -2903,7 +2903,7 @@ public:
 
     luaw_fake l(L_, lua_gettop(L_));
     int       sz = l.gettop();
-    lua_rawgeti(L_, LUA_REGISTRYINDEX, *ref_sptr_);
+    l.rawgeti(LUA_REGISTRYINDEX, *ref_sptr_);
     if (l.isnoneornil()) {
       function_failed_ = true;
       function_exists_ = false;
