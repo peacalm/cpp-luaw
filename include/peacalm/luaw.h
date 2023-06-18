@@ -28,6 +28,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <typeinfo>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -179,6 +180,8 @@ class luaw {
   using self_t = luaw;
 
   template <typename T, typename = void>
+  struct registrar;
+  template <typename T, typename = void>
   struct pusher;
   template <typename T, typename = void>
   struct convertor;
@@ -189,6 +192,10 @@ public:
   using lua_cfunction_t = lua_CFunction;  // int (*)(lua_State *L)
   using lua_number_t    = lua_Number;     // double as default
   using lua_integer_t   = lua_Integer;    // long long as default
+
+  // To generate shared/exclusive metatable of type T.
+  template <typename T, typename = void>
+  struct metatable_factory;
 
   // A callable wrapper for Lua functions. Like std::function and can convert to
   // std::function, but contains more status information.
@@ -394,7 +401,9 @@ public:
   lua_State* L() const { return L_; }
   void       L(lua_State* L) { L_ = L; }
 
-  /// Convert given index to absolute index of stack
+  /// Convert given index to absolute index of stack. It won't change idx's
+  /// value if abs(idx) > topsize, this is different with lua_absindex.
+  /// e.g. abs_index(LUA_REGISTRYINDEX) -> LUA_REGISTRYINDEX.
   int abs_index(int idx) {
     return idx < 0 && -idx <= gettop() ? gettop() + idx + 1 : idx;
   }
@@ -711,7 +720,7 @@ public:
   /// Push t[name] onto the stack where t is the value at the given index `idx`,
   /// or push a nil if the operation fails.
   self_t& seek(const char* name, int idx = -1) {
-    if (gettop() > 0 && istable(idx) && name) {
+    if (name && (istable(idx) || indexable(idx))) {
       lua_getfield(L_, idx, name);
     } else {
       pushnil();
@@ -726,7 +735,7 @@ public:
   /// push a nil if the operation fails. Note that index of list in Lua starts
   /// from 1.
   self_t& seek(int n, int idx = -1) {
-    if (gettop() > 0 && istable(idx)) {
+    if (istable(idx) || indexable(idx)) {
       lua_geti(L_, idx, n);
     } else {
       pushnil();
@@ -737,7 +746,8 @@ public:
   /// Push t[p] onto the stack where t is the value at the given index `idx`,
   /// or push a nil if the operation fails.
   self_t& seek(void* p, int idx = -1) {
-    if (gettop() > 0 && istable(idx)) {
+    // p could be 0
+    if (istable(idx) || indexable(idx)) {
       int aidx = abs_index(idx);
       pushlightuserdata(p);
       gettable(aidx);
@@ -811,8 +821,8 @@ public:
   /// Push nil. Equivalent to `push(nullptr)`.
   void pushnil() { lua_pushnil(L_); }
 
-  // Pushes the thread represented by L onto the stack. Returns 1 if this thread
-  // is the main thread of its state.
+  /// Pushes the thread represented by L onto the stack.
+  /// Returns 1 if this thread is the main thread of its state.
   int pushthread() { return lua_pushthread(L_); }
 
   /// Pushes the global environment onto the stack.
@@ -820,10 +830,11 @@ public:
 
   ///////////////////////// touch table ////////////////////////////////////////
 
-  /// Push the table with given name onto stack. If not exists, create one.
+  /// Push the table (or value indexable and newindexable) with given name onto
+  /// stack. If not exists, create one.
   self_t& gtouchtb(const char* name) {
     getglobal(name);
-    if (istable()) return *this;
+    if (istable() || indexable_and_newindexable()) return *this;
     pop();
     lua_newtable(L_);
     pushvalue(-1);  // make a copy
@@ -832,13 +843,14 @@ public:
   }
   self_t& gtouchtb(const std::string& name) { return gtouchtb(name.c_str()); }
 
-  /// Push the table t[name] onto stack, where t is a table at given index.
-  /// If t[name] is not a table, create a new one.
+  /// Push the table (or value indexable and newindexable) t[name] onto stack,
+  /// where t is a table at given index. If t[name] is not a table, create a new
+  /// one.
   self_t& touchtb(const char* name, int idx = -1) {
     int aidx = abs_index(idx);
     PEACALM_LUAW_INDEXABLE_ASSERT(indexable_and_newindexable(aidx));
     lua_getfield(L_, aidx, name);
-    if (istable()) return *this;
+    if (istable() || indexable_and_newindexable()) return *this;
     pop();
     lua_newtable(L_);
     lua_setfield(L_, aidx, name);
@@ -849,13 +861,14 @@ public:
     return touchtb(name.c_str(), idx);
   }
 
-  /// Push the table t[n] onto stack, where t is a table at given index.
-  /// If t[n] is not a table, create a new one.
+  /// Push the table (or value indexable and newindexable) t[n] onto stack,
+  /// where t is a table at given index. If t[n] is not a table, create a new
+  /// one.
   self_t& touchtb(int n, int idx = -1) {
     int aidx = abs_index(idx);
     PEACALM_LUAW_INDEXABLE_ASSERT(indexable_and_newindexable(aidx));
     lua_geti(L_, aidx, n);
-    if (istable()) return *this;
+    if (istable() || indexable_and_newindexable()) return *this;
     pop();
     lua_newtable(L_);
     lua_seti(L_, aidx, n);
@@ -863,14 +876,15 @@ public:
     return *this;
   }
 
-  /// Push the table t[p] onto stack, where t is a table at given index.
-  /// If t[p] is not a table, create a new one.
+  /// Push the table (or value indexable and newindexable) t[p] onto stack,
+  /// where t is a table at given index. If t[p] is not a table, create a new
+  /// one.
   self_t& touchtb(void* p, int idx = -1) {
     int aidx = abs_index(idx);
     PEACALM_LUAW_INDEXABLE_ASSERT(indexable_and_newindexable(aidx));
     pushlightuserdata(p);
     gettable(aidx);
-    if (istable()) return *this;
+    if (istable() || indexable_and_newindexable()) return *this;
     pop();
     lua_newtable(L_);
     pushlightuserdata(p);
@@ -1455,16 +1469,17 @@ private:
       return ret;
     }
     while (it != e) {
-      if (isnoneornil(-1)) {
+      if (isnoneornil()) {
         if (failed) *failed = false;
         if (exists) *exists = false;
         settop(sz);
         return T{};
       }
-      if (!istable(-1)) {
+      if (!(istable() || indexable())) {
         if (failed) *failed = true;
         if (exists) *exists = true;
-        if (!disable_log) log_type_convert_error(-1, "table");
+        if (!disable_log)
+          log_type_convert_error(-1, "table or indexable value");
         settop(sz);
         return T{};
       }
@@ -1491,6 +1506,43 @@ private:
   }
 
 public:
+  //////////////////////// register memebers for classes ///////////////////////
+
+  /// Register a real member, ether member variable or member function.
+  /// For overloaded member function, you can explicitly pass in the template
+  /// parameter MemberPointer. e.g.
+  /// `register_member<Return(Class::*)(Args)>("mf", &Class::mf)`
+  template <typename MemberPointer>
+  std::enable_if_t<std::is_member_pointer<MemberPointer>::value>
+  register_member(const char* name, MemberPointer mp) {
+    registrar<std::decay_t<MemberPointer>>::regist(
+        *this, name, std::mem_fn(mp));
+  }
+  template <typename MemberPointer>
+  std::enable_if_t<std::is_member_pointer<MemberPointer>::value>
+  register_member(const std::string& name, MemberPointer mp) {
+    register_member<MemberPointer>(name.c_str(), mp);
+  }
+
+  /// Register a fake member function, who has proto type
+  /// `Return(Class*, Args...)`.
+  template <typename Hint, typename F>
+  std::enable_if_t<std::is_member_pointer<Hint>::value &&
+                   !std::is_same<Hint, F>::value>
+  register_member(const char* name, F&& f) {
+    registrar<std::decay_t<Hint>>::regist(*this, name, std::forward<F>(f));
+  }
+  template <typename Hint, typename F>
+  std::enable_if_t<std::is_member_pointer<Hint>::value &&
+                   !std::is_same<Hint, F>::value>
+  register_member(const std::string& name, F&& f) {
+    register_member<Hint, F>(name.c_str(), std::forward<F>(f));
+  }
+
+  // TODO: Register generic members.
+  // member getter type: Member(const Class*, const char*)
+  // member setter type: void(Class*, const char*, Member)
+
   //////////////////////// evaluate expression /////////////////////////////////
 
   /**
@@ -1810,20 +1862,462 @@ using is_stdtuple = __is_stdtuple<std::decay_t<T>>;
 
 }  // namespace luaw_detail
 
+//////////////////// metatable_factory impl ////////////////////////////////////
+
+namespace luaw_detail {
+
+template <typename T, typename Derived>
+struct metatable_factory_base {
+  static void push_shared_metatable(luaw& l) {
+    bool first_create = l.gtouchmetatb(typeid(T).name());
+    if (first_create) Derived::set_metamethods(l);
+  }
+
+  static void push_exclusive_metatable(luaw& l) {
+    lua_newtable(l.L());
+    Derived::set_metamethods(l);
+  }
+};
+
+}  // namespace luaw_detail
+
+// T: The (class) type whose member is registered.
+template <typename T>
+struct luaw::metatable_factory<T*>
+    : public luaw_detail::metatable_factory_base<T*,
+                                                 luaw::metatable_factory<T*>> {
+  // No restrict to class only anymore, user can use it if he knows what he is
+  // doing.
+  // static_assert(std::is_class<T>::value,
+  //               "Only class and it's pointer could have metatable");
+
+  static void set_metamethods(luaw& l) {
+    l.setkv("__index", __index, -1);
+    l.setkv("__newindex", __newindex, -1);
+  }
+
+  static int __index(lua_State* L) {
+    luaw_fake l(L);
+    PEACALM_LUAW_ASSERT(l.gettop() == 2);
+    void* ti =
+        reinterpret_cast<void*>(const_cast<std::type_info*>(&typeid(T*)));
+    l.pushlightuserdata(ti);
+    l.gettable(LUA_REGISTRYINDEX);
+
+    if (!l.istable(-1)) {
+      l.pop();
+      l.pushnil();
+      return 1;
+    }
+
+    // 1: member function
+    l.rawgeti(-1, 1);
+    if (!l.istable(-1)) {
+      l.pop();
+    } else {
+      l.pushvalue(2);  // push the key
+      l.rawget(-2);
+      if (!l.isnil(-1)) {  // found
+        return 1;
+      } else {
+        l.pop(2);
+      }
+    }
+
+    // 2: member variable getter
+    l.rawgeti(-1, 2);
+    if (!l.istable(-1)) {
+      l.pop();
+    } else {
+      l.pushvalue(2);  // push the key
+      l.rawget(-2);
+      if (!l.isnil(-1)) {  // found
+        l.pushvalue(1);    // push the userdata
+        l.pushvalue(2);    // push the key
+        int retcode = l.pcall(2, 1, 0);
+        if (retcode != LUA_OK) {
+          l.log_error_in_stack();
+          l.pop();
+          l.pushnil();
+          return 1;
+        } else {
+          return 1;
+        }
+      } else {
+        l.pop(2);
+      }
+    }
+
+    // TODO: generic member getter
+
+    // not found handler
+    l.pushnil();
+    return 1;
+  }
+
+  static int __newindex(lua_State* L) {
+    luaw_fake l(L);
+    PEACALM_LUAW_ASSERT(l.gettop() == 3);
+    void* ti =
+        reinterpret_cast<void*>(const_cast<std::type_info*>(&typeid(T*)));
+    l.pushlightuserdata(ti);
+    l.gettable(LUA_REGISTRYINDEX);
+
+    if (!l.istable(-1)) {
+      l.pop();
+      return 0;
+    }
+
+    // 3: member variable setter
+    l.rawgeti(-1, 3);
+    if (!l.istable(-1)) {
+      l.pop();
+    } else {
+      l.pushvalue(2);  // push the key
+      l.rawget(-2);
+      if (!l.isnil(-1)) {  // found
+        l.pushvalue(1);    // push the userdata
+        l.pushvalue(3);    // push the value
+        int retcode = l.pcall(2, 0, 0);
+        if (retcode != LUA_OK) {
+          l.log_error_in_stack();
+          l.pop();
+          return 0;
+        } else {
+          return 0;
+        }
+      } else {
+        l.pop(2);
+      }
+    }
+
+    // TODO: generic member setter
+
+    // not found handler
+    const char* key = l.to_c_str(2);
+    lua_pushfstring(l.L(), "Not found handler for setting: %s", key);
+    l.log_error_in_stack();
+    l.pop();
+    return 0;
+  }
+};
+
+template <typename T, typename>
+struct luaw::metatable_factory
+    : public luaw_detail::metatable_factory_base<T,
+                                                 luaw::metatable_factory<T>> {
+  // No restrict to class only anymore, user can use it if he knows what he is
+  // doing.
+  // static_assert(std::is_class<T>::value,
+  //               "Only class and it's pointer could have metatable");
+
+  static void set_metamethods(luaw& l) {
+    luaw::metatable_factory<T*>::set_metamethods(l);
+    if (!std::is_trivially_destructible<T>::value) { l.setkv("__gc", __gc); }
+  }
+
+  static int __gc(lua_State* L) {
+    luaw_fake l(L);
+    PEACALM_LUAW_ASSERT(l.gettop() == 1);
+    T* p = l.to<T*>(1);
+    PEACALM_LUAW_ASSERT(p);
+    p->~T();
+  }
+};
+
+//////////////////// registrar impl ////////////////////////////////////////////
+
+template <typename T, typename>
+struct luaw::registrar {
+  // Write nothing to let compile fail for unsupported member types,
+  // such as ref- qualified member functions.
+};
+
+// register member variable
+template <typename Class, typename Member>
+struct luaw::registrar<
+    Member Class::*,
+    std::enable_if_t<std::is_member_object_pointer<Member Class::*>::value>> {
+  // register a specific member
+  template <typename F>
+  static void regist(luaw& l, const char* mname, F&& f) {
+#define DEFINE_GETTER(ObjectType)                          \
+  {                                                        \
+    auto getter = [=](ObjectType o) -> Member {            \
+      PEACALM_LUAW_ASSERT(o);                              \
+      return f(o);                                         \
+    };                                                     \
+    void* p = reinterpret_cast<void*>(                     \
+        const_cast<std::type_info*>(&typeid(ObjectType))); \
+    l.touchtb(p, LUA_REGISTRYINDEX)                        \
+        .touchtb(2)                                        \
+        .setkv<luaw::function_tag>(mname, getter);         \
+    l.pop(2);                                              \
+  }
+
+    DEFINE_GETTER(Class*);
+    DEFINE_GETTER(const Class*);
+    DEFINE_GETTER(volatile Class*);
+    DEFINE_GETTER(const volatile Class*);
+#undef DEFINE_GETTER
+
+    __regist_setters(l, mname, std::forward<F>(f), std::is_const<Member>{});
+  }
+
+private:
+  template <typename F>
+  static void __regist_setters(luaw&       l,
+                               const char* mname,
+                               F&&         f,
+                               std::true_type) {
+    // TODO: maybe set const member name to fields?
+  }
+
+  template <typename F>
+  static void __regist_setters(luaw&       l,
+                               const char* mname,
+                               F&&         f,
+                               std::false_type) {
+#define DEFINE_SETTER(ObjectType)                          \
+  {                                                        \
+    auto setter = [=](ObjectType o, Member v) {            \
+      PEACALM_LUAW_ASSERT(o);                              \
+      f(o) = std::move(v);                                 \
+    };                                                     \
+    void* p = reinterpret_cast<void*>(                     \
+        const_cast<std::type_info*>(&typeid(ObjectType))); \
+    l.touchtb(p, LUA_REGISTRYINDEX)                        \
+        .touchtb(3)                                        \
+        .setkv<luaw::function_tag>(mname, setter);         \
+    l.pop(2);                                              \
+  }
+
+    DEFINE_SETTER(Class*);
+    DEFINE_SETTER(volatile Class*);
+#undef DEFINE_SETTER
+  }
+};
+
+// register member functions
+// @{
+
+template <typename Class, typename Return, typename... Args>
+struct luaw::registrar<Return (Class::*)(Args...)> {
+  using ObjectType = Class*;
+
+  template <typename MemberFunction>
+  static void regist(luaw& l, const char* fname, MemberFunction mf) {
+    {
+      auto f = [=](ObjectType o, Args... args) -> Return {
+        PEACALM_LUAW_ASSERT(o);
+        return mf(o, std::move(args)...);
+      };
+
+      void* p = reinterpret_cast<void*>(
+          const_cast<std::type_info*>(&typeid(ObjectType)));
+      l.touchtb(p, LUA_REGISTRYINDEX)
+          .touchtb(1)
+          .setkv<luaw::function_tag>(fname, f);
+      l.pop(2);
+    }
+  }
+};
+
+template <typename Class, typename Return, typename... Args>
+struct luaw::registrar<Return (Class::*)(Args...) const> {
+  using ObjectType = const Class*;
+
+  template <typename MemberFunction>
+  static void regist(luaw& l, const char* fname, MemberFunction mf) {
+    {
+      auto f = [=](ObjectType o, Args... args) -> Return {
+        PEACALM_LUAW_ASSERT(o);
+        return mf(o, std::move(args)...);
+      };
+
+      void* p = reinterpret_cast<void*>(
+          const_cast<std::type_info*>(&typeid(ObjectType)));
+      l.touchtb(p, LUA_REGISTRYINDEX)
+          .touchtb(1)
+          .setkv<luaw::function_tag>(fname, f);
+      l.pop(2);
+    }
+    luaw::registrar<Return (Class::*)(Args...)>::regist(l, fname, mf);
+  }
+};
+
+template <typename Class, typename Return, typename... Args>
+struct luaw::registrar<Return (Class::*)(Args...) volatile> {
+  using ObjectType = volatile Class*;
+
+  template <typename MemberFunction>
+  static void regist(luaw& l, const char* fname, MemberFunction mf) {
+    {
+      auto f = [=](ObjectType o, Args... args) -> Return {
+        PEACALM_LUAW_ASSERT(o);
+        return mf(o, std::move(args)...);
+      };
+
+      void* p = reinterpret_cast<void*>(
+          const_cast<std::type_info*>(&typeid(ObjectType)));
+      l.touchtb(p, LUA_REGISTRYINDEX)
+          .touchtb(1)
+          .setkv<luaw::function_tag>(fname, f);
+      l.pop(2);
+    }
+    luaw::registrar<Return (Class::*)(Args...)>::regist(l, fname, mf);
+  }
+};
+
+template <typename Class, typename Return, typename... Args>
+struct luaw::registrar<Return (Class::*)(Args...) const volatile> {
+  using ObjectType = const volatile Class*;
+
+  template <typename MemberFunction>
+  static void regist(luaw& l, const char* fname, MemberFunction mf) {
+    {
+      auto f = [=](ObjectType o, Args... args) -> Return {
+        PEACALM_LUAW_ASSERT(o);
+        return mf(o, std::move(args)...);
+      };
+
+      void* p = reinterpret_cast<void*>(
+          const_cast<std::type_info*>(&typeid(ObjectType)));
+      l.touchtb(p, LUA_REGISTRYINDEX)
+          .touchtb(1)
+          .setkv<luaw::function_tag>(fname, f);
+      l.pop(2);
+    }
+    luaw::registrar<Return (Class::*)(Args...)>::regist(l, fname, mf);
+    luaw::registrar<Return (Class::*)(Args...) const>::regist(l, fname, mf);
+    luaw::registrar<Return (Class::*)(Args...) volatile>::regist(l, fname, mf);
+  }
+};
+
+// @}
+
 //////////////////// push impl ////////////////////////////////////////////////
 
 // primary pusher. guess whether it may be a lambda, push as function if true,
 // otherwise push as an user defined custom object.
 template <typename T, typename>
 struct luaw::pusher {
+  // Pointers should be specialized elsewhere.
+  static_assert(!std::is_pointer<T>::value, "Cannot be pointer");
+
   static const size_t size = 1;
 
   template <typename Y>
   static int push(luaw& l, Y&& v) {
-    using Tag = std::conditional_t<luaw_detail::decay_maybe_lambda<Y>::value,
-                                   function_tag,
-                                   custom_tag>;
-    return luaw::pusher<Tag>::push(l, std::forward<Y>(v));
+    // Guess whether it may be a lambda object, if it is, then push as a
+    // function, otherwise push as custom class.
+    constexpr bool push_as_function = luaw_detail::decay_maybe_lambda<Y>::value;
+    using Tag                       = std::
+        conditional_t<push_as_function, luaw::function_tag, luaw::custom_tag>;
+
+    // Ensure push v as type T if not push as function.
+
+    static_assert(std::is_same<T, std::decay_t<T>>::value,
+                  "T should be decayed");
+
+    using T0 = std::decay_t<T>;
+    using T1 =
+        std::conditional_t<std::is_const<std::remove_reference_t<Y>>::value,
+                           std::add_const_t<T0>,
+                           T0>;
+    using T2 =
+        std::conditional_t<std::is_volatile<std::remove_reference_t<Y>>::value,
+                           std::add_volatile_t<T1>,
+                           T1>;
+    using TargetType = std::conditional_t<
+        push_as_function,
+        Y,
+        std::conditional_t<std::is_lvalue_reference<Y>::value, T2&, T2>>;
+
+    static_assert(
+        (std::is_reference<TargetType>::value == std::is_reference<Y>::value) &&
+            (std::is_lvalue_reference<TargetType>::value ==
+             std::is_lvalue_reference<Y>::value) &&
+            (std::is_rvalue_reference<TargetType>::value ==
+             std::is_rvalue_reference<Y>::value) &&
+            (std::is_const<std::remove_reference_t<TargetType>>::value ==
+             std::is_const<std::remove_reference_t<Y>>::value) &&
+            (std::is_volatile<std::remove_reference_t<TargetType>>::value ==
+             std::is_volatile<std::remove_reference_t<Y>>::value),
+        "TargetType should have same cvr- as Y");
+
+    return luaw::pusher<Tag>::push(l, std::forward<TargetType>(v));
+  }
+};
+
+// pointer to class
+template <typename T>
+struct luaw::pusher<T*,
+                    std::enable_if_t<!std::is_function<T>::value &&
+                                     !std::is_same<T*, const char*>::value &&
+                                     std::is_class<std::decay_t<T>>::value>> {
+  static const size_t size = 1;
+
+  template <typename Y>
+  static int push(luaw& l, Y* v) {
+    l.pushlightuserdata(
+        reinterpret_cast<void*>(const_cast<std::remove_cv_t<Y>*>(v)));
+
+    luaw::metatable_factory<T*>::push_shared_metatable(l);
+    lua_setmetatable(l.L(), -2);
+
+    return 1;
+  }
+};
+
+// non-class pointer, as lightuserdata
+template <typename T>
+struct luaw::pusher<T*,
+                    std::enable_if_t<!std::is_function<T>::value &&
+                                     !std::is_same<T*, const char*>::value &&
+                                     !std::is_class<std::decay_t<T>>::value>> {
+  static const size_t size = 1;
+
+  template <typename Y>
+  static int push(luaw& l, Y* v) {
+    l.pushlightuserdata(
+        reinterpret_cast<void*>(const_cast<std::remove_cv_t<Y>*>(v)));
+    return 1;
+  }
+};
+
+// custom_tag: push as an user defined custom type.
+// only work on type class or pointer to class.
+template <>
+struct luaw::pusher<luaw::custom_tag> {
+  static const size_t size = 1;
+
+  template <typename Y>
+  static int push(luaw& l, Y&& v) {
+    using SolidY = std::remove_reference_t<Y>;
+    static_assert(std::is_class<std::remove_pointer_t<SolidY>>::value,
+                  "Only class or it's pointer");
+
+    __push<SolidY, Y>(l, std::forward<Y>(v), std::is_pointer<SolidY>{});
+
+    return 1;
+  }
+
+private:
+  template <typename SolidY, typename Y>
+  static void __push(luaw& l, Y&& v, std::true_type) {
+    l.pushlightuserdata(reinterpret_cast<void*>(
+        const_cast<std::remove_cv_t<std::remove_pointer_t<SolidY>>*>(v)));
+    luaw::metatable_factory<SolidY>::push_shared_metatable(l);
+    lua_setmetatable(l.L(), -2);
+  }
+
+  template <typename SolidY, typename Y>
+  static void __push(luaw& l, Y&& v, std::false_type) {
+    void* p = lua_newuserdata(l.L(), sizeof(SolidY));
+    new (p) SolidY(std::forward<Y>(v));
+    luaw::metatable_factory<SolidY*>::push_shared_metatable(l);
+    lua_setmetatable(l.L(), -2);
   }
 };
 
@@ -1831,20 +2325,11 @@ struct luaw::pusher {
 template <>
 struct luaw::pusher<luaw::newtable_tag> {
   static const size_t size = 1;
-  static int          push(luaw& l, newtable_tag) {
-             lua_newtable(l.L());
-             return 1;
+
+  static int push(luaw& l, newtable_tag) {
+    lua_newtable(l.L());
+    return 1;
   }
-};
-
-// custom_tag: push as an user defined custom type
-template <>
-struct luaw::pusher<luaw::custom_tag> {
-  static const size_t size = 1;
-
-  // TODO:
-  // template <typename Y>
-  // static int push(luaw& l, Y&& v) {}
 };
 
 // function_tag: push as a function
@@ -2116,18 +2601,6 @@ struct luaw::pusher<std::nullptr_t> {
   }
 };
 
-// void* and cf-qualified void *, as lightuserdata
-template <typename T>
-struct luaw::pusher<T*,
-                    std::enable_if_t<std::is_void<std::decay_t<T>>::value>> {
-  static const size_t size = 1;
-
-  static int push(luaw& l, T* v) {
-    l.pushlightuserdata(const_cast<void*>(v));
-    return 1;
-  }
-};
-
 // std::pair
 template <typename T, typename U>
 struct luaw::pusher<std::pair<T, U>> {
@@ -2307,9 +2780,43 @@ private:
 
 //////////////////// convertor impl ////////////////////////////////////////////
 
+// NOTICE: this will return a copy of userdata with type T!
 template <typename T, typename>
 struct luaw::convertor {
-  // empty
+  static T to(luaw& l,
+              int   idx         = -1,
+              bool  disable_log = false,
+              bool* failed      = nullptr,
+              bool* exists      = nullptr) {
+    T* p = luaw::convertor<T*>::to(l, idx, disable_log, failed, exists);
+    if (!p) return T{};
+    return *p;
+  }
+};
+
+// include convert to void* and cv- void*.
+template <typename T>
+struct luaw::convertor<T*> {
+  static T* to(luaw& l,
+               int   idx         = -1,
+               bool  disable_log = false,
+               bool* failed      = nullptr,
+               bool* exists      = nullptr) {
+    if (l.isnoneornil(idx)) {
+      if (exists) *exists = false;
+      if (failed) *failed = false;
+      return nullptr;
+    }
+    if (exists) *exists = true;
+    if (l.isuserdata(idx)) {
+      if (failed) *failed = false;
+      void* p = lua_touserdata(l.L(), idx);
+      return reinterpret_cast<T*>(p);
+    }
+    if (failed) *failed = true;
+    if (!disable_log) { l.log_type_convert_error(idx, "userdata"); }
+    return nullptr;
+  }
 };
 
 // to placeholder_tag
@@ -2781,27 +3288,6 @@ struct luaw::convertor<void> {
     if (failed) *failed = false;
     if (exists) *exists = !l.isnoneornil(idx);
     return void();
-  }
-};
-
-// to void* and cv-qualified void*
-template <typename T>
-struct luaw::convertor<T*,
-                       std::enable_if_t<std::is_void<std::decay_t<T>>::value>> {
-  static T* to(luaw& l,
-               int   idx         = -1,
-               bool  disable_log = false,
-               bool* failed      = nullptr,
-               bool* exists      = nullptr) {
-    if (l.isnoneornil(idx)) {
-      if (exists) *exists = false;
-      if (failed) *failed = false;
-      return nullptr;
-    }
-    if (exists) *exists = true;
-    void* p = lua_touserdata(l.L(), idx);
-    if (failed) *failed = !p;
-    return const_cast<T*>(p);
   }
 };
 
