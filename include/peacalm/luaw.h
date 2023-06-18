@@ -1680,6 +1680,11 @@ public:
     std::cerr << "Lua: " << lua_tostring(L_, idx) << std::endl;
   }
 
+  void log_error_out(int idx = -1) {
+    log_error_in_stack(idx);
+    pop();
+  }
+
   void log_type_convert_error(int idx, const char* to) {
     std::cerr << "Lua: Can't convert to " << to << " by ";
     if (isnumber(idx) || isstring(idx) || isboolean(idx) || isinteger(idx)) {
@@ -1993,10 +1998,7 @@ struct luaw::metatable_factory<T*>
 
     // not found handler
     const char* key = l.to_c_str(2);
-    lua_pushfstring(l.L(), "Not found handler for setting: %s", key);
-    l.log_error_in_stack();
-    l.pop();
-    return 0;
+    return luaL_error(l.L(), "Not found setter: %s", key);
   }
 };
 

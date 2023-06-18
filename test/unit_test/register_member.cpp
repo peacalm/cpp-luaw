@@ -119,8 +119,20 @@ TEST(register_member, member_variables) {
     l.set({"o", "vi"}, 6);
     EXPECT_EQ(l.eval_int("return o.vi"), 6);
 
-    l.lset("o", "ci", 7);                  // won't work, for ci is const
+    EXPECT_EQ(l.gettop(), 0);
+
+    EXPECT_NE(l.dostring("o.ci = 7"), LUA_OK);  // won't work, for ci is const
+    EXPECT_EQ(l.gettop(), 1);                   // has error msg
+    l.log_error_in_stack();
+    l.pop();
+
     EXPECT_EQ(l.get_int({"o", "ci"}), 1);  // ci is still 1
+
+    bool failed;
+    EXPECT_EQ(l.eval<int>("o.ci = 7; return o.ci", false, &failed), 0);
+    EXPECT_TRUE(failed);
+
+    EXPECT_DEATH(l.lset("o", "ci", 7), ".*Not found setter");
 
     EXPECT_EQ(l.gettop(), 0);
   }
@@ -171,9 +183,20 @@ TEST(register_member, member_variables) {
     EXPECT_EQ(l.eval_int("return o.vi"), 6);
     EXPECT_EQ(o.vi, 6);
 
-    l.lset("o", "ci", 7);                  // won't work, for ci is const
+    EXPECT_EQ(l.gettop(), 0);
+
+    EXPECT_NE(l.dostring("o.ci = 7"), LUA_OK);  // won't work, for ci is const
+    EXPECT_EQ(l.gettop(), 1);                   // has error msg
+    l.log_error_in_stack();
+    l.pop();
+
     EXPECT_EQ(l.get_int({"o", "ci"}), 1);  // ci is still 1
-    EXPECT_EQ(o.ci, 1);
+
+    bool failed;
+    EXPECT_EQ(l.eval<int>("o.ci = 7; return o.ci", false, &failed), 0);
+    EXPECT_TRUE(failed);
+
+    EXPECT_DEATH(l.lset("o", "ci", 7), ".*Not found setter");
 
     EXPECT_EQ(l.gettop(), 0);
   }
@@ -195,14 +218,27 @@ TEST(register_member, member_variables) {
     EXPECT_EQ(l.lget<int>({}, "o", "ci"), 1);
     EXPECT_EQ(l.lget<int>({}, "o", "vi"), 1);
 
+    EXPECT_EQ(l.gettop(), 0);
+
     // i/vi won't change, beacuse o is const
-    l.lset("o", "i", 2);  // error log: no setter found
+
+    bool failed;
+    l.eval<std::tuple<>>("o.i = 2", false, &failed);  // error
+    EXPECT_TRUE(failed);
+    EXPECT_EQ(l.gettop(), 0);
     EXPECT_EQ(l.get_int({"o", "i"}), 1);
-    l.set({"o", "vi"}, 3);  // error log: no setter found
+
+    EXPECT_NE(l.dostring("o.vi = 3"), LUA_OK);  // error
+    EXPECT_EQ(l.gettop(), 1);
+    l.log_error_out();
     EXPECT_EQ(l.eval_int("return o.vi"), 1);
 
     EXPECT_EQ(l.gettop(), 0);
+
+    EXPECT_DEATH(l.set({"o", "i"}, 3), ".*Not found setter");
+    EXPECT_DEATH(l.set({"o", "vi"}, 3), ".*Not found setter");
   }
+
   {
     // set const Obj*
 
@@ -229,9 +265,14 @@ TEST(register_member, member_variables) {
     EXPECT_EQ(l.lget<int>({}, "o", "vi"), 1);
 
     // i/vi won't change, beacuse o is pointer to const value
-    l.lset("o", "i", 2);  // error log: no setter found
+    EXPECT_DEATH(l.lset("o", "i", 2), ".*Not found setter");
+    EXPECT_NE(l.dostring("o.i = 2"), LUA_OK);
+    l.log_error_out();
     EXPECT_EQ(l.get_int({"o", "i"}), 1);
-    l.set({"o", "vi"}, 3);  // error log: no setter found
+
+    EXPECT_DEATH(l.lset("o", "vi", 3), ".*Not found setter");
+    EXPECT_NE(l.dostring("o.vi = 3"), LUA_OK);
+    l.log_error_out();
     EXPECT_EQ(l.eval_int("return o.vi"), 1);
 
     EXPECT_EQ(l.gettop(), 0);
