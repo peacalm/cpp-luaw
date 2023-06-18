@@ -526,8 +526,8 @@ public:
 
   int pcall(int n, int r, int f) { return lua_pcall(L_, n, r, f); }
 
-  int         type(int i) const { return lua_type(L_, i); }
-  const char* type_name(int i) const { return lua_typename(L_, type(i)); }
+  int         type(int idx) const { return lua_type(L_, idx); }
+  const char* type_name(int idx) const { return lua_typename(L_, type(idx)); }
 
   ///////////////////////// type conversions ///////////////////////////////////
 
