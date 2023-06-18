@@ -237,6 +237,8 @@ public:
   };
 
   guarder make_guarder() const { return guarder(L_, gettop()); }
+  guarder make_guarder(int sz) const { return guarder(L_, sz); }
+  guarder make_guarder(lua_State* L, int sz) const { return guarder(L, sz); }
 
   // Initialization options for luaw
   class opt {
@@ -476,11 +478,10 @@ public:
   bool indexable(int idx = -1) const {
     if (istable(idx)) return true;
     if (lua_getmetatable(L_, idx) == 0) return false;
-    int sz = lua_gettop(L_) - 1;
+    auto _g = make_guarder(gettop() - 1);
     lua_getfield(L_, -1, "__index");
     // if __index exists, then regard as indexable
     bool ret = !isnoneornil(-1);
-    lua_settop(L_, sz);
     return ret;
   }
 
@@ -488,11 +489,10 @@ public:
   bool newindexable(int idx = -1) const {
     if (istable(idx)) return true;
     if (lua_getmetatable(L_, idx) == 0) return false;
-    int sz = lua_gettop(L_) - 1;
+    auto _g = make_guarder(gettop() - 1);
     lua_getfield(L_, -1, "__newindex");
     // if __newindex exists, then regard as newindexable
     bool ret = !isnoneornil(-1);
-    lua_settop(L_, sz);
     return ret;
   }
 
@@ -500,12 +500,11 @@ public:
   bool indexable_and_newindexable(int idx = -1) const {
     if (istable(idx)) return true;
     if (lua_getmetatable(L_, idx) == 0) return false;
-    int sz = lua_gettop(L_) - 1;
+    auto _g = make_guarder(gettop() - 1);
     lua_getfield(L_, -1, "__index");
     lua_getfield(L_, -2, "__newindex");
     // if both __index and __newindex exists
     bool ret = !isnoneornil(-1) && !isnoneornil(-2);
-    lua_settop(L_, sz);
     return ret;
   }
 
@@ -513,10 +512,9 @@ public:
   bool callable(int idx = -1) const {
     if (isfunction(idx)) return true;
     if (lua_getmetatable(L_, idx) == 0) return false;
-    int sz = lua_gettop(L_) - 1;
+    auto _g = make_guarder(gettop() - 1);
     lua_getfield(L_, -1, "__call");
     bool ret = !isnoneornil(-1);
-    lua_settop(L_, sz);
     return ret;
   }
 
@@ -1115,20 +1113,18 @@ public:
   void lset(Args&&... args) {
     constexpr size_t N = sizeof...(Args);
     static_assert(N >= 2, "lset needs at least two arguments");
-    int sz = gettop();
+    auto _g = make_guarder();
     gseek_env();
     using T = std::tuple_element_t<N - 1, std::tuple<Args...>>;
     __lset<T>(std::forward<Args>(args)...);
-    settop(sz);
   }
   /// Long set with a hint type.
   template <typename Hint, typename... Args>
   void lset(Args&&... args) {
     static_assert(sizeof...(Args) >= 2, "lset needs at least two arguments");
-    int sz = gettop();
+    auto _g = make_guarder();
     gseek_env();
     __lset<Hint>(std::forward<Args>(args)...);
-    settop(sz);
   }
 
 private:
@@ -1146,7 +1142,7 @@ private:
   template <typename Hint, typename Iterator, typename T>
   void __set(Iterator b, Iterator e, T&& value) {
     if (b == e) return;
-    int sz = gettop();
+    auto _g = make_guarder();
     gseek_env();
 
     auto it = b;
@@ -1160,7 +1156,6 @@ private:
         it = nx;
       }
     }
-    settop(sz);
   }
 
 public:
@@ -1452,11 +1447,9 @@ public:
   template <typename T, typename... Args>
   T lget(const lgetopt& o, Args&&... args) {
     static_assert(sizeof...(Args) > 0, "lget needs at least one key in path");
-    int sz = gettop();
+    auto _g = make_guarder();
     lseek(std::forward<Args>(args)...);
-    T ret = to<T>(-1, o.disable_log, o.failed, o.exists);
-    settop(sz);
-    return ret;
+    return to<T>(-1, o.disable_log, o.failed, o.exists);
   }
 
 private:
@@ -1469,36 +1462,28 @@ private:
     if (b == e) {
       if (failed) *failed = false;
       if (exists) *exists = false;
-      return T{};
+      return T();
     }
-    int  sz = gettop();
+    auto _g = make_guarder();
     auto it = b;
     gseek(*it++);
-    if (it == e) {
-      auto ret = to<T>(-1, disable_log, failed, exists);
-      settop(sz);
-      return ret;
-    }
+    if (it == e) { return to<T>(-1, disable_log, failed, exists); }
     while (it != e) {
       if (isnoneornil()) {
         if (failed) *failed = false;
         if (exists) *exists = false;
-        settop(sz);
-        return T{};
+        return T();
       }
       if (!(istable() || indexable())) {
         if (failed) *failed = true;
         if (exists) *exists = true;
         if (!disable_log)
           log_type_convert_error(-1, "table or indexable value");
-        settop(sz);
-        return T{};
+        return T();
       }
       seek(*it++);
     }
-    auto ret = to<T>(-1, disable_log, failed, exists);
-    settop(sz);
-    return ret;
+    return to<T>(-1, disable_log, failed, exists);
   }
 
   template <typename T, typename Iterator>
@@ -1574,11 +1559,11 @@ public:
                        const type& def         = default,           \
                        bool        disable_log = false,             \
                        bool*       failed      = nullptr) {                    \
-    int sz = gettop();                                              \
+    int  sz = gettop();                                             \
+    auto _g = make_guarder();                                       \
     if (dostring(expr) != LUA_OK) {                                 \
       if (failed) *failed = true;                                   \
       if (!disable_log) log_error_in_stack();                       \
-      settop(sz);                                                   \
       return def;                                                   \
     }                                                               \
     PEACALM_LUAW_ASSERT(gettop() >= sz);                            \
@@ -1588,7 +1573,6 @@ public:
       return def;                                                   \
     }                                                               \
     type ret = to_##typename(sz + 1, def, disable_log, failed);     \
-    settop(sz);                                                     \
     return ret;                                                     \
   }                                                                 \
   type eval_##typename(const std::string& expr,                     \
