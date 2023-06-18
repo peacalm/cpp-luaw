@@ -223,6 +223,8 @@ TEST(register_member, member_variables) {
     // i/vi won't change, beacuse o is const
 
     bool failed;
+    l.eval<void>("o.i = 2", false, &failed);  // error
+    EXPECT_TRUE(failed);
     l.eval<std::tuple<>>("o.i = 2", false, &failed);  // error
     EXPECT_TRUE(failed);
     EXPECT_EQ(l.gettop(), 0);
@@ -237,6 +239,8 @@ TEST(register_member, member_variables) {
 
     EXPECT_DEATH(l.set({"o", "i"}, 3), ".*Not found setter");
     EXPECT_DEATH(l.set({"o", "vi"}, 3), ".*Not found setter");
+
+    EXPECT_EQ(l.gettop(), 0);
   }
 
   {
@@ -300,6 +304,8 @@ TEST(register_member, member_functions) {
 
   EXPECT_EQ(l.eval_int("return o:overloaded_f4()"), 4002);
   EXPECT_EQ(o.i, 2);
+
+  EXPECT_EQ(l.gettop(), 0);
 }
 
 TEST(register_member, result_status_of_get) {
@@ -333,6 +339,8 @@ TEST(register_member, result_status_of_get) {
     EXPECT_TRUE(failed);
     EXPECT_TRUE(exists);
   }
+
+  EXPECT_EQ(l.gettop(), 0);
 }
 
 void seti(Obj* p, int v) { p->i = v; }
@@ -361,4 +369,6 @@ TEST(register_member, fake_member_functions) {
 
   EXPECT_EQ(l.eval_int("return co:getci()"), 1);
   EXPECT_EQ(l.eval_int("return o:getci()"), 1);
+
+  EXPECT_EQ(l.gettop(), 0);
 }
