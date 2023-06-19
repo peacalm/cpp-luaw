@@ -177,6 +177,19 @@ inline int COUNTER0(lua_State* L) {
 class luaw {
   using self_t = luaw;
 
+  // The path where registered member operations stored:
+  // LUA_REGISTRYINDEX -> (void*)(&typeid(T)) -> this enum field
+  enum member_info_fields {
+    member_function = 1,
+    member_getter,
+    member_setter,
+    generic_member_getter,
+    generic_member_setter,
+    const_member,
+    non_const_member_function,
+    non_volatile_member_function
+  };
+
   template <typename T, typename = void>
   struct pusher;
   template <typename T, typename = void>
@@ -2014,8 +2027,8 @@ struct luaw::metatable_factory<T*>
       return 1;
     }
 
-    // 1: member function
-    l.rawgeti(-1, 1);
+    // member function
+    l.rawgeti(-1, luaw::member_info_fields::member_function);
     if (!l.istable(-1)) {
       l.pop();
     } else {
@@ -2028,8 +2041,8 @@ struct luaw::metatable_factory<T*>
       }
     }
 
-    // 2: member variable getter
-    l.rawgeti(-1, 2);
+    // member variable getter
+    l.rawgeti(-1, luaw::member_info_fields::member_getter);
     if (!l.istable(-1)) {
       l.pop();
     } else {
@@ -2072,8 +2085,8 @@ struct luaw::metatable_factory<T*>
       return 0;
     }
 
-    // 3: member variable setter
-    l.rawgeti(-1, 3);
+    // member variable setter
+    l.rawgeti(-1, luaw::member_info_fields::member_setter);
     if (!l.istable(-1)) {
       l.pop();
     } else {
@@ -3449,7 +3462,7 @@ struct luaw::registrar<
     void* p = reinterpret_cast<void*>(                     \
         const_cast<std::type_info*>(&typeid(ObjectType))); \
     l.touchtb(p, LUA_REGISTRYINDEX)                        \
-        .touchtb(2)                                        \
+        .touchtb(luaw::member_info_fields::member_getter)  \
         .setkv<luaw::function_tag>(mname, getter);         \
     l.pop(2);                                              \
   }
@@ -3486,7 +3499,7 @@ private:
     void* p = reinterpret_cast<void*>(                     \
         const_cast<std::type_info*>(&typeid(ObjectType))); \
     l.touchtb(p, LUA_REGISTRYINDEX)                        \
-        .touchtb(3)                                        \
+        .touchtb(luaw::member_info_fields::member_setter)  \
         .setkv<luaw::function_tag>(mname, setter);         \
     l.pop(2);                                              \
   }
@@ -3515,7 +3528,7 @@ struct luaw::registrar<Return (Class::*)(Args...)> {
       void* p = reinterpret_cast<void*>(
           const_cast<std::type_info*>(&typeid(ObjectType)));
       l.touchtb(p, LUA_REGISTRYINDEX)
-          .touchtb(1)
+          .touchtb(luaw::member_info_fields::member_function)
           .setkv<luaw::function_tag>(fname, f);
       l.pop(2);
     }
@@ -3537,7 +3550,7 @@ struct luaw::registrar<Return (Class::*)(Args...) const> {
       void* p = reinterpret_cast<void*>(
           const_cast<std::type_info*>(&typeid(ObjectType)));
       l.touchtb(p, LUA_REGISTRYINDEX)
-          .touchtb(1)
+          .touchtb(luaw::member_info_fields::member_function)
           .setkv<luaw::function_tag>(fname, f);
       l.pop(2);
     }
@@ -3560,7 +3573,7 @@ struct luaw::registrar<Return (Class::*)(Args...) volatile> {
       void* p = reinterpret_cast<void*>(
           const_cast<std::type_info*>(&typeid(ObjectType)));
       l.touchtb(p, LUA_REGISTRYINDEX)
-          .touchtb(1)
+          .touchtb(luaw::member_info_fields::member_function)
           .setkv<luaw::function_tag>(fname, f);
       l.pop(2);
     }
@@ -3583,7 +3596,7 @@ struct luaw::registrar<Return (Class::*)(Args...) const volatile> {
       void* p = reinterpret_cast<void*>(
           const_cast<std::type_info*>(&typeid(ObjectType)));
       l.touchtb(p, LUA_REGISTRYINDEX)
-          .touchtb(1)
+          .touchtb(luaw::member_info_fields::member_function)
           .setkv<luaw::function_tag>(fname, f);
       l.pop(2);
     }
