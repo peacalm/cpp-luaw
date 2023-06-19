@@ -178,13 +178,13 @@ class luaw {
   using self_t = luaw;
 
   template <typename T, typename = void>
-  struct registrar;
-  template <typename T, typename = void>
   struct pusher;
   template <typename T, typename = void>
   struct convertor;
   template <typename T>
   struct register_ctor_impl;
+  template <typename T, typename = void>
+  struct registrar;
 
   lua_State* L_;
 
@@ -2127,177 +2127,6 @@ struct luaw::metatable_factory
   }
 };
 
-//////////////////// registrar impl ////////////////////////////////////////////
-
-template <typename T, typename>
-struct luaw::registrar {
-  // Write nothing to let compile fail for unsupported member types,
-  // such as ref- qualified member functions.
-};
-
-// register member variable
-template <typename Class, typename Member>
-struct luaw::registrar<
-    Member Class::*,
-    std::enable_if_t<std::is_member_object_pointer<Member Class::*>::value>> {
-  // register a specific member
-  template <typename F>
-  static void regist(luaw& l, const char* mname, F&& f) {
-#define DEFINE_GETTER(ObjectType)                          \
-  {                                                        \
-    auto getter = [=](ObjectType o) -> Member {            \
-      PEACALM_LUAW_ASSERT(o);                              \
-      return f(o);                                         \
-    };                                                     \
-    void* p = reinterpret_cast<void*>(                     \
-        const_cast<std::type_info*>(&typeid(ObjectType))); \
-    l.touchtb(p, LUA_REGISTRYINDEX)                        \
-        .touchtb(2)                                        \
-        .setkv<luaw::function_tag>(mname, getter);         \
-    l.pop(2);                                              \
-  }
-
-    DEFINE_GETTER(Class*);
-    DEFINE_GETTER(const Class*);
-    DEFINE_GETTER(volatile Class*);
-    DEFINE_GETTER(const volatile Class*);
-#undef DEFINE_GETTER
-
-    __regist_setters(l, mname, std::forward<F>(f), std::is_const<Member>{});
-  }
-
-private:
-  template <typename F>
-  static void __regist_setters(luaw&       l,
-                               const char* mname,
-                               F&&         f,
-                               std::true_type) {
-    // TODO: maybe set const member name to fields?
-  }
-
-  template <typename F>
-  static void __regist_setters(luaw&       l,
-                               const char* mname,
-                               F&&         f,
-                               std::false_type) {
-#define DEFINE_SETTER(ObjectType)                          \
-  {                                                        \
-    auto setter = [=](ObjectType o, Member v) {            \
-      PEACALM_LUAW_ASSERT(o);                              \
-      f(o) = std::move(v);                                 \
-    };                                                     \
-    void* p = reinterpret_cast<void*>(                     \
-        const_cast<std::type_info*>(&typeid(ObjectType))); \
-    l.touchtb(p, LUA_REGISTRYINDEX)                        \
-        .touchtb(3)                                        \
-        .setkv<luaw::function_tag>(mname, setter);         \
-    l.pop(2);                                              \
-  }
-
-    DEFINE_SETTER(Class*);
-    DEFINE_SETTER(volatile Class*);
-#undef DEFINE_SETTER
-  }
-};
-
-// register member functions
-// @{
-
-template <typename Class, typename Return, typename... Args>
-struct luaw::registrar<Return (Class::*)(Args...)> {
-  using ObjectType = Class*;
-
-  template <typename MemberFunction>
-  static void regist(luaw& l, const char* fname, MemberFunction mf) {
-    {
-      auto f = [=](ObjectType o, Args... args) -> Return {
-        PEACALM_LUAW_ASSERT(o);
-        return mf(o, std::move(args)...);
-      };
-
-      void* p = reinterpret_cast<void*>(
-          const_cast<std::type_info*>(&typeid(ObjectType)));
-      l.touchtb(p, LUA_REGISTRYINDEX)
-          .touchtb(1)
-          .setkv<luaw::function_tag>(fname, f);
-      l.pop(2);
-    }
-  }
-};
-
-template <typename Class, typename Return, typename... Args>
-struct luaw::registrar<Return (Class::*)(Args...) const> {
-  using ObjectType = const Class*;
-
-  template <typename MemberFunction>
-  static void regist(luaw& l, const char* fname, MemberFunction mf) {
-    {
-      auto f = [=](ObjectType o, Args... args) -> Return {
-        PEACALM_LUAW_ASSERT(o);
-        return mf(o, std::move(args)...);
-      };
-
-      void* p = reinterpret_cast<void*>(
-          const_cast<std::type_info*>(&typeid(ObjectType)));
-      l.touchtb(p, LUA_REGISTRYINDEX)
-          .touchtb(1)
-          .setkv<luaw::function_tag>(fname, f);
-      l.pop(2);
-    }
-    luaw::registrar<Return (Class::*)(Args...)>::regist(l, fname, mf);
-  }
-};
-
-template <typename Class, typename Return, typename... Args>
-struct luaw::registrar<Return (Class::*)(Args...) volatile> {
-  using ObjectType = volatile Class*;
-
-  template <typename MemberFunction>
-  static void regist(luaw& l, const char* fname, MemberFunction mf) {
-    {
-      auto f = [=](ObjectType o, Args... args) -> Return {
-        PEACALM_LUAW_ASSERT(o);
-        return mf(o, std::move(args)...);
-      };
-
-      void* p = reinterpret_cast<void*>(
-          const_cast<std::type_info*>(&typeid(ObjectType)));
-      l.touchtb(p, LUA_REGISTRYINDEX)
-          .touchtb(1)
-          .setkv<luaw::function_tag>(fname, f);
-      l.pop(2);
-    }
-    luaw::registrar<Return (Class::*)(Args...)>::regist(l, fname, mf);
-  }
-};
-
-template <typename Class, typename Return, typename... Args>
-struct luaw::registrar<Return (Class::*)(Args...) const volatile> {
-  using ObjectType = const volatile Class*;
-
-  template <typename MemberFunction>
-  static void regist(luaw& l, const char* fname, MemberFunction mf) {
-    {
-      auto f = [=](ObjectType o, Args... args) -> Return {
-        PEACALM_LUAW_ASSERT(o);
-        return mf(o, std::move(args)...);
-      };
-
-      void* p = reinterpret_cast<void*>(
-          const_cast<std::type_info*>(&typeid(ObjectType)));
-      l.touchtb(p, LUA_REGISTRYINDEX)
-          .touchtb(1)
-          .setkv<luaw::function_tag>(fname, f);
-      l.pop(2);
-    }
-    luaw::registrar<Return (Class::*)(Args...)>::regist(l, fname, mf);
-    luaw::registrar<Return (Class::*)(Args...) const>::regist(l, fname, mf);
-    luaw::registrar<Return (Class::*)(Args...) volatile>::regist(l, fname, mf);
-  }
-};
-
-// @}
-
 //////////////////// push impl ////////////////////////////////////////////////
 
 // primary pusher. guess whether it may be a lambda, push as function if true,
@@ -3564,6 +3393,177 @@ private:
     return 1;
   }
 };
+
+//////////////////// registrar impl ////////////////////////////////////////////
+
+template <typename T, typename>
+struct luaw::registrar {
+  // Write nothing to let compile fail for unsupported member types,
+  // such as ref- qualified member functions.
+};
+
+// register member variable
+template <typename Class, typename Member>
+struct luaw::registrar<
+    Member Class::*,
+    std::enable_if_t<std::is_member_object_pointer<Member Class::*>::value>> {
+  // register a specific member
+  template <typename F>
+  static void regist(luaw& l, const char* mname, F&& f) {
+#define DEFINE_GETTER(ObjectType)                          \
+  {                                                        \
+    auto getter = [=](ObjectType o) -> Member {            \
+      PEACALM_LUAW_ASSERT(o);                              \
+      return f(o);                                         \
+    };                                                     \
+    void* p = reinterpret_cast<void*>(                     \
+        const_cast<std::type_info*>(&typeid(ObjectType))); \
+    l.touchtb(p, LUA_REGISTRYINDEX)                        \
+        .touchtb(2)                                        \
+        .setkv<luaw::function_tag>(mname, getter);         \
+    l.pop(2);                                              \
+  }
+
+    DEFINE_GETTER(Class*);
+    DEFINE_GETTER(const Class*);
+    DEFINE_GETTER(volatile Class*);
+    DEFINE_GETTER(const volatile Class*);
+#undef DEFINE_GETTER
+
+    __regist_setters(l, mname, std::forward<F>(f), std::is_const<Member>{});
+  }
+
+private:
+  template <typename F>
+  static void __regist_setters(luaw&       l,
+                               const char* mname,
+                               F&&         f,
+                               std::true_type) {
+    // TODO: maybe set const member name to fields?
+  }
+
+  template <typename F>
+  static void __regist_setters(luaw&       l,
+                               const char* mname,
+                               F&&         f,
+                               std::false_type) {
+#define DEFINE_SETTER(ObjectType)                          \
+  {                                                        \
+    auto setter = [=](ObjectType o, Member v) {            \
+      PEACALM_LUAW_ASSERT(o);                              \
+      f(o) = std::move(v);                                 \
+    };                                                     \
+    void* p = reinterpret_cast<void*>(                     \
+        const_cast<std::type_info*>(&typeid(ObjectType))); \
+    l.touchtb(p, LUA_REGISTRYINDEX)                        \
+        .touchtb(3)                                        \
+        .setkv<luaw::function_tag>(mname, setter);         \
+    l.pop(2);                                              \
+  }
+
+    DEFINE_SETTER(Class*);
+    DEFINE_SETTER(volatile Class*);
+#undef DEFINE_SETTER
+  }
+};
+
+// register member functions
+// @{
+
+template <typename Class, typename Return, typename... Args>
+struct luaw::registrar<Return (Class::*)(Args...)> {
+  using ObjectType = Class*;
+
+  template <typename MemberFunction>
+  static void regist(luaw& l, const char* fname, MemberFunction mf) {
+    {
+      auto f = [=](ObjectType o, Args... args) -> Return {
+        PEACALM_LUAW_ASSERT(o);
+        return mf(o, std::move(args)...);
+      };
+
+      void* p = reinterpret_cast<void*>(
+          const_cast<std::type_info*>(&typeid(ObjectType)));
+      l.touchtb(p, LUA_REGISTRYINDEX)
+          .touchtb(1)
+          .setkv<luaw::function_tag>(fname, f);
+      l.pop(2);
+    }
+  }
+};
+
+template <typename Class, typename Return, typename... Args>
+struct luaw::registrar<Return (Class::*)(Args...) const> {
+  using ObjectType = const Class*;
+
+  template <typename MemberFunction>
+  static void regist(luaw& l, const char* fname, MemberFunction mf) {
+    {
+      auto f = [=](ObjectType o, Args... args) -> Return {
+        PEACALM_LUAW_ASSERT(o);
+        return mf(o, std::move(args)...);
+      };
+
+      void* p = reinterpret_cast<void*>(
+          const_cast<std::type_info*>(&typeid(ObjectType)));
+      l.touchtb(p, LUA_REGISTRYINDEX)
+          .touchtb(1)
+          .setkv<luaw::function_tag>(fname, f);
+      l.pop(2);
+    }
+    luaw::registrar<Return (Class::*)(Args...)>::regist(l, fname, mf);
+  }
+};
+
+template <typename Class, typename Return, typename... Args>
+struct luaw::registrar<Return (Class::*)(Args...) volatile> {
+  using ObjectType = volatile Class*;
+
+  template <typename MemberFunction>
+  static void regist(luaw& l, const char* fname, MemberFunction mf) {
+    {
+      auto f = [=](ObjectType o, Args... args) -> Return {
+        PEACALM_LUAW_ASSERT(o);
+        return mf(o, std::move(args)...);
+      };
+
+      void* p = reinterpret_cast<void*>(
+          const_cast<std::type_info*>(&typeid(ObjectType)));
+      l.touchtb(p, LUA_REGISTRYINDEX)
+          .touchtb(1)
+          .setkv<luaw::function_tag>(fname, f);
+      l.pop(2);
+    }
+    luaw::registrar<Return (Class::*)(Args...)>::regist(l, fname, mf);
+  }
+};
+
+template <typename Class, typename Return, typename... Args>
+struct luaw::registrar<Return (Class::*)(Args...) const volatile> {
+  using ObjectType = const volatile Class*;
+
+  template <typename MemberFunction>
+  static void regist(luaw& l, const char* fname, MemberFunction mf) {
+    {
+      auto f = [=](ObjectType o, Args... args) -> Return {
+        PEACALM_LUAW_ASSERT(o);
+        return mf(o, std::move(args)...);
+      };
+
+      void* p = reinterpret_cast<void*>(
+          const_cast<std::type_info*>(&typeid(ObjectType)));
+      l.touchtb(p, LUA_REGISTRYINDEX)
+          .touchtb(1)
+          .setkv<luaw::function_tag>(fname, f);
+      l.pop(2);
+    }
+    luaw::registrar<Return (Class::*)(Args...)>::regist(l, fname, mf);
+    luaw::registrar<Return (Class::*)(Args...) const>::regist(l, fname, mf);
+    luaw::registrar<Return (Class::*)(Args...) volatile>::regist(l, fname, mf);
+  }
+};
+
+// @}
 
 ////////////////////////////////////////////////////////////////////////////////
 /////////////////// The following are DEPRECATED! //////////////////////////////
