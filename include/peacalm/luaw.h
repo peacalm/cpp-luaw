@@ -183,6 +183,8 @@ class luaw {
   struct pusher;
   template <typename T, typename = void>
   struct convertor;
+  template <typename T>
+  struct register_ctor_impl;
 
   lua_State* L_;
 
@@ -1513,7 +1515,22 @@ private:
   }
 
 public:
-  //////////////////////// register memebers for classes ///////////////////////
+  //////////////////////// register ctor/memeber for class /////////////////////
+
+  /// Register a global function to Lua who can create object of type Return,
+  /// where Return is the return type of Ctor.
+  /// e.g. register_ctor<Object(int)>("NewObject").
+  template <typename Ctor>
+  void register_ctor(const char* fname) {
+    static_assert(std::is_function<Ctor>::value,
+                  "Ctor should be type of Return(Args...)");
+    PEACALM_LUAW_ASSERT(fname);
+    register_ctor_impl<std::decay_t<Ctor>>::register_ctor(*this, fname);
+  }
+  template <typename Ctor>
+  void register_ctor(const std::string& fname) {
+    register_ctor<Ctor>(fname.c_str());
+  }
 
   /// Register a real member, ether member variable or member function.
   /// For overloaded member function, you can explicitly pass in the template
@@ -2502,9 +2519,8 @@ private:
   // Return is not void
   template <typename Callee>
   static int callback(luaw& l, Callee&& c, int start_idx, std::false_type) {
-    auto ret =
-        do_call(l, std::forward<Callee>(c), start_idx, 1, wrap<Args>{}...);
-    return l.push(ret);
+    return l.push(
+        do_call(l, std::forward<Callee>(c), start_idx, 1, wrap<Args>{}...));
   }
 
   template <typename Callee, typename FirstArg, typename... RestArgs>
@@ -3295,6 +3311,16 @@ struct luaw::convertor<void> {
     if (failed) *failed = false;
     if (exists) *exists = !l.isnoneornil(idx);
     return void();
+  }
+};
+
+//////////////////// register ctor impl ////////////////////////////////////////
+
+template <typename Return, typename... Args>
+struct luaw::register_ctor_impl<Return (*)(Args...)> {
+  static void register_ctor(luaw& l, const char* fname) {
+    auto ctor = [](const Args&... args) -> Return { return Return(args...); };
+    l.set<luaw::function_tag>(fname, ctor);
   }
 };
 

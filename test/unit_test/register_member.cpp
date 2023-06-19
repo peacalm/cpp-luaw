@@ -372,3 +372,28 @@ TEST(register_member, fake_member_functions) {
 
   EXPECT_EQ(l.gettop(), 0);
 }
+
+TEST(register_member, register_ctor) {
+  luaw l;
+  l.register_member("i", &Obj::i);
+  l.register_member("ci", &Obj::ci);
+
+  l.register_ctor<Obj()>("NewObj");
+  EXPECT_EQ(l.dostring("a = NewObj()"), LUA_OK);
+  EXPECT_EQ(l.eval<int>("return a.i"), 1);
+  EXPECT_EQ(l.eval<int>("a.i = 2; return a.i"), 2);
+  EXPECT_EQ(l.get<int>({"a", "i"}), 2);
+  EXPECT_EQ(l.get<int>({"a", "ci"}), 1);
+
+  l.register_ctor<std::add_const_t<Obj>()>("NewConstObj");
+  EXPECT_EQ(l.dostring("b = NewConstObj()"), LUA_OK);
+  EXPECT_EQ(l.eval<int>("return b.i"), 1);
+  EXPECT_NE(l.dostring("b.i = 2"), LUA_OK);
+  l.log_error_out();
+  EXPECT_EQ(l.get<int>({"b", "i"}), 1);
+  EXPECT_EQ(l.get<int>({"b", "ci"}), 1);
+
+  EXPECT_EQ(l.gettop(), 0);
+
+  // l.register_ctor<Obj>("NewObj"); // error
+}
