@@ -348,10 +348,10 @@ public:
       // Should load base and package first for any preload.
       luaL_requiref(L_, LUA_GNAME, luaopen_base, 1);
       luaL_requiref(L_, LUA_LOADLIBNAME, luaopen_package, 1);
-      lua_getfield(L_, -1, "preload");
+      getfield(-1, "preload");
       for (const luaL_Reg& l : o.libs_preload_) {
         pushcfunction(l.func);
-        lua_setfield(L_, -2, l.name);
+        setfield(-2, l.name);
       }
       pop(3);
     }
@@ -373,7 +373,7 @@ public:
     // Should load base and package first for any preload.
     luaL_requiref(L_, LUA_GNAME, luaopen_base, 1);
     luaL_requiref(L_, LUA_LOADLIBNAME, luaopen_package, 1);
-    lua_getfield(L_, -1, "preload");
+    getfield(-1, "preload");
     static const luaL_Reg preloadlibs[] = {{LUA_COLIBNAME, luaopen_coroutine},
                                            {LUA_TABLIBNAME, luaopen_table},
                                            {LUA_IOLIBNAME, luaopen_io},
@@ -385,7 +385,7 @@ public:
                                            {NULL, NULL}};
     for (const luaL_Reg* p = preloadlibs; p->func; ++p) {
       pushcfunction(p->func);
-      lua_setfield(L_, -2, p->name);
+      setfield(-2, p->name);
     }
     pop(3);
   }
@@ -456,19 +456,19 @@ public:
   bool isthread(int idx = -1)        const { return lua_isthread(L_, idx); }
   // clang-format on
 
-  /// Pop a k on top and push t[k], where t at idx. Return the type of the
-  /// value pushed.
+  // getxxx: return the type of the value pushed.
   int gettable(int idx) { return lua_gettable(L_, idx); }
-
   int geti(int idx, lua_integer_t n) { return lua_geti(L_, idx, n); }
   int getp(int idx, const void* p) {
     pushlightuserdata(p);
     return gettable(idx);
   }
+  int getfield(int idx, const char* k) {
+    PEACALM_LUAW_ASSERT(k);
+    return lua_getfield(L_, idx, k);
+  }
 
-  /// Pop k,v on top and set t[k]=v, where t at idx.
   void settable(int idx) { lua_settable(L_, idx); }
-
   void seti(int idx, lua_integer_t n) { lua_seti(L_, idx, n); }
   void setp(int idx, const void* p) {
     int aidx = abs(idx);
@@ -477,15 +477,40 @@ public:
     settable(aidx);
     pop();
   }
+  void setfield(int idx, const char* k) {
+    PEACALM_LUAW_ASSERT(k);
+    lua_setfield(L_, idx, k);
+  }
 
-  // Similar to lua_gettable/lua_settable/..., but does a raw assignment (i.e.,
-  // without metamethods). The value at index must be a table.
-  int  rawget(int idx) { return lua_rawget(L_, idx); }
-  int  rawgeti(int idx, lua_integer_t n) { return lua_rawgeti(L_, idx, n); }
-  int  rawgetp(int idx, const void* p) { return lua_rawgetp(L_, idx, p); }
+  int rawget(int idx) { return lua_rawget(L_, idx); }
+  int rawgeti(int idx, lua_integer_t n) { return lua_rawgeti(L_, idx, n); }
+  int rawgetp(int idx, const void* p) { return lua_rawgetp(L_, idx, p); }
+  int rawgetfield(int idx, const char* k) {
+    pushstring(k);
+    return rawget(idx);
+  }
+
   void rawset(int idx) { lua_rawset(L_, idx); }
   void rawseti(int idx, lua_integer_t n) { lua_rawseti(L_, idx, n); }
   void rawsetp(int idx, const void* p) { lua_rawsetp(L_, idx, p); }
+  void rawsetfield(int idx, const char* k) {
+    int aidx = abs(idx);
+    pushstring(k);
+    pushvalue(-2);
+    rawset(aidx);
+    pop();
+  }
+
+  /// Return whether the value at idx has a metatable, if true push the
+  /// metatable on top, otherwise push nothing and return false.
+  bool getmetatable(int idx) { return lua_getmetatable(L_, idx); }
+
+  /// Pop a table or nil and set it as metatable for value at idx.
+  void setmetatable(int idx) { lua_setmetatable(L_, idx); }
+
+  void       newtable() { lua_newtable(L_); }
+  void*      newuserdata(size_t size) { return lua_newuserdata(L_, size); }
+  lua_State* newthread() { return lua_newthread(L_); }
 
   /// Whether the value at idx is indexable.
   bool indexable(int idx = -1) const {
@@ -501,7 +526,7 @@ public:
   /// Whether the value at idx is newindexable.
   bool newindexable(int idx = -1) const {
     if (istable(idx)) return true;
-    if (lua_getmetatable(L_, idx) == 0) return false;
+    if (!lua_getmetatable(L_, idx)) return false;
     auto _g = make_guarder(gettop() - 1);
     lua_getfield(L_, -1, "__newindex");
     // if __newindex exists, then regard as newindexable
@@ -512,7 +537,7 @@ public:
   /// Whether the value at idx is indexable and newindexable.
   bool indexable_and_newindexable(int idx = -1) const {
     if (istable(idx)) return true;
-    if (lua_getmetatable(L_, idx) == 0) return false;
+    if (!lua_getmetatable(L_, idx)) return false;
     auto _g = make_guarder(gettop() - 1);
     lua_getfield(L_, -1, "__index");
     lua_getfield(L_, -2, "__newindex");
@@ -524,7 +549,7 @@ public:
   /// Whether the value at idx is callable.
   bool callable(int idx = -1) const {
     if (isfunction(idx)) return true;
-    if (lua_getmetatable(L_, idx) == 0) return false;
+    if (!lua_getmetatable(L_, idx)) return false;
     auto _g = make_guarder(gettop() - 1);
     lua_getfield(L_, -1, "__call");
     bool ret = !isnoneornil(-1);
@@ -743,7 +768,7 @@ public:
   /// or push a nil if the operation fails.
   self_t& seek(const char* name, int idx = -1) {
     if (name && (istable(idx) || indexable(idx))) {
-      lua_getfield(L_, idx, name);
+      getfield(idx, name);
     } else {
       pushnil();
     }
@@ -785,7 +810,7 @@ public:
   /// Push the metatable of the value at the given index onto the stack if it
   /// has a metatable, otherwise push a nil.
   self_t& seek(metatable_tag, int idx = -1) {
-    if (lua_getmetatable(L_, idx) == 0) { pushnil(); }
+    if (!getmetatable(idx)) { pushnil(); }
     return *this;
   }
 
@@ -831,6 +856,13 @@ public:
     setglobal(name);
   }
 
+  /// Pushes the global environment onto the stack.
+  void pushglobaltable() { lua_pushglobaltable(L_); }
+
+  /// Pushes the thread represented by L onto the stack.
+  /// Returns 1 if this thread is the main thread of its state.
+  int pushthread() { return lua_pushthread(L_); }
+
   /// Push a C closure function with n upvalues.
   void pushcclosure(lua_cfunction_t f, int n) { lua_pushcclosure(L_, f, n); }
 
@@ -843,12 +875,11 @@ public:
   /// Push nil. Equivalent to `push(nullptr)`.
   void pushnil() { lua_pushnil(L_); }
 
-  /// Pushes the thread represented by L onto the stack.
-  /// Returns 1 if this thread is the main thread of its state.
-  int pushthread() { return lua_pushthread(L_); }
-
-  /// Pushes the global environment onto the stack.
-  void pushglobaltable() { lua_pushglobaltable(L_); }
+  /// Return a pointer to the internal copy of the string.
+  const char* pushstring(const char* s) {
+    PEACALM_LUAW_ASSERT(s);  // we forbit s to be NULL
+    return lua_pushstring(L_, s);
+  }
 
   ///////////////////////// touch table ////////////////////////////////////////
 
@@ -858,7 +889,7 @@ public:
     getglobal(name);
     if (istable() || indexable_and_newindexable()) return *this;
     pop();
-    lua_newtable(L_);
+    newtable();
     pushvalue(-1);  // make a copy
     setglobal(name);
     return *this;
@@ -869,14 +900,15 @@ public:
   /// where t is a table at given index. If t[name] is not a table, create a new
   /// one.
   self_t& touchtb(const char* name, int idx = -1) {
+    PEACALM_LUAW_ASSERT(name);
     int aidx = abs_index(idx);
     PEACALM_LUAW_INDEXABLE_ASSERT(indexable_and_newindexable(aidx));
-    lua_getfield(L_, aidx, name);
+    getfield(aidx, name);
     if (istable() || indexable_and_newindexable()) return *this;
     pop();
-    lua_newtable(L_);
-    lua_setfield(L_, aidx, name);
-    lua_getfield(L_, aidx, name);
+    newtable();
+    setfield(aidx, name);
+    getfield(aidx, name);
     return *this;
   }
   self_t& touchtb(const std::string& name, int idx = -1) {
@@ -892,7 +924,7 @@ public:
     geti(aidx, n);
     if (istable() || indexable_and_newindexable()) return *this;
     pop();
-    lua_newtable(L_);
+    newtable();
     seti(aidx, n);
     geti(aidx, n);
     return *this;
@@ -908,7 +940,7 @@ public:
     gettable(aidx);
     if (istable() || indexable_and_newindexable()) return *this;
     pop();
-    lua_newtable(L_);
+    newtable();
     pushlightuserdata(p);
     pushvalue(-2);
     settable(aidx);
@@ -925,16 +957,16 @@ public:
   /// metatable, else create a new metatable using `luaL_newmetatable(L_,
   /// m.tname)`.
   self_t& touchtb(metatable_tag m, int idx = -1) {
-    if (lua_getmetatable(L_, idx) == 0) {
+    if (!getmetatable(idx)) {
       int aidx = abs_index(idx);
       if (!m.tname) {
-        lua_newtable(L_);
+        newtable();
       } else {
         luaL_newmetatable(L_, m.tname);
       }
-      lua_setmetatable(L_, aidx);
-      int t = lua_getmetatable(L_, aidx);
-      PEACALM_LUAW_ASSERT(t == 1);
+      setmetatable(aidx);
+      bool t = getmetatable(aidx);
+      PEACALM_LUAW_ASSERT(t);
     }
     return *this;
   }
@@ -967,7 +999,7 @@ public:
     PEACALM_LUAW_INDEXABLE_ASSERT(newindexable(idx));
     int aidx = abs_index(idx);
     push(std::forward<T>(value));
-    lua_setfield(L_, aidx, key);
+    setfield(aidx, key);
   }
   template <typename T>
   void setkv(const std::string& key, T&& value, int idx = -1) {
@@ -998,7 +1030,7 @@ public:
     PEACALM_LUAW_INDEXABLE_ASSERT(newindexable(idx));
     int aidx = abs_index(idx);
     push<Hint>(std::forward<T>(value));
-    lua_setfield(L_, aidx, key);
+    setfield(aidx, key);
   }
   template <typename Hint, typename T>
   std::enable_if_t<!std::is_same<Hint, T>::value> setkv(const std::string& key,
@@ -1032,7 +1064,7 @@ public:
   void setkv(metatable_tag, T&& value, int idx = -1) {
     int aidx = abs_index(idx);
     push(std::forward<T>(value));
-    lua_setmetatable(L_, aidx);
+    setmetatable(aidx);
   }
   template <typename Hint, typename T>
   std::enable_if_t<!std::is_same<Hint, T>::value> setkv(metatable_tag,
@@ -1040,7 +1072,7 @@ public:
                                                         int idx = -1) {
     int aidx = abs_index(idx);
     push<Hint>(std::forward<T>(value));
-    lua_setmetatable(L_, aidx);
+    setmetatable(aidx);
   }
 
   /// Using nullptr as key is invalid.
@@ -1893,7 +1925,7 @@ struct metatable_factory_base {
   }
 
   static void push_exclusive_metatable(luaw& l) {
-    lua_newtable(l.L());
+    l.newtable();
     Derived::set_metamethods(l);
   }
 };
@@ -2281,7 +2313,7 @@ struct luaw::pusher<T*,
         reinterpret_cast<void*>(const_cast<std::remove_cv_t<Y>*>(v)));
 
     luaw::metatable_factory<T*>::push_shared_metatable(l);
-    lua_setmetatable(l.L(), -2);
+    l.setmetatable(-2);
 
     return 1;
   }
@@ -2326,15 +2358,15 @@ private:
     l.pushlightuserdata(reinterpret_cast<void*>(
         const_cast<std::remove_cv_t<std::remove_pointer_t<SolidY>>*>(v)));
     luaw::metatable_factory<SolidY>::push_shared_metatable(l);
-    lua_setmetatable(l.L(), -2);
+    l.setmetatable(-2);
   }
 
   template <typename SolidY, typename Y>
   static void __push(luaw& l, Y&& v, std::false_type) {
-    void* p = lua_newuserdata(l.L(), sizeof(SolidY));
+    void* p = l.newuserdata(sizeof(SolidY));
     new (p) SolidY(std::forward<Y>(v));
     luaw::metatable_factory<SolidY*>::push_shared_metatable(l);
-    lua_setmetatable(l.L(), -2);
+    l.setmetatable(-2);
   }
 };
 
@@ -2344,7 +2376,7 @@ struct luaw::pusher<luaw::newtable_tag> {
   static const size_t size = 1;
 
   static int push(luaw& l, newtable_tag) {
-    lua_newtable(l.L());
+    l.newtable();
     return 1;
   }
 };
@@ -2427,19 +2459,21 @@ struct luaw::pusher<Return (*)(Args...)> {
     };
 
     // object
-    auto faddr = static_cast<SolidF*>(lua_newuserdata(l.L(), sizeof(f)));
+    auto faddr = static_cast<SolidF*>(l.newuserdata(sizeof(f)));
     new (faddr) SolidF(std::forward<F>(f));
 
     // build metatable
-    lua_newtable(l.L());
+    l.newtable();
 
+    l.pushstring("__call");
     l.pushcfunction(__call);
-    lua_setfield(l.L(), -2, "__call");
+    l.rawset(-3);
 
+    l.pushstring("__gc");
     l.pushcfunction(__gc);
-    lua_setfield(l.L(), -2, "__gc");
+    l.rawset(-3);
 
-    lua_setmetatable(l.L(), -2);
+    l.setmetatable(-2);
 
     return 1;
   }
@@ -2461,7 +2495,7 @@ struct luaw::pusher<Return (*)(Args...)> {
       return ret_num;
     };
 
-    auto faddr = static_cast<SolidF*>(lua_newuserdata(l.L(), sizeof(f)));
+    auto faddr = static_cast<SolidF*>(l.newuserdata(sizeof(f)));
     new (faddr) SolidF(std::forward<F>(f));
 
     l.pushcclosure(closure, 1);
@@ -2623,7 +2657,7 @@ struct luaw::pusher<std::pair<T, U>> {
   static const size_t size = 1;
 
   static int push(luaw& l, const std::pair<T, U>& p) {
-    lua_newtable(l.L());
+    l.newtable();
     l.push(p.first);
     l.rawseti(-2, 1);
     l.push(p.second);
@@ -2637,7 +2671,7 @@ namespace luaw_detail {
 // Implementation for all list like containers
 template <typename Container>
 static int __push_list(luaw& l, const Container& v) {
-  lua_newtable(l.L());
+  l.newtable();
   int cnt = 0;
   for (auto b = v.begin(), e = v.end(); b != e; ++b) {
     l.push(*b);
@@ -2650,7 +2684,7 @@ static int __push_list(luaw& l, const Container& v) {
 // Make a Key-True table in Lua to represent set
 template <typename Container>
 static int __push_set(luaw& l, const Container& v) {
-  lua_newtable(l.L());
+  l.newtable();
   for (auto b = v.begin(), e = v.end(); b != e; ++b) {
     l.push(*b);
     lua_pushboolean(l.L(), 1);
@@ -2662,7 +2696,7 @@ static int __push_set(luaw& l, const Container& v) {
 // Implementation for all map like containers
 template <typename Container>
 static int __push_map(luaw& l, const Container& v) {
-  lua_newtable(l.L());
+  l.newtable();
   for (auto b = v.begin(), e = v.end(); b != e; ++b) {
     l.push(b->first);
     l.push(b->second);
@@ -3396,13 +3430,13 @@ private:
 
   void set_globale_metateble() {
     pushglobaltable();
-    if (lua_getmetatable(L(), -1) == 0) { lua_newtable(L()); }
+    if (!getmetatable(-1)) { newtable(); }
     pushcfunction(_G__index);
-    lua_setfield(L(), -2, "__index");
-    lua_setmetatable(L(), -2);
+    setfield(-2, "__index");
+    setmetatable(-2);
     pop();
     pushlightuserdata((void*)this);
-    lua_setfield(L(), LUA_REGISTRYINDEX, "this");
+    setfield(LUA_REGISTRYINDEX, "this");
   }
 
   static int _G__index(lua_State* L) {
