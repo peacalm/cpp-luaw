@@ -351,7 +351,7 @@ public:
       lua_getfield(L_, -1, "preload");
       for (const luaL_Reg& l : o.libs_preload_) {
         pushcfunction(l.func);
-        lua_setfield(L_, -2, l.name);
+        setfield(-2, l.name);
       }
       pop(3);
     }
@@ -385,7 +385,7 @@ public:
                                            {NULL, NULL}};
     for (const luaL_Reg* p = preloadlibs; p->func; ++p) {
       pushcfunction(p->func);
-      lua_setfield(L_, -2, p->name);
+      setfield(-2, p->name);
     }
     pop(3);
   }
@@ -895,12 +895,12 @@ public:
     PEACALM_LUAW_ASSERT(name);
     int aidx = abs_index(idx);
     PEACALM_LUAW_INDEXABLE_ASSERT(indexable_and_newindexable(aidx));
-    lua_getfield(L_, aidx, name);
+    getfield(aidx, name);
     if (istable() || indexable_and_newindexable()) return *this;
     pop();
     lua_newtable(L_);
-    lua_setfield(L_, aidx, name);
-    lua_getfield(L_, aidx, name);
+    setfield(aidx, name);
+    getfield(aidx, name);
     return *this;
   }
   self_t& touchtb(const std::string& name, int idx = -1) {
@@ -990,7 +990,7 @@ public:
     PEACALM_LUAW_INDEXABLE_ASSERT(newindexable(idx));
     int aidx = abs_index(idx);
     push(std::forward<T>(value));
-    lua_setfield(L_, aidx, key);
+    setfield(aidx, key);
   }
   template <typename T>
   void setkv(const std::string& key, T&& value, int idx = -1) {
@@ -1021,7 +1021,7 @@ public:
     PEACALM_LUAW_INDEXABLE_ASSERT(newindexable(idx));
     int aidx = abs_index(idx);
     push<Hint>(std::forward<T>(value));
-    lua_setfield(L_, aidx, key);
+    setfield(aidx, key);
   }
   template <typename Hint, typename T>
   std::enable_if_t<!std::is_same<Hint, T>::value> setkv(const std::string& key,
@@ -2457,10 +2457,10 @@ struct luaw::pusher<Return (*)(Args...)> {
     lua_newtable(l.L());
 
     l.pushcfunction(__call);
-    lua_setfield(l.L(), -2, "__call");
+    l.setfield(-2, "__call");
 
     l.pushcfunction(__gc);
-    lua_setfield(l.L(), -2, "__gc");
+    l.setfield(-2, "__gc");
 
     l.setmetatable(-2);
 
