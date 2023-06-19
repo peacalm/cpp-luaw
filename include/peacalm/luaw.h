@@ -2038,6 +2038,7 @@ struct luaw::metatable_factory
     T* p = l.to<T*>(1);
     PEACALM_LUAW_ASSERT(p);
     p->~T();
+    return 0;
   }
 };
 
