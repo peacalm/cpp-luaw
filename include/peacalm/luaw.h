@@ -203,11 +203,11 @@ public:
   template <typename T>
   class function;
 
-  // Used as hint type for set/push, indicate the value is a user defined custom
-  // object.
-  struct custom_tag {};
+  // Used as hint type for set/push/setkv, indicate the value is a user defined
+  // custom class object.
+  struct class_tag {};
 
-  // Used as hint type for set/push, indicate the value is a function or a
+  // Used as hint type for set/push/setkv, indicate the value is a function or a
   // callable object used as a function.
   struct function_tag {};
 
@@ -2237,7 +2237,7 @@ struct luaw::pusher {
     // function, otherwise push as custom class.
     constexpr bool push_as_function = luaw_detail::decay_maybe_lambda<Y>::value;
     using Tag                       = std::
-        conditional_t<push_as_function, luaw::function_tag, luaw::custom_tag>;
+        conditional_t<push_as_function, luaw::function_tag, luaw::class_tag>;
 
     // Ensure push v as type T if not push as function.
 
@@ -2310,10 +2310,10 @@ struct luaw::pusher<T*,
   }
 };
 
-// custom_tag: push as an user defined custom type.
+// class_tag: push as an user defined custom class type.
 // only work on type class or pointer to class.
 template <>
-struct luaw::pusher<luaw::custom_tag> {
+struct luaw::pusher<luaw::class_tag> {
   static const size_t size = 1;
 
   template <typename Y>
