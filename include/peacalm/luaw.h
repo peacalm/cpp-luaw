@@ -186,8 +186,8 @@ class luaw {
     generic_member_getter,
     generic_member_setter,
     const_member,
-    non_const_member_function,
-    non_volatile_member_function
+    nonconst_member_function,
+    nonvolatile_member_function
   };
 
   template <typename T, typename = void>
@@ -3243,6 +3243,40 @@ struct luaw::metatable_factory<T*>
       }
     }
 
+    // whether calling nonconst member function by a const object
+    if (std::is_const<T>::value) {
+      l.rawgeti(-1, luaw::member_info_fields::nonconst_member_function);
+      if (!l.istable(-1)) {
+        l.pop();
+      } else {
+        l.pushvalue(2);  // push the key
+        l.rawget(-2);
+        if (!l.isnil(-1)) {  // found, which is true
+          const char* key = l.to_c_str(2);
+          return luaL_error(l.L(), "Nonconst member function: %s", key);
+        } else {
+          l.pop(2);
+        }
+      }
+    }
+
+    // whether calling nonvolatile member function by a volatile object
+    if (std::is_volatile<T>::value) {
+      l.rawgeti(-1, luaw::member_info_fields::nonvolatile_member_function);
+      if (!l.istable(-1)) {
+        l.pop();
+      } else {
+        l.pushvalue(2);  // push the key
+        l.rawget(-2);
+        if (!l.isnil(-1)) {  // found, which is true
+          const char* key = l.to_c_str(2);
+          return luaL_error(l.L(), "Nonvolatile member function: %s", key);
+        } else {
+          l.pop(2);
+        }
+      }
+    }
+
     // TODO: generic member getter
 
     // not found handler
@@ -3437,94 +3471,95 @@ private:
 
 template <typename Class, typename Return, typename... Args>
 struct luaw::registrar<Return (Class::*)(Args...)> {
-  using ObjectType = Class*;
-
   template <typename MemberFunction>
   static void regist(luaw& l, const char* fname, MemberFunction mf) {
-    {
-      auto f = [=](ObjectType o, Args... args) -> Return {
-        PEACALM_LUAW_ASSERT(o);
-        return mf(o, std::move(args)...);
-      };
+    register_member_function<Class*>(l, fname, mf);
+    register_nonconst_member_function<const Class*>(l, fname);
+    register_nonconst_member_function<const volatile Class*>(l, fname);
+    register_nonvolatile_member_function<volatile Class*>(l, fname);
+    register_nonvolatile_member_function<const volatile Class*>(l, fname);
+  }
 
-      void* p = reinterpret_cast<void*>(
-          const_cast<std::type_info*>(&typeid(ObjectType)));
-      l.touchtb(p, LUA_REGISTRYINDEX)
-          .touchtb(luaw::member_info_fields::member_function)
-          .setkv<luaw::function_tag>(fname, f);
-      l.pop(2);
-    }
+  // implementations
+
+  template <typename ObjectType, typename MemberFunction>
+  static void register_member_function(luaw&            l,
+                                       const char*      fname,
+                                       MemberFunction&& mf) {
+    auto f = [=](ObjectType o, Args... args) -> Return {
+      PEACALM_LUAW_ASSERT(o);
+      return mf(o, std::move(args)...);
+    };
+
+    void* p = reinterpret_cast<void*>(
+        const_cast<std::type_info*>(&typeid(ObjectType)));
+    l.touchtb(p, LUA_REGISTRYINDEX)
+        .touchtb(luaw::member_info_fields::member_function)
+        .setkv<luaw::function_tag>(fname, f);
+    l.pop(2);
+  }
+
+  template <typename ObjectType>
+  static void register_nonconst_member_function(luaw& l, const char* fname) {
+    void* p = reinterpret_cast<void*>(
+        const_cast<std::type_info*>(&typeid(ObjectType)));
+    l.touchtb(p, LUA_REGISTRYINDEX)
+        .touchtb(luaw::member_info_fields::nonconst_member_function)
+        .setkv(fname, true);
+    l.pop(2);
+  }
+
+  template <typename ObjectType>
+  static void register_nonvolatile_member_function(luaw& l, const char* fname) {
+    void* p = reinterpret_cast<void*>(
+        const_cast<std::type_info*>(&typeid(ObjectType)));
+    l.touchtb(p, LUA_REGISTRYINDEX)
+        .touchtb(luaw::member_info_fields::nonvolatile_member_function)
+        .setkv(fname, true);
+    l.pop(2);
   }
 };
 
 template <typename Class, typename Return, typename... Args>
 struct luaw::registrar<Return (Class::*)(Args...) const> {
-  using ObjectType = const Class*;
-
   template <typename MemberFunction>
   static void regist(luaw& l, const char* fname, MemberFunction mf) {
-    {
-      auto f = [=](ObjectType o, Args... args) -> Return {
-        PEACALM_LUAW_ASSERT(o);
-        return mf(o, std::move(args)...);
-      };
+    using Basic = luaw::registrar<Return (Class::*)(Args...)>;
 
-      void* p = reinterpret_cast<void*>(
-          const_cast<std::type_info*>(&typeid(ObjectType)));
-      l.touchtb(p, LUA_REGISTRYINDEX)
-          .touchtb(luaw::member_info_fields::member_function)
-          .setkv<luaw::function_tag>(fname, f);
-      l.pop(2);
-    }
-    luaw::registrar<Return (Class::*)(Args...)>::regist(l, fname, mf);
+    Basic::template register_member_function<Class*>(l, fname, mf);
+    Basic::template register_member_function<const Class*>(l, fname, mf);
+    Basic::template register_nonvolatile_member_function<volatile Class*>(
+        l, fname);
+    Basic::template register_nonvolatile_member_function<const volatile Class*>(
+        l, fname);
   }
 };
 
 template <typename Class, typename Return, typename... Args>
 struct luaw::registrar<Return (Class::*)(Args...) volatile> {
-  using ObjectType = volatile Class*;
-
   template <typename MemberFunction>
   static void regist(luaw& l, const char* fname, MemberFunction mf) {
-    {
-      auto f = [=](ObjectType o, Args... args) -> Return {
-        PEACALM_LUAW_ASSERT(o);
-        return mf(o, std::move(args)...);
-      };
+    using Basic = luaw::registrar<Return (Class::*)(Args...)>;
 
-      void* p = reinterpret_cast<void*>(
-          const_cast<std::type_info*>(&typeid(ObjectType)));
-      l.touchtb(p, LUA_REGISTRYINDEX)
-          .touchtb(luaw::member_info_fields::member_function)
-          .setkv<luaw::function_tag>(fname, f);
-      l.pop(2);
-    }
-    luaw::registrar<Return (Class::*)(Args...)>::regist(l, fname, mf);
+    Basic::template register_member_function<Class*>(l, fname, mf);
+    Basic::template register_member_function<volatile Class*>(l, fname, mf);
+    Basic::template register_nonconst_member_function<const Class*>(l, fname);
+    Basic::template register_nonconst_member_function<const volatile Class*>(
+        l, fname);
   }
 };
 
 template <typename Class, typename Return, typename... Args>
 struct luaw::registrar<Return (Class::*)(Args...) const volatile> {
-  using ObjectType = const volatile Class*;
-
   template <typename MemberFunction>
   static void regist(luaw& l, const char* fname, MemberFunction mf) {
-    {
-      auto f = [=](ObjectType o, Args... args) -> Return {
-        PEACALM_LUAW_ASSERT(o);
-        return mf(o, std::move(args)...);
-      };
+    using Basic = luaw::registrar<Return (Class::*)(Args...)>;
 
-      void* p = reinterpret_cast<void*>(
-          const_cast<std::type_info*>(&typeid(ObjectType)));
-      l.touchtb(p, LUA_REGISTRYINDEX)
-          .touchtb(luaw::member_info_fields::member_function)
-          .setkv<luaw::function_tag>(fname, f);
-      l.pop(2);
-    }
-    luaw::registrar<Return (Class::*)(Args...)>::regist(l, fname, mf);
-    luaw::registrar<Return (Class::*)(Args...) const>::regist(l, fname, mf);
-    luaw::registrar<Return (Class::*)(Args...) volatile>::regist(l, fname, mf);
+    Basic::template register_member_function<Class*>(l, fname, mf);
+    Basic::template register_member_function<const Class*>(l, fname, mf);
+    Basic::template register_member_function<volatile Class*>(l, fname, mf);
+    Basic::template register_member_function<const volatile Class*>(
+        l, fname, mf);
   }
 };
 

@@ -15,16 +15,12 @@
 #include "main.h"
 
 struct Obj {
-  // Obj() { puts("Obj()"); }
-  // Obj(Obj&&) { puts("Obj(Obj&&)"); }
-  // Obj(const Obj&) { puts("Obj(const Obj&)"); }
-  // ~Obj() { puts("~Obj()"); }
-
   int          i  = 1;
   const int    ci = 1;
   volatile int vi = 1;
 
   int geti() const { return i; }
+  int cv_geti() const volatile { return i; }
 
   int plus() { return ++i; }
 
@@ -407,4 +403,35 @@ TEST(register_member, member_no_setter) {
   EXPECT_TRUE(failed);
 
   EXPECT_DEATH(l.lset("o", "i", 2), ".*Not found setter.*");
+}
+
+TEST(register_member, nonconst_non_volatile) {
+  luaw l;
+  l.register_member("plus", &Obj::plus);
+  l.register_member("geti", &Obj::geti);
+  l.register_member("cv_geti", &Obj::cv_geti);
+  {
+    const Obj o;
+    l.set("o", &o);
+    EXPECT_NE(l.dostring("o:plus()"), LUA_OK);
+    l.log_error_out();
+    EXPECT_EQ(l.eval<int>("return o:geti()"), 1);
+    EXPECT_EQ(l.eval<int>("return o:cv_geti()"), 1);
+  }
+  {
+    volatile Obj o;
+    l.set("o", &o);
+    EXPECT_NE(l.dostring("o:plus()"), LUA_OK);
+    l.log_error_out();
+    EXPECT_EQ(l.eval<int>("return o:geti()"), 0);
+    EXPECT_EQ(l.eval<int>("return o:cv_geti()"), 1);
+  }
+  {
+    const volatile Obj o;
+    l.set("o", &o);
+    EXPECT_NE(l.dostring("o:plus()"), LUA_OK);
+    l.log_error_out();
+    EXPECT_EQ(l.eval<int>("return o:geti()"), 0);
+    EXPECT_EQ(l.eval<int>("return o:cv_geti()"), 1);
+  }
 }
