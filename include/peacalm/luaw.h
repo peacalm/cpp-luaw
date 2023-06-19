@@ -456,19 +456,19 @@ public:
   bool isthread(int idx = -1)        const { return lua_isthread(L_, idx); }
   // clang-format on
 
-  /// Pop a k on top and push t[k], where t at idx. Return the type of the
-  /// value pushed.
+  // getxxx: return the type of the value pushed.
   int gettable(int idx) { return lua_gettable(L_, idx); }
-
   int geti(int idx, lua_integer_t n) { return lua_geti(L_, idx, n); }
   int getp(int idx, const void* p) {
     pushlightuserdata(p);
     return gettable(idx);
   }
+  int getfield(int idx, const char* k) {
+    PEACALM_LUAW_ASSERT(k);
+    return lua_getfield(L_, idx, k);
+  }
 
-  /// Pop k,v on top and set t[k]=v, where t at idx.
   void settable(int idx) { lua_settable(L_, idx); }
-
   void seti(int idx, lua_integer_t n) { lua_seti(L_, idx, n); }
   void setp(int idx, const void* p) {
     int aidx = abs(idx);
@@ -477,15 +477,31 @@ public:
     settable(aidx);
     pop();
   }
+  void setfield(int idx, const char* k) {
+    PEACALM_LUAW_ASSERT(k);
+    lua_setfield(L_, idx, k);
+  }
 
-  // Similar to lua_gettable/lua_settable/..., but does a raw assignment (i.e.,
-  // without metamethods). The value at index must be a table.
-  int  rawget(int idx) { return lua_rawget(L_, idx); }
-  int  rawgeti(int idx, lua_integer_t n) { return lua_rawgeti(L_, idx, n); }
-  int  rawgetp(int idx, const void* p) { return lua_rawgetp(L_, idx, p); }
+  int rawget(int idx) { return lua_rawget(L_, idx); }
+  int rawgeti(int idx, lua_integer_t n) { return lua_rawgeti(L_, idx, n); }
+  int rawgetp(int idx, const void* p) { return lua_rawgetp(L_, idx, p); }
+  int rawgetfield(int idx, const char* k) {
+    PEACALM_LUAW_ASSERT(k);
+    push(k);
+    return rawget(idx);
+  }
+
   void rawset(int idx) { lua_rawset(L_, idx); }
   void rawseti(int idx, lua_integer_t n) { lua_rawseti(L_, idx, n); }
   void rawsetp(int idx, const void* p) { lua_rawsetp(L_, idx, p); }
+  void rawsetfield(int idx, const char* k) {
+    PEACALM_LUAW_ASSERT(k);
+    int aidx = abs(idx);
+    push(k);
+    pushvalue(-2);
+    rawset(aidx);
+    pop();
+  }
 
   /// Whether the value at idx is indexable.
   bool indexable(int idx = -1) const {
@@ -869,6 +885,7 @@ public:
   /// where t is a table at given index. If t[name] is not a table, create a new
   /// one.
   self_t& touchtb(const char* name, int idx = -1) {
+    PEACALM_LUAW_ASSERT(name);
     int aidx = abs_index(idx);
     PEACALM_LUAW_INDEXABLE_ASSERT(indexable_and_newindexable(aidx));
     lua_getfield(L_, aidx, name);
