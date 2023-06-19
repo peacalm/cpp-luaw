@@ -1637,7 +1637,7 @@ public:
   template <typename MemberPointer>
   std::enable_if_t<std::is_member_pointer<MemberPointer>::value>
   register_member(const char* name, MemberPointer mp) {
-    registrar<std::decay_t<MemberPointer>>::regist(
+    registrar<std::decay_t<MemberPointer>>::register_member(
         *this, name, std::mem_fn(mp));
   }
   template <typename MemberPointer>
@@ -1652,7 +1652,8 @@ public:
   std::enable_if_t<std::is_member_pointer<Hint>::value &&
                    !std::is_same<Hint, F>::value>
   register_member(const char* name, F&& f) {
-    registrar<std::decay_t<Hint>>::regist(*this, name, std::forward<F>(f));
+    registrar<std::decay_t<Hint>>::register_member(
+        *this, name, std::forward<F>(f));
   }
   template <typename Hint, typename F>
   std::enable_if_t<std::is_member_pointer<Hint>::value &&
@@ -3391,7 +3392,7 @@ struct luaw::registrar<
     std::enable_if_t<std::is_member_object_pointer<Member Class::*>::value>> {
   // register a specific member
   template <typename F>
-  static void regist(luaw& l, const char* mname, F&& f) {
+  static void register_member(luaw& l, const char* mname, F&& f) {
 #define DEFINE_GETTER(ObjectType)                          \
   {                                                        \
     auto getter = [=](ObjectType o) -> Member {            \
@@ -3472,7 +3473,7 @@ private:
 template <typename Class, typename Return, typename... Args>
 struct luaw::registrar<Return (Class::*)(Args...)> {
   template <typename MemberFunction>
-  static void regist(luaw& l, const char* fname, MemberFunction mf) {
+  static void register_member(luaw& l, const char* fname, MemberFunction mf) {
     register_member_function<Class*>(l, fname, mf);
     register_nonconst_member_function<const Class*>(l, fname);
     register_nonconst_member_function<const volatile Class*>(l, fname);
@@ -3523,7 +3524,7 @@ struct luaw::registrar<Return (Class::*)(Args...)> {
 template <typename Class, typename Return, typename... Args>
 struct luaw::registrar<Return (Class::*)(Args...) const> {
   template <typename MemberFunction>
-  static void regist(luaw& l, const char* fname, MemberFunction mf) {
+  static void register_member(luaw& l, const char* fname, MemberFunction mf) {
     using Basic = luaw::registrar<Return (Class::*)(Args...)>;
 
     Basic::template register_member_function<Class*>(l, fname, mf);
@@ -3538,7 +3539,7 @@ struct luaw::registrar<Return (Class::*)(Args...) const> {
 template <typename Class, typename Return, typename... Args>
 struct luaw::registrar<Return (Class::*)(Args...) volatile> {
   template <typename MemberFunction>
-  static void regist(luaw& l, const char* fname, MemberFunction mf) {
+  static void register_member(luaw& l, const char* fname, MemberFunction mf) {
     using Basic = luaw::registrar<Return (Class::*)(Args...)>;
 
     Basic::template register_member_function<Class*>(l, fname, mf);
@@ -3552,7 +3553,7 @@ struct luaw::registrar<Return (Class::*)(Args...) volatile> {
 template <typename Class, typename Return, typename... Args>
 struct luaw::registrar<Return (Class::*)(Args...) const volatile> {
   template <typename MemberFunction>
-  static void regist(luaw& l, const char* fname, MemberFunction mf) {
+  static void register_member(luaw& l, const char* fname, MemberFunction mf) {
     using Basic = luaw::registrar<Return (Class::*)(Args...)>;
 
     Basic::template register_member_function<Class*>(l, fname, mf);
