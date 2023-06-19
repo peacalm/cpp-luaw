@@ -3260,7 +3260,8 @@ struct luaw::metatable_factory<T*>
 
     if (!l.istable(-1)) {
       l.pop();
-      return 0;
+      const char* key = l.to_c_str(2);
+      return luaL_error(l.L(), "Not found setter: %s", key);
     }
 
     // member variable setter

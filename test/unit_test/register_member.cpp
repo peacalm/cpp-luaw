@@ -397,3 +397,14 @@ TEST(register_member, register_ctor) {
 
   // l.register_ctor<Obj>("NewObj"); // error
 }
+
+TEST(register_member, member_no_setter) {
+  luaw l;
+  l.set("o", Obj{});
+
+  bool failed;
+  l.eval<void>("o.i = 2", false, &failed);
+  EXPECT_TRUE(failed);
+
+  EXPECT_DEATH(l.lset("o", "i", 2), ".*Not found setter.*");
+}
