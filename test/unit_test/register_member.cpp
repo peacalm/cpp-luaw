@@ -415,23 +415,32 @@ TEST(register_member, nonconst_non_volatile) {
     l.set("o", &o);
     EXPECT_NE(l.dostring("o:plus()"), LUA_OK);
     l.log_error_out();
-    EXPECT_EQ(l.eval<int>("return o:geti()"), 1);
-    EXPECT_EQ(l.eval<int>("return o:cv_geti()"), 1);
+    bool failed;
+    EXPECT_EQ(l.eval<int>("return o:geti()", false, &failed), 1);
+    EXPECT_FALSE(failed);
+    EXPECT_EQ(l.eval<int>("return o:cv_geti()", false, &failed), 1);
+    EXPECT_FALSE(failed);
   }
   {
     volatile Obj o;
     l.set("o", &o);
     EXPECT_NE(l.dostring("o:plus()"), LUA_OK);
     l.log_error_out();
-    EXPECT_EQ(l.eval<int>("return o:geti()"), 0);
-    EXPECT_EQ(l.eval<int>("return o:cv_geti()"), 1);
+    bool failed;
+    EXPECT_EQ(l.eval<int>("return o:geti()", false, &failed), 0);
+    EXPECT_TRUE(failed);
+    EXPECT_EQ(l.eval<int>("return o:cv_geti()", false, &failed), 1);
+    EXPECT_FALSE(failed);
   }
   {
     const volatile Obj o;
     l.set("o", &o);
     EXPECT_NE(l.dostring("o:plus()"), LUA_OK);
     l.log_error_out();
-    EXPECT_EQ(l.eval<int>("return o:geti()"), 0);
-    EXPECT_EQ(l.eval<int>("return o:cv_geti()"), 1);
+    bool failed;
+    EXPECT_EQ(l.eval<int>("return o:geti()", false, &failed), 0);
+    EXPECT_TRUE(failed);
+    EXPECT_EQ(l.eval<int>("return o:cv_geti()", false, &failed), 1);
+    EXPECT_FALSE(failed);
   }
 }
