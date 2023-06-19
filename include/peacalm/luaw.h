@@ -2748,9 +2748,10 @@ struct luaw::convertor {
   }
 };
 
-// include convert to void* and cv- void*.
+// convert to all type of pointers including (cv-) void* but not const char*!
 template <typename T>
-struct luaw::convertor<T*> {
+struct luaw::
+    convertor<T*, std::enable_if_t<!std::is_same<T*, const char*>::value>> {
   static T* to(luaw& l,
                int   idx         = -1,
                bool  disable_log = false,
@@ -2769,6 +2770,32 @@ struct luaw::convertor<T*> {
     }
     if (failed) *failed = true;
     if (!disable_log) { l.log_type_convert_error(idx, "userdata"); }
+    return nullptr;
+  }
+};
+
+// to const char*, NOT RECOMMENDED! Should better use to std::string instead!
+// lua_tostring will change number to C string in stack, which is dangerous!
+template <>
+struct luaw::convertor<const char*> {
+  static const char* to(luaw& l,
+                        int   idx         = -1,
+                        bool  disable_log = false,
+                        bool* failed      = nullptr,
+                        bool* exists      = nullptr) {
+    if (l.isnoneornil(idx)) {
+      if (exists) *exists = false;
+      if (failed) *failed = false;
+      return nullptr;
+    }
+    if (exists) *exists = true;
+    if (l.isstring(idx)) {
+      if (failed) *failed = false;
+      const char* p = lua_tostring(l.L(), idx);
+      return p;
+    }
+    if (failed) *failed = true;
+    if (!disable_log) { l.log_type_convert_error(idx, "const char*"); }
     return nullptr;
   }
 };
@@ -3110,6 +3137,9 @@ T __tom(luaw&       l,
         bool*       failed      = nullptr,
         bool*       exists      = nullptr,
         const char* tname       = "map") {
+  static_assert(!std::is_same<typename T::key_type, const char*>::value,
+                "const char* as key type of map is forbidden");
+
   if (exists) *exists = !l.isnoneornil(idx);
   if (l.isnoneornil(idx)) {
     if (failed) *failed = false;
