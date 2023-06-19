@@ -503,6 +503,13 @@ public:
     pop();
   }
 
+  /// Return whether the value at idx has a metatable, if true push the
+  /// metatable on top, otherwise push nothing and return false.
+  bool getmetatable(int idx) { return lua_getmetatable(L_, idx); }
+
+  /// Pop a table or nil and set it as metatable for value at idx.
+  void setmetatable(int idx) { lua_setmetatable(L_, idx); }
+
   /// Whether the value at idx is indexable.
   bool indexable(int idx = -1) const {
     if (istable(idx)) return true;
@@ -517,7 +524,7 @@ public:
   /// Whether the value at idx is newindexable.
   bool newindexable(int idx = -1) const {
     if (istable(idx)) return true;
-    if (lua_getmetatable(L_, idx) == 0) return false;
+    if (!lua_getmetatable(L_, idx)) return false;
     auto _g = make_guarder(gettop() - 1);
     lua_getfield(L_, -1, "__newindex");
     // if __newindex exists, then regard as newindexable
@@ -528,7 +535,7 @@ public:
   /// Whether the value at idx is indexable and newindexable.
   bool indexable_and_newindexable(int idx = -1) const {
     if (istable(idx)) return true;
-    if (lua_getmetatable(L_, idx) == 0) return false;
+    if (!lua_getmetatable(L_, idx)) return false;
     auto _g = make_guarder(gettop() - 1);
     lua_getfield(L_, -1, "__index");
     lua_getfield(L_, -2, "__newindex");
@@ -540,7 +547,7 @@ public:
   /// Whether the value at idx is callable.
   bool callable(int idx = -1) const {
     if (isfunction(idx)) return true;
-    if (lua_getmetatable(L_, idx) == 0) return false;
+    if (!lua_getmetatable(L_, idx)) return false;
     auto _g = make_guarder(gettop() - 1);
     lua_getfield(L_, -1, "__call");
     bool ret = !isnoneornil(-1);
@@ -801,7 +808,7 @@ public:
   /// Push the metatable of the value at the given index onto the stack if it
   /// has a metatable, otherwise push a nil.
   self_t& seek(metatable_tag, int idx = -1) {
-    if (lua_getmetatable(L_, idx) == 0) { pushnil(); }
+    if (!getmetatable(idx)) { pushnil(); }
     return *this;
   }
 
@@ -942,16 +949,16 @@ public:
   /// metatable, else create a new metatable using `luaL_newmetatable(L_,
   /// m.tname)`.
   self_t& touchtb(metatable_tag m, int idx = -1) {
-    if (lua_getmetatable(L_, idx) == 0) {
+    if (!getmetatable(idx)) {
       int aidx = abs_index(idx);
       if (!m.tname) {
         lua_newtable(L_);
       } else {
         luaL_newmetatable(L_, m.tname);
       }
-      lua_setmetatable(L_, aidx);
-      int t = lua_getmetatable(L_, aidx);
-      PEACALM_LUAW_ASSERT(t == 1);
+      setmetatable(aidx);
+      bool t = getmetatable(aidx);
+      PEACALM_LUAW_ASSERT(t);
     }
     return *this;
   }
@@ -1049,7 +1056,7 @@ public:
   void setkv(metatable_tag, T&& value, int idx = -1) {
     int aidx = abs_index(idx);
     push(std::forward<T>(value));
-    lua_setmetatable(L_, aidx);
+    setmetatable(aidx);
   }
   template <typename Hint, typename T>
   std::enable_if_t<!std::is_same<Hint, T>::value> setkv(metatable_tag,
@@ -1057,7 +1064,7 @@ public:
                                                         int idx = -1) {
     int aidx = abs_index(idx);
     push<Hint>(std::forward<T>(value));
-    lua_setmetatable(L_, aidx);
+    setmetatable(aidx);
   }
 
   /// Using nullptr as key is invalid.
@@ -2298,7 +2305,7 @@ struct luaw::pusher<T*,
         reinterpret_cast<void*>(const_cast<std::remove_cv_t<Y>*>(v)));
 
     luaw::metatable_factory<T*>::push_shared_metatable(l);
-    lua_setmetatable(l.L(), -2);
+    l.setmetatable(-2);
 
     return 1;
   }
@@ -2343,7 +2350,7 @@ private:
     l.pushlightuserdata(reinterpret_cast<void*>(
         const_cast<std::remove_cv_t<std::remove_pointer_t<SolidY>>*>(v)));
     luaw::metatable_factory<SolidY>::push_shared_metatable(l);
-    lua_setmetatable(l.L(), -2);
+    l.setmetatable(-2);
   }
 
   template <typename SolidY, typename Y>
@@ -2351,7 +2358,7 @@ private:
     void* p = lua_newuserdata(l.L(), sizeof(SolidY));
     new (p) SolidY(std::forward<Y>(v));
     luaw::metatable_factory<SolidY*>::push_shared_metatable(l);
-    lua_setmetatable(l.L(), -2);
+    l.setmetatable(-2);
   }
 };
 
@@ -2456,7 +2463,7 @@ struct luaw::pusher<Return (*)(Args...)> {
     l.pushcfunction(__gc);
     lua_setfield(l.L(), -2, "__gc");
 
-    lua_setmetatable(l.L(), -2);
+    l.setmetatable(-2);
 
     return 1;
   }
@@ -3413,13 +3420,13 @@ private:
 
   void set_globale_metateble() {
     pushglobaltable();
-    if (lua_getmetatable(L(), -1) == 0) { lua_newtable(L()); }
+    if (!getmetatable(-1)) { lua_newtable(L()); }
     pushcfunction(_G__index);
-    lua_setfield(L(), -2, "__index");
-    lua_setmetatable(L(), -2);
+    setfield(-2, "__index");
+    setmetatable(-2);
     pop();
     pushlightuserdata((void*)this);
-    lua_setfield(L(), LUA_REGISTRYINDEX, "this");
+    setfield(LUA_REGISTRYINDEX, "this");
   }
 
   static int _G__index(lua_State* L) {
