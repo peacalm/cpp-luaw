@@ -1979,167 +1979,6 @@ using is_stdtuple = __is_stdtuple<std::decay_t<T>>;
 
 }  // namespace luaw_detail
 
-//////////////////// metatable_factory impl ////////////////////////////////////
-
-namespace luaw_detail {
-
-template <typename T, typename Derived>
-struct metatable_factory_base {
-  static void push_shared_metatable(luaw& l) {
-    bool first_create = l.gtouchmetatb(typeid(T).name());
-    if (first_create) Derived::set_metamethods(l);
-  }
-
-  static void push_exclusive_metatable(luaw& l) {
-    l.newtable();
-    Derived::set_metamethods(l);
-  }
-};
-
-}  // namespace luaw_detail
-
-// T: The (class) type whose member is registered.
-template <typename T>
-struct luaw::metatable_factory<T*>
-    : public luaw_detail::metatable_factory_base<T*,
-                                                 luaw::metatable_factory<T*>> {
-  // No restrict to class only anymore, user can use it if he knows what he is
-  // doing.
-  // static_assert(std::is_class<T>::value,
-  //               "Only class and it's pointer could have metatable");
-
-  static void set_metamethods(luaw& l) {
-    l.setkv("__index", __index, -1);
-    l.setkv("__newindex", __newindex, -1);
-  }
-
-  static int __index(lua_State* L) {
-    luaw_fake l(L);
-    PEACALM_LUAW_ASSERT(l.gettop() == 2);
-    void* ti =
-        reinterpret_cast<void*>(const_cast<std::type_info*>(&typeid(T*)));
-    l.pushlightuserdata(ti);
-    l.gettable(LUA_REGISTRYINDEX);
-
-    if (!l.istable(-1)) {
-      l.pop();
-      l.pushnil();
-      return 1;
-    }
-
-    // member function
-    l.rawgeti(-1, luaw::member_info_fields::member_function);
-    if (!l.istable(-1)) {
-      l.pop();
-    } else {
-      l.pushvalue(2);  // push the key
-      l.rawget(-2);
-      if (!l.isnil(-1)) {  // found
-        return 1;
-      } else {
-        l.pop(2);
-      }
-    }
-
-    // member variable getter
-    l.rawgeti(-1, luaw::member_info_fields::member_getter);
-    if (!l.istable(-1)) {
-      l.pop();
-    } else {
-      l.pushvalue(2);  // push the key
-      l.rawget(-2);
-      if (!l.isnil(-1)) {  // found
-        l.pushvalue(1);    // push the userdata
-        l.pushvalue(2);    // push the key
-        int retcode = l.pcall(2, 1, 0);
-        if (retcode != LUA_OK) {
-          l.log_error_in_stack();
-          l.pop();
-          l.pushnil();
-          return 1;
-        } else {
-          return 1;
-        }
-      } else {
-        l.pop(2);
-      }
-    }
-
-    // TODO: generic member getter
-
-    // not found handler
-    l.pushnil();
-    return 1;
-  }
-
-  static int __newindex(lua_State* L) {
-    luaw_fake l(L);
-    PEACALM_LUAW_ASSERT(l.gettop() == 3);
-    void* ti =
-        reinterpret_cast<void*>(const_cast<std::type_info*>(&typeid(T*)));
-    l.pushlightuserdata(ti);
-    l.gettable(LUA_REGISTRYINDEX);
-
-    if (!l.istable(-1)) {
-      l.pop();
-      return 0;
-    }
-
-    // member variable setter
-    l.rawgeti(-1, luaw::member_info_fields::member_setter);
-    if (!l.istable(-1)) {
-      l.pop();
-    } else {
-      l.pushvalue(2);  // push the key
-      l.rawget(-2);
-      if (!l.isnil(-1)) {  // found
-        l.pushvalue(1);    // push the userdata
-        l.pushvalue(3);    // push the value
-        int retcode = l.pcall(2, 0, 0);
-        if (retcode != LUA_OK) {
-          l.log_error_in_stack();
-          l.pop();
-          return 0;
-        } else {
-          return 0;
-        }
-      } else {
-        l.pop(2);
-      }
-    }
-
-    // TODO: generic member setter
-
-    // not found handler
-    const char* key = l.to_c_str(2);
-    return luaL_error(l.L(), "Not found setter: %s", key);
-  }
-};
-
-template <typename T, typename>
-struct luaw::metatable_factory
-    : public luaw_detail::metatable_factory_base<T,
-                                                 luaw::metatable_factory<T>> {
-  // No restrict to class only anymore, user can use it if he knows what he is
-  // doing.
-  // static_assert(std::is_class<T>::value,
-  //               "Only class and it's pointer could have metatable");
-
-  static void set_metamethods(luaw& l) {
-    luaw::metatable_factory<T*>::set_metamethods(l);
-    if (!std::is_trivially_destructible<T>::value) { l.setkv("__gc", __gc); }
-  }
-
-  static int __gc(lua_State* L) {
-    luaw_fake l(L);
-    PEACALM_LUAW_ASSERT(l.gettop() == 1);
-    T* p = l.to<T*>(1);
-    PEACALM_LUAW_ASSERT(p);
-    p->~T();
-    return 0;
-  }
-};
-
 //////////////////// push impl ////////////////////////////////////////////////
 
 // primary pusher. guess whether it may be a lambda, push as function if true,
@@ -3318,6 +3157,167 @@ struct luaw::convertor<luaw::luavalueref> {
   }
 };
 
+//////////////////// metatable_factory impl ////////////////////////////////////
+
+namespace luaw_detail {
+
+template <typename T, typename Derived>
+struct metatable_factory_base {
+  static void push_shared_metatable(luaw& l) {
+    bool first_create = l.gtouchmetatb(typeid(T).name());
+    if (first_create) Derived::set_metamethods(l);
+  }
+
+  static void push_exclusive_metatable(luaw& l) {
+    l.newtable();
+    Derived::set_metamethods(l);
+  }
+};
+
+}  // namespace luaw_detail
+
+// T: The (class) type whose member is registered.
+template <typename T>
+struct luaw::metatable_factory<T*>
+    : public luaw_detail::metatable_factory_base<T*,
+                                                 luaw::metatable_factory<T*>> {
+  // No restrict to class only anymore, user can use it if he knows what he is
+  // doing.
+  // static_assert(std::is_class<T>::value,
+  //               "Only class and it's pointer could have metatable");
+
+  static void set_metamethods(luaw& l) {
+    l.setkv("__index", __index, -1);
+    l.setkv("__newindex", __newindex, -1);
+  }
+
+  static int __index(lua_State* L) {
+    luaw_fake l(L);
+    PEACALM_LUAW_ASSERT(l.gettop() == 2);
+    void* ti =
+        reinterpret_cast<void*>(const_cast<std::type_info*>(&typeid(T*)));
+    l.pushlightuserdata(ti);
+    l.gettable(LUA_REGISTRYINDEX);
+
+    if (!l.istable(-1)) {
+      l.pop();
+      l.pushnil();
+      return 1;
+    }
+
+    // member function
+    l.rawgeti(-1, luaw::member_info_fields::member_function);
+    if (!l.istable(-1)) {
+      l.pop();
+    } else {
+      l.pushvalue(2);  // push the key
+      l.rawget(-2);
+      if (!l.isnil(-1)) {  // found
+        return 1;
+      } else {
+        l.pop(2);
+      }
+    }
+
+    // member variable getter
+    l.rawgeti(-1, luaw::member_info_fields::member_getter);
+    if (!l.istable(-1)) {
+      l.pop();
+    } else {
+      l.pushvalue(2);  // push the key
+      l.rawget(-2);
+      if (!l.isnil(-1)) {  // found
+        l.pushvalue(1);    // push the userdata
+        l.pushvalue(2);    // push the key
+        int retcode = l.pcall(2, 1, 0);
+        if (retcode != LUA_OK) {
+          l.log_error_in_stack();
+          l.pop();
+          l.pushnil();
+          return 1;
+        } else {
+          return 1;
+        }
+      } else {
+        l.pop(2);
+      }
+    }
+
+    // TODO: generic member getter
+
+    // not found handler
+    l.pushnil();
+    return 1;
+  }
+
+  static int __newindex(lua_State* L) {
+    luaw_fake l(L);
+    PEACALM_LUAW_ASSERT(l.gettop() == 3);
+    void* ti =
+        reinterpret_cast<void*>(const_cast<std::type_info*>(&typeid(T*)));
+    l.pushlightuserdata(ti);
+    l.gettable(LUA_REGISTRYINDEX);
+
+    if (!l.istable(-1)) {
+      l.pop();
+      return 0;
+    }
+
+    // member variable setter
+    l.rawgeti(-1, luaw::member_info_fields::member_setter);
+    if (!l.istable(-1)) {
+      l.pop();
+    } else {
+      l.pushvalue(2);  // push the key
+      l.rawget(-2);
+      if (!l.isnil(-1)) {  // found
+        l.pushvalue(1);    // push the userdata
+        l.pushvalue(3);    // push the value
+        int retcode = l.pcall(2, 0, 0);
+        if (retcode != LUA_OK) {
+          l.log_error_in_stack();
+          l.pop();
+          return 0;
+        } else {
+          return 0;
+        }
+      } else {
+        l.pop(2);
+      }
+    }
+
+    // TODO: generic member setter
+
+    // not found handler
+    const char* key = l.to_c_str(2);
+    return luaL_error(l.L(), "Not found setter: %s", key);
+  }
+};
+
+template <typename T, typename>
+struct luaw::metatable_factory
+    : public luaw_detail::metatable_factory_base<T,
+                                                 luaw::metatable_factory<T>> {
+  // No restrict to class only anymore, user can use it if he knows what he is
+  // doing.
+  // static_assert(std::is_class<T>::value,
+  //               "Only class and it's pointer could have metatable");
+
+  static void set_metamethods(luaw& l) {
+    luaw::metatable_factory<T*>::set_metamethods(l);
+    if (!std::is_trivially_destructible<T>::value) { l.setkv("__gc", __gc); }
+  }
+
+  static int __gc(lua_State* L) {
+    luaw_fake l(L);
+    PEACALM_LUAW_ASSERT(l.gettop() == 1);
+    T* p = l.to<T*>(1);
+    PEACALM_LUAW_ASSERT(p);
+    p->~T();
+    return 0;
+  }
+};
+
 //////////////////// register ctor impl ////////////////////////////////////////
 
 template <typename Return, typename... Args>
@@ -3325,115 +3325,6 @@ struct luaw::register_ctor_impl<Return (*)(Args...)> {
   static void register_ctor(luaw& l, const char* fname) {
     auto ctor = [](const Args&... args) -> Return { return Return(args...); };
     l.set<luaw::function_tag>(fname, ctor);
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-
-namespace luaw_detail {
-template <typename T>
-struct __is_ptr : std::false_type {};
-template <typename T>
-struct __is_ptr<T*> : std::true_type {};
-template <typename T>
-struct __is_ptr<std::shared_ptr<T>> : std::true_type {};
-template <typename T, typename D>
-struct __is_ptr<std::unique_ptr<T, D>> : std::true_type {};
-template <typename T>
-struct is_ptr : __is_ptr<typename std::decay<T>::type> {};
-}  // namespace luaw_detail
-
-/**
- * @brief A Lua wrapper with custom variable provider.
- *
- * Derived from luaw, it can contain a user defined variable provider.
- * When a global variable used in some expression does not exist in Lua,
- * then it will seek the variable from the provider.
- *
- * The underlying provider type should implement a member function:
- *
- * * `bool provide(peacalm::luaw* l, const char* vname);`
- *
- * In this member function, it should push exactly one value whose name is vname
- * onto the stack of L then return true. Otherwise return false if vname is
- * illegal or vname doesn't have a correct value.
- *
- * @tparam VariableProviderPointer Should be a raw pointer type or
- * std::shared_ptr or std::unique_ptr.
- */
-template <typename VariableProviderPointer>
-class custom_luaw : public luaw {
-  using base_t     = luaw;
-  using provider_t = VariableProviderPointer;
-  static_assert(luaw_detail::is_ptr<provider_t>::value,
-                "VariableProviderPointer should be pointer type");
-  using pointer_t      = custom_luaw*;
-  provider_t provider_ = nullptr;
-
-public:
-  template <typename... Args>
-  custom_luaw(Args&&... args) : base_t(std::forward<Args>(args)...) {
-    set_globale_metateble();
-  }
-
-  // delete copy
-  custom_luaw(const custom_luaw&)            = delete;
-  custom_luaw& operator=(const custom_luaw&) = delete;
-
-  // support move
-  custom_luaw(custom_luaw&& l)
-      : base_t(std::move(l)), provider_(std::move(l.provider_)) {
-    set_globale_metateble();
-  }
-  custom_luaw& operator=(custom_luaw&& r) {
-    base_t::operator=(std::move(r));
-    provider_ = std::move(r.provider_);
-    set_globale_metateble();
-    return *this;
-  }
-
-  // provider getter and setter
-  void              provider(const provider_t& p) { provider_ = p; }
-  void              provider(provider_t&& p) { provider_ = std::move(p); }
-  const provider_t& provider() const { return provider_; }
-  provider_t&       provider() { return provider_; }
-
-private:
-  bool provide(lua_State* L, const char* var_name) {
-    luaw_fake l(L);
-    return provider() && provider()->provide(&l, var_name);
-  }
-
-  void set_globale_metateble() {
-    pushglobaltable();
-    if (!getmetatable(-1)) { newtable(); }
-    pushcfunction(_G__index);
-    setfield(-2, "__index");
-    setmetatable(-2);
-    pop();
-    pushlightuserdata((void*)this);
-    setfield(LUA_REGISTRYINDEX, "this");
-  }
-
-  static int _G__index(lua_State* L) {
-    const char* name = lua_tostring(L, 2);
-    lua_getfield(L, LUA_REGISTRYINDEX, "this");
-    pointer_t p = (pointer_t)lua_touserdata(L, -1);
-    if (!p) {
-      return luaL_error(L, "Pointer 'this' not found");
-    } else if (!p->provider()) {
-      return luaL_error(L, "Need install provider");
-    } else {
-      int sz = lua_gettop(L);
-      if (!p->provide(L, name)) {
-        return luaL_error(L, "Provide failed: %s", name);
-      }
-      int diff = lua_gettop(L) - sz;
-      if (diff != 1) {
-        return luaL_error(L, "Should push exactly one value, given %d", diff);
-      }
-    }
-    return 1;
   }
 };
 
@@ -3607,6 +3498,115 @@ struct luaw::registrar<Return (Class::*)(Args...) const volatile> {
 };
 
 // @}
+
+////////////////////////////////////////////////////////////////////////////////
+
+namespace luaw_detail {
+template <typename T>
+struct __is_ptr : std::false_type {};
+template <typename T>
+struct __is_ptr<T*> : std::true_type {};
+template <typename T>
+struct __is_ptr<std::shared_ptr<T>> : std::true_type {};
+template <typename T, typename D>
+struct __is_ptr<std::unique_ptr<T, D>> : std::true_type {};
+template <typename T>
+struct is_ptr : __is_ptr<typename std::decay<T>::type> {};
+}  // namespace luaw_detail
+
+/**
+ * @brief A Lua wrapper with custom variable provider.
+ *
+ * Derived from luaw, it can contain a user defined variable provider.
+ * When a global variable used in some expression does not exist in Lua,
+ * then it will seek the variable from the provider.
+ *
+ * The underlying provider type should implement a member function:
+ *
+ * * `bool provide(peacalm::luaw* l, const char* vname);`
+ *
+ * In this member function, it should push exactly one value whose name is vname
+ * onto the stack of L then return true. Otherwise return false if vname is
+ * illegal or vname doesn't have a correct value.
+ *
+ * @tparam VariableProviderPointer Should be a raw pointer type or
+ * std::shared_ptr or std::unique_ptr.
+ */
+template <typename VariableProviderPointer>
+class custom_luaw : public luaw {
+  using base_t     = luaw;
+  using provider_t = VariableProviderPointer;
+  static_assert(luaw_detail::is_ptr<provider_t>::value,
+                "VariableProviderPointer should be pointer type");
+  using pointer_t      = custom_luaw*;
+  provider_t provider_ = nullptr;
+
+public:
+  template <typename... Args>
+  custom_luaw(Args&&... args) : base_t(std::forward<Args>(args)...) {
+    set_globale_metateble();
+  }
+
+  // delete copy
+  custom_luaw(const custom_luaw&)            = delete;
+  custom_luaw& operator=(const custom_luaw&) = delete;
+
+  // support move
+  custom_luaw(custom_luaw&& l)
+      : base_t(std::move(l)), provider_(std::move(l.provider_)) {
+    set_globale_metateble();
+  }
+  custom_luaw& operator=(custom_luaw&& r) {
+    base_t::operator=(std::move(r));
+    provider_ = std::move(r.provider_);
+    set_globale_metateble();
+    return *this;
+  }
+
+  // provider getter and setter
+  void              provider(const provider_t& p) { provider_ = p; }
+  void              provider(provider_t&& p) { provider_ = std::move(p); }
+  const provider_t& provider() const { return provider_; }
+  provider_t&       provider() { return provider_; }
+
+private:
+  bool provide(lua_State* L, const char* var_name) {
+    luaw_fake l(L);
+    return provider() && provider()->provide(&l, var_name);
+  }
+
+  void set_globale_metateble() {
+    pushglobaltable();
+    if (!getmetatable(-1)) { newtable(); }
+    pushcfunction(_G__index);
+    setfield(-2, "__index");
+    setmetatable(-2);
+    pop();
+    pushlightuserdata((void*)this);
+    setfield(LUA_REGISTRYINDEX, "this");
+  }
+
+  static int _G__index(lua_State* L) {
+    const char* name = lua_tostring(L, 2);
+    lua_getfield(L, LUA_REGISTRYINDEX, "this");
+    pointer_t p = (pointer_t)lua_touserdata(L, -1);
+    if (!p) {
+      return luaL_error(L, "Pointer 'this' not found");
+    } else if (!p->provider()) {
+      return luaL_error(L, "Need install provider");
+    } else {
+      int sz = lua_gettop(L);
+      if (!p->provide(L, name)) {
+        return luaL_error(L, "Provide failed: %s", name);
+      }
+      int diff = lua_gettop(L) - sz;
+      if (diff != 1) {
+        return luaL_error(L, "Should push exactly one value, given %d", diff);
+      }
+    }
+    return 1;
+  }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /////////////////// The following are DEPRECATED! //////////////////////////////
