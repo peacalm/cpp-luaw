@@ -227,6 +227,59 @@ public:
   // Maybe used as a C++ function formal parameter.
   struct placeholder_tag {};
 
+  // Represent a Lua value in stack by index.
+  struct luavalue {
+    lua_State* L;
+    int        idx;
+
+    luavalue(lua_State* s = nullptr, int i = 0) : L(s), idx(i) {
+      if (L) {
+        int sz = lua_gettop(L);
+        idx    = i < 0 && -i <= sz ? sz + i + 1 : i;
+      }
+    }
+  };
+
+  // A reference of some Lua value in LUA_REGISTRYINDEX.
+  struct luavalueref {
+    lua_State* L;
+    int        ref_id;
+
+    luavalueref(lua_State* s = nullptr) : L(s), ref_id(0) {
+      if (L) {
+        PEACALM_LUAW_ASSERT(lua_gettop(L) > 0);
+        // pops a value on top and returns its ref_id.
+        ref_id = luaL_ref(L, LUA_REGISTRYINDEX);
+      }
+    }
+
+    luavalueref(const luavalueref&) = delete;
+
+    luavalueref(luavalueref&& r) : L(r.L), ref_id(r.ref_id) { r.L = nullptr; }
+
+    ~luavalueref() {
+      if (L) {
+        luaL_unref(L, LUA_REGISTRYINDEX, ref_id);
+        L = nullptr;
+      }
+    }
+
+    luavalueref& operator=(const luavalueref&) = delete;
+
+    luavalueref& operator=(luavalueref&& r) {
+      if (L != r.L || ref_id != r.ref_id) {
+        this->~luavalueref();
+        L      = r.L;
+        ref_id = r.ref_id;
+      }
+      r.L = nullptr;
+      return *this;
+    }
+
+    // Push the value referenced on top of stack.
+    void getvalue() const { lua_rawgeti(L, LUA_REGISTRYINDEX, ref_id); }
+  };
+
   // Stack balance guarder.
   // Automatically set stack to a specific size when destruct.
   class guarder {
@@ -2828,6 +2881,28 @@ private:
   }
 };
 
+template <>
+struct luaw::pusher<luaw::luavalue> {
+  static const size_t size = 1;
+
+  static int push(luaw& l, const luaw::luavalue& r) {
+    PEACALM_LUAW_ASSERT(l.L() == r.L);
+    l.pushvalue(r.idx);
+    return 1;
+  }
+};
+
+template <>
+struct luaw::pusher<luaw::luavalueref> {
+  static const size_t size = 1;
+
+  static int push(luaw& l, const luaw::luavalueref& r) {
+    PEACALM_LUAW_ASSERT(l.L() == r.L);
+    r.getvalue();
+    return 1;
+  }
+};
+
 //////////////////// convertor impl ////////////////////////////////////////////
 
 // NOTICE: this will return a copy of userdata with type T!
@@ -3339,6 +3414,35 @@ struct luaw::convertor<void> {
     if (failed) *failed = false;
     if (exists) *exists = !l.isnoneornil(idx);
     return void();
+  }
+};
+
+// to luaw::luavalue
+template <>
+struct luaw::convertor<luaw::luavalue> {
+  static luaw::luavalue to(luaw& l,
+                           int   idx         = -1,
+                           bool  disable_log = false,
+                           bool* failed      = nullptr,
+                           bool* exists      = nullptr) {
+    if (failed) *failed = false;
+    if (exists) *exists = !l.isnone(idx);  // only none as not exists
+    return luaw::luavalue(l.L(), idx);
+  }
+};
+
+// to luaw::luavalueref
+template <>
+struct luaw::convertor<luaw::luavalueref> {
+  static luaw::luavalueref to(luaw& l,
+                              int   idx         = -1,
+                              bool  disable_log = false,
+                              bool* failed      = nullptr,
+                              bool* exists      = nullptr) {
+    if (failed) *failed = false;
+    if (exists) *exists = !l.isnone(idx);  // only none as not exists
+    l.pushvalue(idx);                      // make a copy
+    return std::move(luaw::luavalueref(l.L()));
   }
 };
 
