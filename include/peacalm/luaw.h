@@ -1723,22 +1723,14 @@ public:
   }
 };
 
-// This wrapper won't close state when destruct, and it could help set stack
-// size to final_topsz_ if final_topsz_ >= 0 when destruct.
+// This wrapper won't close state when destruct.
 class luaw_fake : public luaw {
-  using base_t     = luaw;
-  int final_topsz_ = -1;
+  using base_t = luaw;
 
 public:
-  luaw_fake(lua_State* L, int sz = -1) : luaw(L), final_topsz_(sz) {}
+  luaw_fake(lua_State* L) : base_t(L) {}
 
-  ~luaw_fake() {
-    if (final_topsz_ >= 0) base_t::settop(final_topsz_);
-    base_t::release();
-  }
-
-  void final_topsz(int sz) { final_topsz_ = sz; }
-  int  final_topsz() const { return final_topsz_; }
+  ~luaw_fake() { base_t::release(); }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2917,7 +2909,8 @@ public:
       return Return();
     }
 
-    luaw_fake l(L_, lua_gettop(L_));
+    luaw_fake l(L_);
+    auto      _g = l.make_guarder();
     int       sz = l.gettop();
     l.rawgeti(LUA_REGISTRYINDEX, *ref_sptr_);
     if (l.isnoneornil()) {
