@@ -3286,6 +3286,19 @@ struct luaw::metatable_factory<T*>
       }
     }
 
+    // const members
+    l.rawgeti(-1, luaw::member_info_fields::const_member);
+    if (!l.istable(-1)) {
+      l.pop();
+    } else {
+      l.pushvalue(2);  // push the key
+      l.rawget(-2);
+      if (!l.isnil()) {  // found, more it is a bool value true
+        const char* key = l.to_c_str(2);
+        return luaL_error(l.L(), "Const member cannot be changed: %s", key);
+      }
+    }
+
     // TODO: generic member setter
 
     // not found handler
@@ -3364,23 +3377,36 @@ struct luaw::registrar<
     DEFINE_GETTER(const volatile Class*);
 #undef DEFINE_GETTER
 
-    __regist_setters(l, mname, std::forward<F>(f), std::is_const<Member>{});
+    __register_setters(l, mname, std::forward<F>(f), std::is_const<Member>{});
   }
 
 private:
-  template <typename F>
-  static void __regist_setters(luaw&       l,
-                               const char* mname,
-                               F&&         f,
-                               std::true_type) {
-    // TODO: maybe set const member name to fields?
+  template <typename ObjectType>
+  static void __register_const_member(luaw& l, const char* mname) {
+    auto  _g = l.make_guarder();
+    void* p  = reinterpret_cast<void*>(
+        const_cast<std::type_info*>(&typeid(ObjectType)));
+    l.touchtb(p, LUA_REGISTRYINDEX)
+        .touchtb(luaw::member_info_fields::const_member)
+        .setkv(mname, true);
   }
 
   template <typename F>
-  static void __regist_setters(luaw&       l,
-                               const char* mname,
-                               F&&         f,
-                               std::false_type) {
+  static void __register_setters(luaw&       l,
+                                 const char* mname,
+                                 F&&         f,
+                                 std::true_type) {
+    __register_const_member<Class*>(l, mname);
+    __register_const_member<const Class*>(l, mname);
+    __register_const_member<volatile Class*>(l, mname);
+    __register_const_member<const volatile Class*>(l, mname);
+  }
+
+  template <typename F>
+  static void __register_setters(luaw&       l,
+                                 const char* mname,
+                                 F&&         f,
+                                 std::false_type) {
 #define DEFINE_SETTER(ObjectType)                          \
   {                                                        \
     auto setter = [=](ObjectType o, Member v) {            \
@@ -3398,6 +3424,10 @@ private:
     DEFINE_SETTER(Class*);
     DEFINE_SETTER(volatile Class*);
 #undef DEFINE_SETTER
+
+    // the object is const, so member is const
+    __register_const_member<const Class*>(l, mname);
+    __register_const_member<const volatile Class*>(l, mname);
   }
 };
 
