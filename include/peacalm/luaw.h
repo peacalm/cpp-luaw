@@ -1662,9 +1662,21 @@ public:
     register_member<Hint, F>(name.c_str(), std::forward<F>(f));
   }
 
-  // TODO: Register generic members.
-  // member getter type: Member(const Class*, const char*)
-  // member setter type: void(Class*, const char*, Member)
+  /// Register generic members by provide generic member getter and setter.
+  /// getter/setter could be C function or lambda object.
+  /// getter proto type: Member(const Class*, Key)
+  /// setter proto type: void(Class*, Key, Member)
+  /// where Key to be `const std::string&` is recommended, Member could be
+  /// number, string, bool, luaw::luavalue, etc.
+  /// Besides, getter/setter could also be nullptr, indicate unregister the
+  /// generic member getter/setter, or no need to register the getter/setter.
+  template <typename Class, typename Getter, typename Setter>
+  void register_generic_member(Getter&& getter, Setter&& setter) {
+    registrar<std::decay_t<Class>>::register_generic_member_getter(
+        *this, std::forward<Getter>(getter));
+    registrar<std::decay_t<Class>>::register_generic_member_setter(
+        *this, std::forward<Setter>(setter));
+  }
 
   //////////////////////// evaluate expression /////////////////////////////////
 
@@ -1966,6 +1978,16 @@ struct is_callable : std::integral_constant<bool,
 
 template <typename T>
 struct decay_is_callable : is_callable<std::decay_t<T>> {};
+
+// detect C function pointer type by a C function or a callable class
+
+template <typename T>
+using detect_callable_cfunction_t = std::conditional_t<
+    decay_is_callable<T>::value,
+    std::conditional_t<is_callable_class<std::decay_t<T>>::value,
+                       detect_c_callee_t<std::decay_t<T>>,
+                       std::decay_t<T>>,
+    void>;
 
 // whether T is std::tuple
 
@@ -3229,15 +3251,11 @@ struct luaw::metatable_factory<T*>
       l.rawget(-2);
       if (!l.isnil(-1)) {  // found
         l.pushvalue(1);    // push the userdata
-        l.pushvalue(2);    // push the key
-        int retcode = l.pcall(2, 1, 0);
-        if (retcode != LUA_OK) {
-          l.log_error_in_stack();
-          l.pop();
-          l.pushnil();
+        int retcode = l.pcall(1, 1, 0);
+        if (retcode == LUA_OK) {
           return 1;
         } else {
-          return 1;
+          return lua_error(l.L());  // getter failed
         }
       } else {
         l.pop(2);
@@ -3278,7 +3296,20 @@ struct luaw::metatable_factory<T*>
       }
     }
 
-    // TODO: generic member getter
+    // generic member getter
+    l.rawgeti(-1, luaw::member_info_fields::generic_member_getter);
+    if (l.isnil(-1)) {
+      l.pop();
+    } else {
+      l.pushvalue(1);  // push the userdata
+      l.pushvalue(2);  // push the key
+      int retcode = l.pcall(2, 1, 0);
+      if (retcode == LUA_OK) {
+        return 1;
+      } else {
+        return lua_error(l.L());
+      }
+    }
 
     // not found handler
     l.pushnil();
@@ -3310,12 +3341,10 @@ struct luaw::metatable_factory<T*>
         l.pushvalue(1);    // push the userdata
         l.pushvalue(3);    // push the value
         int retcode = l.pcall(2, 0, 0);
-        if (retcode != LUA_OK) {
-          l.log_error_in_stack();
-          l.pop();
+        if (retcode == LUA_OK) {
           return 0;
         } else {
-          return 0;
+          return lua_error(l.L());  // failed
         }
       } else {
         l.pop(2);
@@ -3335,7 +3364,23 @@ struct luaw::metatable_factory<T*>
       }
     }
 
-    // TODO: generic member setter
+    // generic member setter
+    l.rawgeti(-1, luaw::member_info_fields::generic_member_setter);
+    if (l.isnil(-1)) {
+      l.pop();
+    } else if (l.isboolean(-1)) {  // which is false
+      return luaL_error(l.L(), "Cannot set member to const object");
+    } else {
+      l.pushvalue(1);  // push the userdata
+      l.pushvalue(2);  // push the key
+      l.pushvalue(3);  // push the value
+      int retcode = l.pcall(3, 0, 0);
+      if (retcode == LUA_OK) {
+        return 0;
+      } else {
+        return lua_error(l.L());  // failed
+      }
+    }
 
     // not found handler
     const char* key = l.to_c_str(2);
@@ -3381,8 +3426,124 @@ struct luaw::register_ctor_impl<Return (*)(Args...)> {
 
 template <typename T, typename>
 struct luaw::registrar {
-  // Write nothing to let compile fail for unsupported member types,
+  // Let compile fail for unsupported member types,
   // such as ref- qualified member functions.
+  // Supported member types should be specialized elsewhere.
+  static_assert(!std::is_member_pointer<T>::value, "Unsupported member type");
+  static_assert(std::is_same<T, std::decay_t<T>>::value, "T should be decayed");
+
+  template <typename MemberFunction>
+  static void register_member(luaw&          l,
+                              const char*    fname,
+                              MemberFunction mf) = delete;
+
+  // generic members
+
+  template <typename Getter>
+  static void register_generic_member_getter(luaw& l, Getter&& getter) {
+    static_assert(luaw_detail::decay_is_callable<Getter>::value,
+                  "Getter should be callable");
+    using CFPtr = luaw_detail::detect_callable_cfunction_t<Getter>;
+    static_assert(__check_getter_type(CFPtr{}).value, "Invalid getter type");
+
+    auto _g = l.make_guarder();
+    l.touchtb((void*)(&typeid(T*)), LUA_REGISTRYINDEX)
+        .setkv<luaw::function_tag>(
+            luaw::member_info_fields::generic_member_getter, getter);
+    l.touchtb((void*)(&typeid(const T*)), LUA_REGISTRYINDEX)
+        .setkv<luaw::function_tag>(
+            luaw::member_info_fields::generic_member_getter, getter);
+    l.touchtb((void*)(&typeid(volatile T*)), LUA_REGISTRYINDEX)
+        .setkv<luaw::function_tag>(
+            luaw::member_info_fields::generic_member_getter, getter);
+    l.touchtb((void*)(&typeid(const volatile T*)), LUA_REGISTRYINDEX)
+        .setkv<luaw::function_tag>(
+            luaw::member_info_fields::generic_member_getter, getter);
+  }
+
+  // Indicate no generic member getter to register.
+  // Or unregister generic member getter.
+  static void register_generic_member_getter(luaw& l, std::nullptr_t) {
+    auto _g = l.make_guarder();
+    l.touchtb((void*)(&typeid(T*)), LUA_REGISTRYINDEX)
+        .setkv(luaw::member_info_fields::generic_member_getter, nullptr);
+    l.touchtb((void*)(&typeid(const T*)), LUA_REGISTRYINDEX)
+        .setkv(luaw::member_info_fields::generic_member_getter, nullptr);
+    l.touchtb((void*)(&typeid(volatile T*)), LUA_REGISTRYINDEX)
+        .setkv(luaw::member_info_fields::generic_member_getter, nullptr);
+    l.touchtb((void*)(&typeid(const volatile T*)), LUA_REGISTRYINDEX)
+        .setkv(luaw::member_info_fields::generic_member_getter, nullptr);
+  }
+
+  template <typename Setter>
+  static void register_generic_member_setter(luaw& l, Setter&& setter) {
+    static_assert(luaw_detail::decay_is_callable<Setter>::value,
+                  "Setter should be callable");
+    using CFPtr = luaw_detail::detect_callable_cfunction_t<Setter>;
+    static_assert(__check_setter_type(CFPtr{}).value, "Invalid setter type");
+
+    auto _g = l.make_guarder();
+    l.touchtb((void*)(&typeid(T*)), LUA_REGISTRYINDEX)
+        .setkv<luaw::function_tag>(
+            luaw::member_info_fields::generic_member_setter, setter);
+    l.touchtb((void*)(&typeid(volatile T*)), LUA_REGISTRYINDEX)
+        .setkv<luaw::function_tag>(
+            luaw::member_info_fields::generic_member_setter, setter);
+
+    // const objects, set value false!
+    l.touchtb((void*)(&typeid(const T*)), LUA_REGISTRYINDEX)
+        .setkv(luaw::member_info_fields::generic_member_setter, false);
+    l.touchtb((void*)(&typeid(const volatile T*)), LUA_REGISTRYINDEX)
+        .setkv(luaw::member_info_fields::generic_member_setter, false);
+  }
+
+  // Indicate no generic member setter to register.
+  // Or unregister generic member setter.
+  static void register_generic_member_setter(luaw& l, std::nullptr_t) {
+    auto _g = l.make_guarder();
+    l.touchtb((void*)(&typeid(T*)), LUA_REGISTRYINDEX)
+        .setkv(luaw::member_info_fields::generic_member_setter, nullptr);
+    l.touchtb((void*)(&typeid(volatile T*)), LUA_REGISTRYINDEX)
+        .setkv(luaw::member_info_fields::generic_member_setter, nullptr);
+
+    l.touchtb((void*)(&typeid(const T*)), LUA_REGISTRYINDEX)
+        .setkv(luaw::member_info_fields::generic_member_setter, nullptr);
+    l.touchtb((void*)(&typeid(const volatile T*)), LUA_REGISTRYINDEX)
+        .setkv(luaw::member_info_fields::generic_member_setter, nullptr);
+  }
+
+private:
+  // do nothing but a static type check
+
+  template <typename Class, typename Key, typename Value>
+  static constexpr std::true_type __check_getter_type(Value (*)(Class*, Key)) {
+    static_assert(std::is_const<Class>::value,
+                  "First parameter of getter should be const 'const Class*'");
+    static_assert(std::is_same<std::remove_cv_t<Class>, T>::value,
+                  "First parameter of getter should be pointer to the template "
+                  "parameter 'Class'");
+    return std::true_type{};
+  }
+
+  static constexpr std::false_type __check_getter_type(...) {
+    return std::false_type{};
+  }
+
+  template <typename Class, typename Key, typename Value>
+  static constexpr std::true_type __check_setter_type(void (*)(Class*,
+                                                               Key,
+                                                               Value)) {
+    static_assert(!std::is_const<Class>::value,
+                  "First parameter of setter should not be const");
+    static_assert(std::is_same<std::remove_cv_t<Class>, T>::value,
+                  "First parameter of setter should be pointer to the template "
+                  "parameter 'Class'");
+    return std::true_type{};
+  }
+
+  static constexpr std::false_type __check_setter_type(...) {
+    return std::false_type{};
+  }
 };
 
 // register member variable
@@ -3592,9 +3753,9 @@ struct is_ptr : __is_ptr<typename std::decay<T>::type> {};
  *
  * * `bool provide(peacalm::luaw* l, const char* vname);`
  *
- * In this member function, it should push exactly one value whose name is vname
- * onto the stack of L then return true. Otherwise return false if vname is
- * illegal or vname doesn't have a correct value.
+ * In this member function, it should push exactly one value whose name is
+ * vname onto the stack of L then return true. Otherwise return false if vname
+ * is illegal or vname doesn't have a correct value.
  *
  * @tparam VariableProviderPointer Should be a raw pointer type or
  * std::shared_ptr or std::unique_ptr.

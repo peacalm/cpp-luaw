@@ -15,9 +15,10 @@
 #include "main.h"
 
 struct Obj {
-  int          i  = 1;
-  const int    ci = 1;
-  volatile int vi = 1;
+  int                           i  = 1;
+  const int                     ci = 1;
+  volatile int                  vi = 1;
+  std::map<std::string, double> gm;
 
   int geti() const { return i; }
   int cv_geti() const volatile { return i; }
@@ -63,8 +64,8 @@ TEST(register_member, register_member_functions) {
       "getmember4", [](const Obj* o, const char* mname) { return 123; });
 
   // unsupported
-  // l.register_member("unsupported_fl", &Obj::unsupported_fl); // error
-  // l.register_member("unsupported_fr", &Obj::unsupported_fr); // error
+  // l.register_member("unsupported_fl", &Obj::unsupported_fl);  // error
+  // l.register_member("unsupported_fr", &Obj::unsupported_fr);  // error
 
   EXPECT_EQ(l.gettop(), 0);
 }
@@ -442,5 +443,90 @@ TEST(register_member, nonconst_non_volatile) {
     EXPECT_TRUE(failed);
     EXPECT_EQ(l.eval<int>("return o:cv_geti()", false, &failed), 1);
     EXPECT_FALSE(failed);
+  }
+}
+
+double obj_gm_getter(const Obj* o, const char* k) {
+  assert(o);
+  auto it = o->gm.find(k);
+  if (it != o->gm.end()) return it->second;
+  return 0.0;
+}
+
+void obj_gm_setter(Obj* o, const char* k, double v) {
+  assert(o);
+  o->gm[k] = v;
+}
+
+TEST(register_member, generic_member_cfunction) {
+  luaw l;
+  l.register_generic_member<Obj>(obj_gm_getter, obj_gm_setter);
+  EXPECT_EQ(l.gettop(), 0);
+  {
+    Obj o;
+    l.set("o", &o);
+    EXPECT_EQ(l.dostring("o.a = 1; o.b = 2;"), LUA_OK);
+    EXPECT_EQ(l.eval<int>("return o.a;"), 1);
+    EXPECT_EQ(l.eval<int>("return o.b;"), 2);
+    EXPECT_EQ(l.eval_int("return o.c;", -1), 0);
+    EXPECT_EQ(l.gettop(), 0);
+
+    l.register_generic_member<Obj>(obj_gm_getter, nullptr);
+    EXPECT_NE(l.dostring("o.a = 3; o.b = 4;"), LUA_OK);
+    l.log_error_out();
+    EXPECT_EQ(l.eval_int("return o.a;", -1), 1);
+    EXPECT_EQ(l.eval_int("return o.b;", -1), 2);
+
+    l.register_generic_member<Obj>(nullptr, nullptr);
+    EXPECT_EQ(l.eval_int("return o.a;", -1), -1);
+    EXPECT_EQ(l.eval_int("return o.b;", -1), -1);
+  }
+  {
+    l.register_generic_member<Obj>(obj_gm_getter, obj_gm_setter);
+    const Obj o;
+    l.set("o", &o);
+    EXPECT_NE(l.dostring("o.a = 5; o.b = 6;"), LUA_OK);
+    l.log_error_out();
+    EXPECT_EQ(l.eval_int("return o.a;", -1), 0);
+    EXPECT_EQ(l.eval_int("return o.b;", -1), 0);
+    EXPECT_EQ(l.eval_int("return o.c;", -1), 0);
+    EXPECT_EQ(l.gettop(), 0);
+  }
+}
+
+TEST(register_member, generic_member_lambda) {
+  luaw l;
+  auto g = [](const Obj* o, const char* k) {
+    assert(o);
+    auto it = o->gm.find(k);
+    if (it != o->gm.end()) return it->second;
+    return 0.0;
+  };
+  auto s = [](Obj* o, const char* k, double v) {
+    assert(o);
+    o->gm[k] = v;
+  };
+
+  l.register_generic_member<Obj>(g, s);
+  EXPECT_EQ(l.gettop(), 0);
+
+  {
+    Obj o;
+    l.set("o", &o);
+    EXPECT_EQ(l.dostring("o.a=1; o.b=2;"), LUA_OK);
+    EXPECT_EQ(l.eval<int>("return o.a;"), 1);
+    EXPECT_EQ(l.eval<int>("return o.b;"), 2);
+    EXPECT_EQ(l.eval_int("return o.c;", -1), 0);
+    EXPECT_EQ(l.gettop(), 0);
+  }
+  {
+    const Obj o;
+    l.set("o", &o);
+    EXPECT_NE(l.dostring("o.a=1; o.b=2;"), LUA_OK);
+    l.log_error_out();
+    EXPECT_EQ(l.eval_int("return o.a;", -1), 0);
+    EXPECT_EQ(l.eval_int("return o.b;", -1), 0);
+    EXPECT_EQ(l.eval_int("return o.c;", -1), 0);
+    EXPECT_EQ(l.gettop(), 0);
   }
 }
