@@ -2602,7 +2602,7 @@ struct luaw::pusher<luaw::luavalueref> {
 
   static int push(luaw& l, const luaw::luavalueref& r) {
     PEACALM_LUAW_ASSERT(l.L() == r.L);
-    r.getvalue();
+    l.rawgeti(LUA_REGISTRYINDEX, r.ref_id);
     return 1;
   }
 };
