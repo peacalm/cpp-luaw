@@ -14,27 +14,27 @@
 
 #include "main.h"
 
-TEST(luavalue, luavalue) {
+TEST(luavalueidx, luavalueidx) {
   luaw l;
   l.push(1);
   l.push(nullptr);
   {
-    auto lv = l.to<luaw::luavalue>(1);
+    auto lv = l.to<luaw::luavalueidx>(1);
     EXPECT_TRUE(lua_isinteger(lv.L, lv.idx));
   }
   {
-    auto lv = l.to<luaw::luavalue>(2);
+    auto lv = l.to<luaw::luavalueidx>(2);
     EXPECT_TRUE(lua_isnil(lv.L, lv.idx));
   }
   {
-    auto lv = l.to<luaw::luavalue>(3);
+    auto lv = l.to<luaw::luavalueidx>(3);
     EXPECT_TRUE(lua_isnone(lv.L, lv.idx));
   }
 
   EXPECT_EQ(l.gettop(), 2);
 }
 
-TEST(luavalue, luavalueref) {
+TEST(luavalueref, luavalueref) {
   luaw l;
   l.push(1);
   l.push(nullptr);
@@ -67,18 +67,18 @@ TEST(luavalue, luavalueref) {
   EXPECT_EQ(l.gettop(), 2);
 }
 
-TEST(luavalue, as_func_arg) {
+TEST(luavalueidx, as_func_arg) {
   luaw l;
   l.dostring("g = {a=8,b=8}");
 
-  auto getter = [](const luaw::luavalue& t, const std::string& k) {
+  auto getter = [](const luaw::luavalueidx& t, const std::string& k) {
     luaw_fake l(t.L);
     l.gseek("g").seek(k);
     return luaw::luavalueref(t.L);
   };
-  auto setter = [](const luaw::luavalue& t,
-                   const std::string&    k,
-                   const luaw::luavalue& v) {
+  auto setter = [](const luaw::luavalueidx& t,
+                   const std::string&       k,
+                   const luaw::luavalueidx& v) {
     luaw_fake l(t.L);
     l.gseek("g").setkv(k, v);
   };

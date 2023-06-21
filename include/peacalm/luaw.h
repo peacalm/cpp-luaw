@@ -241,11 +241,11 @@ public:
   struct placeholder_tag {};
 
   // Represent a Lua value in stack by index.
-  struct luavalue {
+  struct luavalueidx {
     lua_State* L;
     int        idx;
 
-    luavalue(lua_State* s = nullptr, int i = 0) : L(s), idx(i) {
+    luavalueidx(lua_State* s = nullptr, int i = 0) : L(s), idx(i) {
       if (L) {
         int sz = lua_gettop(L);
         idx    = i < 0 && -i <= sz ? sz + i + 1 : i;
@@ -1667,7 +1667,7 @@ public:
   /// getter proto type: Member(const Class*, Key)
   /// setter proto type: void(Class*, Key, Member)
   /// where Key to be `const std::string&` is recommended, Member could be
-  /// number, string, bool, luaw::luavalue, etc.
+  /// number, string, bool, luaw::luavalueidx, etc.
   /// Besides, getter/setter could also be nullptr, indicate unregister the
   /// generic member getter/setter, or no need to register the getter/setter.
   template <typename Class, typename Getter, typename Setter>
@@ -2586,10 +2586,10 @@ private:
 };
 
 template <>
-struct luaw::pusher<luaw::luavalue> {
+struct luaw::pusher<luaw::luavalueidx> {
   static const size_t size = 1;
 
-  static int push(luaw& l, const luaw::luavalue& r) {
+  static int push(luaw& l, const luaw::luavalueidx& r) {
     PEACALM_LUAW_ASSERT(l.L() == r.L);
     l.pushvalue(r.idx);
     return 1;
@@ -3151,17 +3151,17 @@ struct luaw::convertor<void> {
   }
 };
 
-// to luaw::luavalue
+// to luaw::luavalueidx
 template <>
-struct luaw::convertor<luaw::luavalue> {
-  static luaw::luavalue to(luaw& l,
-                           int   idx         = -1,
-                           bool  disable_log = false,
-                           bool* failed      = nullptr,
-                           bool* exists      = nullptr) {
+struct luaw::convertor<luaw::luavalueidx> {
+  static luaw::luavalueidx to(luaw& l,
+                              int   idx         = -1,
+                              bool  disable_log = false,
+                              bool* failed      = nullptr,
+                              bool* exists      = nullptr) {
     if (failed) *failed = false;
     if (exists) *exists = !l.isnone(idx);  // only none as not exists
-    return luaw::luavalue(l.L(), idx);
+    return luaw::luavalueidx(l.L(), idx);
   }
 };
 
