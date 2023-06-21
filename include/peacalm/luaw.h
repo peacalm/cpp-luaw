@@ -1852,6 +1852,22 @@ namespace luaw_detail {
 template <typename T>
 using void_t = void;
 
+// is std::shared_ptr
+
+template <typename T>
+struct is_std_shared_ptr : std::false_type {};
+
+template <typename T>
+struct is_std_shared_ptr<std::shared_ptr<T>> : std::true_type {};
+
+// is std::unique_ptr
+
+template <typename T>
+struct is_std_unique_ptr : std::false_type {};
+
+template <typename T, typename D>
+struct is_std_unique_ptr<std::unique_ptr<T, D>> : std::true_type {};
+
 // is_stdfunction
 
 template <typename T>
