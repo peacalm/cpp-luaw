@@ -3498,15 +3498,21 @@ class mock_mem_fn_impl<CallableObject, Return (*)(FirstArg*, Args...)> {
 public:
   mock_mem_fn_impl(CallableObject&& r) : o(std::forward<CallableObject>(r)) {}
 
+  // reference
+
   template <typename... Ys>
   Return operator()(FirstArg& f, Ys&&... ys) const {
     return o(&f, std::forward<Ys>(ys)...);
   }
 
+  // raw pointer
+
   template <typename... Ys>
   Return operator()(FirstArg* f, Ys&&... ys) const {
     return o(f, std::forward<Ys>(ys)...);
   }
+
+  // std::shared_ptr
 
   template <typename... Ys>
   Return operator()(const std::shared_ptr<DecayFirstArg>& f, Ys&&... ys) const {
@@ -3534,6 +3540,8 @@ public:
     PEACALM_LUAW_ASSERT(f.get());
     return o(f.get(), std::forward<Ys>(ys)...);
   }
+
+  // std::unique_ptr
 
   template <typename D, typename... Ys>
   Return operator()(const std::unique_ptr<DecayFirstArg, D>& f,
@@ -3585,15 +3593,21 @@ class mock_mem_fn_impl<CallableObject, Return (*)(FirstArg&, Args...)> {
 public:
   mock_mem_fn_impl(CallableObject&& r) : o(std::forward<CallableObject>(r)) {}
 
+  // reference
+
   template <typename... Ys>
   Return operator()(FirstArg& f, Ys&&... ys) const {
     return o(f, std::forward<Ys>(ys)...);
   }
 
+  // raw pointer
+
   template <typename... Ys>
   Return operator()(FirstArg* f, Ys&&... ys) const {
     return o(*f, std::forward<Ys>(ys)...);
   }
+
+  // shared_ptr
 
   template <typename... Ys>
   Return operator()(const std::shared_ptr<DecayFirstArg>& f, Ys&&... ys) const {
@@ -3621,6 +3635,8 @@ public:
     PEACALM_LUAW_ASSERT(f.get());
     return o(*f.get(), std::forward<Ys>(ys)...);
   }
+
+  // unique_ptr
 
   template <typename D, typename... Ys>
   Return operator()(const std::unique_ptr<DecayFirstArg, D>& f,

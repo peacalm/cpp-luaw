@@ -787,3 +787,120 @@ TEST(register_member, unique_ptr_member_function) {
     EXPECT_EQ(l.eval<int>("return o:geti()"), 1);
   }
 }
+
+int  gi = 100;  // global i
+int& getgi(const volatile Obj* o) { return gi; }
+
+TEST(register_member, fake_member_by_cfunction) {
+  {
+    // register gi as readable/writable member of Obj
+
+    luaw l;
+    l.set("o", Obj{});
+    l.register_member<int Obj::*>("gi", &getgi);
+
+    EXPECT_EQ(l.eval<int>("return o.gi"), gi);
+    EXPECT_EQ(l.eval<int>("o.gi = 101; return o.gi"), 101);
+    EXPECT_EQ(gi, 101);
+  }
+
+  {
+    // register gi as const member
+
+    luaw l;
+    l.set("o", Obj{});
+
+    gi = 100;
+    l.register_member<const int Obj::*>("gi", &getgi);
+
+    EXPECT_EQ(l.eval<int>("return o.gi"), gi);
+    bool failed;
+    EXPECT_EQ(l.eval<int>("o.gi = 101; return o.gi", false, &failed), 0);
+    EXPECT_TRUE(failed);
+    EXPECT_EQ(gi, 100);
+  }
+}
+
+TEST(register_member, fake_member_lambda) {
+  {
+    luaw l;
+    l.set("o", Obj{});
+    int  li    = 100;  // local i
+    auto getli = [&](const volatile Obj*) -> int& { return li; };
+    l.register_member<int Obj::*>("li", getli);
+
+    EXPECT_EQ(l.eval<int>("return o.li"), li);
+    EXPECT_EQ(l.eval<int>("o.li = 101; return o.li"), 101);
+    EXPECT_EQ(li, 101);
+  }
+
+  {
+    // fake const member
+
+    luaw l;
+    l.set("o", Obj{});
+    int  li    = 100;
+    auto getli = [&](const volatile Obj*) -> int& { return li; };
+    l.register_member<const int Obj::*>("li", getli);
+
+    EXPECT_EQ(l.eval<int>("return o.li"), li);
+    bool failed;
+    EXPECT_EQ(l.eval<int>("o.li = 102; return o.li", false, &failed), 0);
+    EXPECT_TRUE(failed);
+    EXPECT_EQ(li, 100);
+
+    li = 200;
+    EXPECT_EQ(l.eval<int>("return o.li"), li);
+    EXPECT_EQ(l.eval<int>("return o.li"), 200);
+  }
+
+  {
+    // fake const member, use copy captured value in lambda
+
+    luaw l;
+    l.set("o", Obj{});
+    int  li    = 100;
+    auto getli = [=](const volatile Obj*) -> const int& { return li; };
+    l.register_member<const int Obj::*>("li", getli);
+
+    EXPECT_EQ(l.eval<int>("return o.li"), li);
+    bool failed;
+    EXPECT_EQ(l.eval<int>("o.li = 103; return o.li", false, &failed), 0);
+    EXPECT_TRUE(failed);
+    EXPECT_EQ(li, 100);
+  }
+
+  {
+    // the first argument is ref
+
+    luaw l;
+    l.set("o", Obj{});
+    int  li    = 100;  // local i
+    auto getli = [&](const volatile Obj&) -> int& { return li; };
+    l.register_member<int Obj::*>("li", getli);
+
+    EXPECT_EQ(l.eval<int>("return o.li"), li);
+    EXPECT_EQ(l.eval<int>("o.li = 104; return o.li"), 104);
+    EXPECT_EQ(li, 104);
+  }
+
+  {
+    // fake const member, copy capture,
+
+    luaw l;
+    l.set("o", Obj{});
+    int  li    = 100;
+    auto getli = [=](const volatile Obj&) { return li; };
+    l.register_member<const int Obj::*>("li", getli);
+
+    EXPECT_EQ(l.eval<int>("return o.li"), li);
+    bool failed;
+    EXPECT_EQ(l.eval<int>("o.li = 105; return o.li", false, &failed), 0);
+    EXPECT_TRUE(failed);
+    EXPECT_EQ(li, 100);
+
+    li = 200;
+    EXPECT_EQ(l.eval<int>("return o.li"), 100);
+    EXPECT_EQ(li, 200);
+  }
+}
