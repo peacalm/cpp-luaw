@@ -1878,6 +1878,18 @@ struct is_std_unique_ptr : std::false_type {};
 template <typename T, typename D>
 struct is_std_unique_ptr<std::unique_ptr<T, D>> : std::true_type {};
 
+// get element_type
+
+template <typename T, typename = void>
+struct get_element_type {
+  using type = void;
+};
+
+template <typename T>
+struct get_element_type<T, void_t<typename T::element_type>> {
+  using type = typename T::element_type;
+};
+
 // is_stdfunction
 
 template <typename T>
@@ -3289,7 +3301,11 @@ struct luaw::metatable_factory<T*>
     }
 
     // whether calling nonconst member function by a const object
-    if (std::is_const<T>::value) {
+    if (std::is_const<T>::value ||
+        ((luaw_detail::is_std_shared_ptr<T>::value ||
+          luaw_detail::is_std_unique_ptr<T>::value) &&
+         std::is_const<
+             typename luaw_detail::get_element_type<T>::type>::value)) {
       l.rawgeti(-1, luaw::member_info_fields::nonconst_member_function);
       if (!l.istable(-1)) {
         l.pop();
@@ -3306,7 +3322,11 @@ struct luaw::metatable_factory<T*>
     }
 
     // whether calling nonvolatile member function by a volatile object
-    if (std::is_volatile<T>::value) {
+    if (std::is_volatile<T>::value ||
+        ((luaw_detail::is_std_shared_ptr<T>::value ||
+          luaw_detail::is_std_unique_ptr<T>::value) &&
+         std::is_volatile<
+             typename luaw_detail::get_element_type<T>::type>::value)) {
       l.rawgeti(-1, luaw::member_info_fields::nonvolatile_member_function);
       if (!l.istable(-1)) {
         l.pop();
