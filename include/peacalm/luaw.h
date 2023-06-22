@@ -1637,6 +1637,7 @@ public:
   template <typename MemberPointer>
   std::enable_if_t<std::is_member_pointer<MemberPointer>::value>
   register_member(const char* name, MemberPointer mp) {
+    PEACALM_LUAW_ASSERT(name);
     registrar<std::decay_t<MemberPointer>>::register_member(
         *this, name, std::mem_fn(mp));
   }
@@ -1652,6 +1653,7 @@ public:
   std::enable_if_t<std::is_member_pointer<Hint>::value &&
                    !std::is_same<Hint, F>::value>
   register_member(const char* name, F&& f) {
+    PEACALM_LUAW_ASSERT(name);
     registrar<std::decay_t<Hint>>::register_member(
         *this, name, std::forward<F>(f));
   }
