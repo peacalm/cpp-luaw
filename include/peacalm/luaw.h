@@ -3574,7 +3574,7 @@ struct luaw::registrar<
   {                                                        \
     auto getter = [=](ObjectType o) -> Member {            \
       PEACALM_LUAW_ASSERT(o);                              \
-      return f(o);                                         \
+      return f(*o);                                        \
     };                                                     \
     void* p = reinterpret_cast<void*>(                     \
         const_cast<std::type_info*>(&typeid(ObjectType))); \
@@ -3584,10 +3584,25 @@ struct luaw::registrar<
     l.pop(2);                                              \
   }
 
-    DEFINE_GETTER(Class*);
-    DEFINE_GETTER(const Class*);
-    DEFINE_GETTER(volatile Class*);
-    DEFINE_GETTER(const volatile Class*);
+    {
+      DEFINE_GETTER(Class*);
+      DEFINE_GETTER(const Class*);
+      DEFINE_GETTER(volatile Class*);
+      DEFINE_GETTER(const volatile Class*);
+    }
+    // Currently DO NOT support volatile for smart pointers!
+    if (!luaw_detail::is_std_shared_ptr<Class>::value) {
+      DEFINE_GETTER(std::shared_ptr<Class>*);
+      DEFINE_GETTER(std::shared_ptr<const Class>*);
+      DEFINE_GETTER(const std::shared_ptr<Class>*);
+      DEFINE_GETTER(const std::shared_ptr<const Class>*);
+    }
+    if (!luaw_detail::is_std_unique_ptr<Class>::value) {
+      DEFINE_GETTER(std::unique_ptr<Class>*);
+      DEFINE_GETTER(std::unique_ptr<const Class>*);
+      DEFINE_GETTER(const std::unique_ptr<Class>*);
+      DEFINE_GETTER(const std::unique_ptr<const Class>*);
+    }
 #undef DEFINE_GETTER
 
     __register_setters(l, mname, std::forward<F>(f), std::is_const<Member>{});
@@ -3609,10 +3624,24 @@ private:
                                  const char* mname,
                                  F&&         f,
                                  std::true_type) {
-    __register_const_member<Class*>(l, mname);
-    __register_const_member<const Class*>(l, mname);
-    __register_const_member<volatile Class*>(l, mname);
-    __register_const_member<const volatile Class*>(l, mname);
+    {
+      __register_const_member<Class*>(l, mname);
+      __register_const_member<const Class*>(l, mname);
+      __register_const_member<volatile Class*>(l, mname);
+      __register_const_member<const volatile Class*>(l, mname);
+    }
+    if (!luaw_detail::is_std_shared_ptr<Class>::value) {
+      __register_const_member<std::shared_ptr<Class>*>(l, mname);
+      __register_const_member<std::shared_ptr<const Class>*>(l, mname);
+      __register_const_member<const std::shared_ptr<Class>*>(l, mname);
+      __register_const_member<const std::shared_ptr<const Class>*>(l, mname);
+    }
+    if (!luaw_detail::is_std_unique_ptr<Class>::value) {
+      __register_const_member<std::unique_ptr<Class>*>(l, mname);
+      __register_const_member<std::unique_ptr<const Class>*>(l, mname);
+      __register_const_member<const std::unique_ptr<Class>*>(l, mname);
+      __register_const_member<const std::unique_ptr<const Class>*>(l, mname);
+    }
   }
 
   template <typename F>
@@ -3624,7 +3653,7 @@ private:
   {                                                        \
     auto setter = [=](ObjectType o, Member v) {            \
       PEACALM_LUAW_ASSERT(o);                              \
-      f(o) = std::move(v);                                 \
+      f(*o) = std::move(v);                                \
     };                                                     \
     void* p = reinterpret_cast<void*>(                     \
         const_cast<std::type_info*>(&typeid(ObjectType))); \
@@ -3634,13 +3663,27 @@ private:
     l.pop(2);                                              \
   }
 
-    DEFINE_SETTER(Class*);
-    DEFINE_SETTER(volatile Class*);
-#undef DEFINE_SETTER
+    {
+      DEFINE_SETTER(Class*);
+      DEFINE_SETTER(volatile Class*);
+      // the object is const, so member is const
+      __register_const_member<const Class*>(l, mname);
+      __register_const_member<const volatile Class*>(l, mname);
+    }
+    if (!luaw_detail::is_std_shared_ptr<Class>::value) {
+      DEFINE_SETTER(std::shared_ptr<Class>*);
+      DEFINE_SETTER(const std::shared_ptr<Class>*);
+      __register_const_member<std::shared_ptr<const Class>*>(l, mname);
+      __register_const_member<const std::shared_ptr<const Class>*>(l, mname);
+    }
+    if (!luaw_detail::is_std_unique_ptr<Class>::value) {
+      DEFINE_SETTER(std::unique_ptr<Class>*);
+      DEFINE_SETTER(const std::unique_ptr<Class>*);
+      __register_const_member<std::unique_ptr<const Class>*>(l, mname);
+      __register_const_member<const std::unique_ptr<const Class>*>(l, mname);
+    }
 
-    // the object is const, so member is const
-    __register_const_member<const Class*>(l, mname);
-    __register_const_member<const volatile Class*>(l, mname);
+#undef DEFINE_SETTER
   }
 };
 
