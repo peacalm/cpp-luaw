@@ -695,3 +695,95 @@ TEST(register_member, unique_ptr_member_variable) {
     EXPECT_EQ(l.eval<int>("o.ci = 2; return o.ci"), 0);
   }
 }
+
+TEST(register_member, shared_ptr_member_function) {
+  luaw l;
+  l.register_member("geti", &Obj::geti);
+  l.register_member("plus", &Obj::plus);
+
+  {
+    auto s = std::make_shared<Obj>();
+    l.set("o", s);
+    EXPECT_EQ(l.eval<int>("return o:geti()"), 1);
+    EXPECT_EQ(l.eval<int>("o:plus(); return o:geti()"), 2);
+  }
+  {
+    auto s = std::make_shared<Obj>();
+    l.set("o", &s);
+    EXPECT_EQ(l.eval<int>("return o:geti()"), 1);
+    EXPECT_EQ(l.eval<int>("o:plus(); return o:geti()"), 2);
+  }
+
+  {
+    auto s = std::make_shared<const Obj>();
+    l.set("o", s);
+    EXPECT_EQ(l.eval<int>("return o:geti()"), 1);
+    EXPECT_EQ(l.eval<int>("x=1; o:plus(); return o:geti()"), 0);
+    EXPECT_EQ(l.eval<int>("return o:geti()"), 1);
+  }
+  {
+    auto s = std::make_shared<const Obj>();
+    l.set("o", &s);
+    EXPECT_EQ(l.eval<int>("return o:geti()"), 1);
+    EXPECT_EQ(l.eval<int>("x=2; o:plus(); return o:geti()"), 0);
+    EXPECT_EQ(l.eval<int>("return o:geti()"), 1);
+  }
+
+  {
+    const auto s = std::make_shared<const Obj>();
+    l.set("o", s);
+    EXPECT_EQ(l.eval<int>("return o:geti()"), 1);
+    EXPECT_EQ(l.eval<int>("x=3; o:plus(); return o:geti()"), 0);
+    EXPECT_EQ(l.eval<int>("return o:geti()"), 1);
+  }
+  {
+    const auto s = std::make_shared<const Obj>();
+    l.set("o", &s);
+    EXPECT_EQ(l.eval<int>("return o:geti()"), 1);
+    EXPECT_EQ(l.eval<int>("x=4; o:plus(); return o:geti()"), 0);
+    EXPECT_EQ(l.eval<int>("return o:geti()"), 1);
+  }
+}
+
+TEST(register_member, unique_ptr_member_function) {
+  luaw l;
+  l.register_member("geti", &Obj::geti);
+  l.register_member("plus", &Obj::plus);
+
+  {
+    auto s = std::make_unique<Obj>();
+    l.set("o", std::move(s));
+    EXPECT_EQ(l.eval<int>("return o:geti()"), 1);
+    EXPECT_EQ(l.eval<int>("o:plus(); return o:geti()"), 2);
+  }
+  {
+    auto s = std::make_unique<Obj>();
+    l.set("o", &s);
+    EXPECT_EQ(l.eval<int>("return o:geti()"), 1);
+    EXPECT_EQ(l.eval<int>("o:plus(); return o:geti()"), 2);
+  }
+
+  {
+    auto s = std::make_unique<const Obj>();
+    l.set("o", std::move(s));
+    EXPECT_EQ(l.eval<int>("return o:geti()"), 1);
+    EXPECT_EQ(l.eval<int>("x=1; o:plus(); return o:geti()"), 0);
+    EXPECT_EQ(l.eval<int>("return o:geti()"), 1);
+  }
+  {
+    auto s = std::make_unique<const Obj>();
+    l.set("o", &s);
+    EXPECT_EQ(l.eval<int>("return o:geti()"), 1);
+    EXPECT_EQ(l.eval<int>("x=2; o:plus(); return o:geti()"), 0);
+    EXPECT_EQ(l.eval<int>("return o:geti()"), 1);
+  }
+
+  // 3: const unique_ptr is not movable
+  {
+    const auto s = std::make_unique<const Obj>();
+    l.set("o", &s);
+    EXPECT_EQ(l.eval<int>("return o:geti()"), 1);
+    EXPECT_EQ(l.eval<int>("x=4; o:plus(); return o:geti()"), 0);
+    EXPECT_EQ(l.eval<int>("return o:geti()"), 1);
+  }
+}
