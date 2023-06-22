@@ -199,6 +199,14 @@ class luaw {
   template <typename T, typename = void>
   struct registrar;
 
+  // A callable object adapter, which bahaves like the result of std::mem_fn.
+  // The origin first argument should be reference or raw pointer,
+  // then this object can accept reference, raw pointer, and also smart pointers
+  // (std::shared_ptr and std::unique_ptr) as the first argument to call the
+  // origin callable object.
+  template <typename T>
+  struct mock_mem_fn;
+
   lua_State* L_;
 
 public:
@@ -1655,7 +1663,7 @@ public:
   register_member(const char* name, F&& f) {
     PEACALM_LUAW_ASSERT(name);
     registrar<std::decay_t<Hint>>::register_member(
-        *this, name, std::forward<F>(f));
+        *this, name, mock_mem_fn<F>(std::forward<F>(f)));
   }
   template <typename Hint, typename F>
   std::enable_if_t<std::is_member_pointer<Hint>::value &&
@@ -3440,6 +3448,205 @@ struct luaw::register_ctor_impl<Return (*)(Args...)> {
   }
 };
 
+//////////////////// mock_mem_fn impl //////////////////////////////////////////
+
+namespace luaw_detail {
+
+template <typename CallableObject, typename>
+class mock_mem_fn_impl {
+  static_assert(luaw_detail::decay_is_callable<CallableObject>::value,
+                "The object to mock member function must be callable");
+  // never happends here
+};
+
+// The first argument is pointer
+template <typename CallableObject,
+          typename Return,
+          typename FirstArg,
+          typename... Args>
+class mock_mem_fn_impl<CallableObject, Return (*)(FirstArg*, Args...)> {
+  static_assert(luaw_detail::decay_is_callable<CallableObject>::value,
+                "The object to mock member function must be callable");
+
+  static_assert(std::is_class<FirstArg>::value,
+                "FirstArg should be pointer of Class whose members registered");
+
+  using DecayFirstArg = std::decay_t<FirstArg>;
+
+  CallableObject o;
+
+public:
+  mock_mem_fn_impl(CallableObject&& r) : o(std::forward<CallableObject>(r)) {}
+
+  template <typename... Ys>
+  Return operator()(FirstArg& f, Ys&&... ys) const {
+    return o(&f, std::forward<Ys>(ys)...);
+  }
+
+  template <typename... Ys>
+  Return operator()(FirstArg* f, Ys&&... ys) const {
+    return o(f, std::forward<Ys>(ys)...);
+  }
+
+  template <typename... Ys>
+  Return operator()(const std::shared_ptr<DecayFirstArg>& f, Ys&&... ys) const {
+    PEACALM_LUAW_ASSERT(f.get());
+    return o(f.get(), std::forward<Ys>(ys)...);
+  }
+
+  template <typename... Ys>
+  Return operator()(const std::shared_ptr<const DecayFirstArg>& f,
+                    Ys&&... ys) const {
+    PEACALM_LUAW_ASSERT(f.get());
+    return o(f.get(), std::forward<Ys>(ys)...);
+  }
+
+  template <typename... Ys>
+  Return operator()(const std::shared_ptr<volatile DecayFirstArg>& f,
+                    Ys&&... ys) const {
+    PEACALM_LUAW_ASSERT(f.get());
+    return o(f.get(), std::forward<Ys>(ys)...);
+  }
+
+  template <typename... Ys>
+  Return operator()(const std::shared_ptr<const volatile DecayFirstArg>& f,
+                    Ys&&... ys) const {
+    PEACALM_LUAW_ASSERT(f.get());
+    return o(f.get(), std::forward<Ys>(ys)...);
+  }
+
+  template <typename D, typename... Ys>
+  Return operator()(const std::unique_ptr<DecayFirstArg, D>& f,
+                    Ys&&... ys) const {
+    PEACALM_LUAW_ASSERT(f.get());
+    return o(f.get(), std::forward<Ys>(ys)...);
+  }
+
+  template <typename D, typename... Ys>
+  Return operator()(const std::unique_ptr<const DecayFirstArg, D>& f,
+                    Ys&&... ys) const {
+    PEACALM_LUAW_ASSERT(f.get());
+    return o(f.get(), std::forward<Ys>(ys)...);
+  }
+
+  template <typename D, typename... Ys>
+  Return operator()(const std::unique_ptr<volatile DecayFirstArg, D>& f,
+                    Ys&&... ys) const {
+    PEACALM_LUAW_ASSERT(f.get());
+    return o(f.get(), std::forward<Ys>(ys)...);
+  }
+
+  template <typename D, typename... Ys>
+  Return operator()(const std::unique_ptr<const volatile DecayFirstArg, D>& f,
+                    Ys&&... ys) const {
+    PEACALM_LUAW_ASSERT(f.get());
+    return o(f.get(), std::forward<Ys>(ys)...);
+  }
+};
+
+// The first argument is reference
+template <typename CallableObject,
+          typename Return,
+          typename FirstArg,
+          typename... Args>
+class mock_mem_fn_impl<CallableObject, Return (*)(FirstArg&, Args...)> {
+  static_assert(luaw_detail::decay_is_callable<CallableObject>::value,
+                "The object to mock member function must be callable");
+
+  // The FirstArg is the Class type whose members registered.
+  static_assert(
+      std::is_class<FirstArg>::value,
+      "FirstArg should be reference of Class whose members registered");
+
+  using DecayFirstArg = std::decay_t<FirstArg>;
+
+  CallableObject o;
+
+public:
+  mock_mem_fn_impl(CallableObject&& r) : o(std::forward<CallableObject>(r)) {}
+
+  template <typename... Ys>
+  Return operator()(FirstArg& f, Ys&&... ys) const {
+    return o(f, std::forward<Ys>(ys)...);
+  }
+
+  template <typename... Ys>
+  Return operator()(FirstArg* f, Ys&&... ys) const {
+    return o(*f, std::forward<Ys>(ys)...);
+  }
+
+  template <typename... Ys>
+  Return operator()(const std::shared_ptr<DecayFirstArg>& f, Ys&&... ys) const {
+    PEACALM_LUAW_ASSERT(f.get());
+    return o(*f.get(), std::forward<Ys>(ys)...);
+  }
+
+  template <typename... Ys>
+  Return operator()(const std::shared_ptr<const DecayFirstArg>& f,
+                    Ys&&... ys) const {
+    PEACALM_LUAW_ASSERT(f.get());
+    return o(*f.get(), std::forward<Ys>(ys)...);
+  }
+
+  template <typename... Ys>
+  Return operator()(const std::shared_ptr<volatile DecayFirstArg>& f,
+                    Ys&&... ys) const {
+    PEACALM_LUAW_ASSERT(f.get());
+    return o(*f.get(), std::forward<Ys>(ys)...);
+  }
+
+  template <typename... Ys>
+  Return operator()(const std::shared_ptr<const volatile DecayFirstArg>& f,
+                    Ys&&... ys) const {
+    PEACALM_LUAW_ASSERT(f.get());
+    return o(*f.get(), std::forward<Ys>(ys)...);
+  }
+
+  template <typename D, typename... Ys>
+  Return operator()(const std::unique_ptr<DecayFirstArg, D>& f,
+                    Ys&&... ys) const {
+    PEACALM_LUAW_ASSERT(f.get());
+    return o(*f.get(), std::forward<Ys>(ys)...);
+  }
+
+  template <typename D, typename... Ys>
+  Return operator()(const std::unique_ptr<const DecayFirstArg, D>& f,
+                    Ys&&... ys) const {
+    PEACALM_LUAW_ASSERT(f.get());
+    return o(*f.get(), std::forward<Ys>(ys)...);
+  }
+
+  template <typename D, typename... Ys>
+  Return operator()(const std::unique_ptr<volatile DecayFirstArg, D>& f,
+                    Ys&&... ys) const {
+    PEACALM_LUAW_ASSERT(f.get());
+    return o(*f.get(), std::forward<Ys>(ys)...);
+  }
+
+  template <typename D, typename... Ys>
+  Return operator()(const std::unique_ptr<const volatile DecayFirstArg, D>& f,
+                    Ys&&... ys) const {
+    PEACALM_LUAW_ASSERT(f.get());
+    return o(*f.get(), std::forward<Ys>(ys)...);
+  }
+};
+
+}  // namespace luaw_detail
+
+template <typename CallableObject>
+struct luaw::mock_mem_fn
+    : public luaw_detail::mock_mem_fn_impl<
+          CallableObject,
+          luaw_detail::detect_callable_cfunction_t<CallableObject>> {
+private:
+  using base_t = luaw_detail::mock_mem_fn_impl<
+      CallableObject,
+      luaw_detail::detect_callable_cfunction_t<CallableObject>>;
+
+public:
+  mock_mem_fn(CallableObject&& r) : base_t(std::forward<CallableObject>(r)) {}
+};
+
 //////////////////// registrar impl ////////////////////////////////////////////
 
 template <typename T, typename>
@@ -3694,15 +3901,6 @@ private:
 
 template <typename Class, typename Return, typename... Args>
 struct luaw::registrar<Return (Class::*)(Args...)> {
-  template <typename MemberFunction>
-  static void register_member(luaw& l, const char* fname, MemberFunction mf) {
-    register_member_function<Class*>(l, fname, mf);
-    register_nonconst_member_function<const Class*>(l, fname);
-    register_nonconst_member_function<const volatile Class*>(l, fname);
-    register_nonvolatile_member_function<volatile Class*>(l, fname);
-    register_nonvolatile_member_function<const volatile Class*>(l, fname);
-  }
-
   // implementations
 
   template <typename ObjectType, typename MemberFunction>
@@ -3711,7 +3909,7 @@ struct luaw::registrar<Return (Class::*)(Args...)> {
                                        MemberFunction&& mf) {
     auto f = [=](ObjectType o, Args... args) -> Return {
       PEACALM_LUAW_ASSERT(o);
-      return mf(o, std::move(args)...);
+      return mf(*o, std::move(args)...);
     };
 
     void* p = reinterpret_cast<void*>(
@@ -3741,6 +3939,36 @@ struct luaw::registrar<Return (Class::*)(Args...)> {
         .setkv(fname, true);
     l.pop(2);
   }
+
+  // no cv- member functions
+  template <typename MemberFunction>
+  static void register_member(luaw& l, const char* fname, MemberFunction mf) {
+    {
+      register_member_function<Class*>(l, fname, mf);
+      register_nonconst_member_function<const Class*>(l, fname);
+      register_nonconst_member_function<const volatile Class*>(l, fname);
+      register_nonvolatile_member_function<volatile Class*>(l, fname);
+      register_nonvolatile_member_function<const volatile Class*>(l, fname);
+    }
+    if (!luaw_detail::is_std_shared_ptr<Class>::value) {
+      register_member_function<std::shared_ptr<Class>*>(l, fname, mf);
+      register_member_function<const std::shared_ptr<Class>*>(l, fname, mf);
+
+      register_nonconst_member_function<std::shared_ptr<const Class>*>(l,
+                                                                       fname);
+      register_nonconst_member_function<const std::shared_ptr<const Class>*>(
+          l, fname);
+    }
+    if (!luaw_detail::is_std_unique_ptr<Class>::value) {
+      register_member_function<std::unique_ptr<Class>*>(l, fname, mf);
+      register_member_function<const std::unique_ptr<Class>*>(l, fname, mf);
+
+      register_nonconst_member_function<std::unique_ptr<const Class>*>(l,
+                                                                       fname);
+      register_nonconst_member_function<const std::unique_ptr<const Class>*>(
+          l, fname);
+    }
+  }
 };
 
 template <typename Class, typename Return, typename... Args>
@@ -3748,13 +3976,34 @@ struct luaw::registrar<Return (Class::*)(Args...) const> {
   template <typename MemberFunction>
   static void register_member(luaw& l, const char* fname, MemberFunction mf) {
     using Basic = luaw::registrar<Return (Class::*)(Args...)>;
-
-    Basic::template register_member_function<Class*>(l, fname, mf);
-    Basic::template register_member_function<const Class*>(l, fname, mf);
-    Basic::template register_nonvolatile_member_function<volatile Class*>(
-        l, fname);
-    Basic::template register_nonvolatile_member_function<const volatile Class*>(
-        l, fname);
+    {
+      Basic::template register_member_function<Class*>(l, fname, mf);
+      Basic::template register_member_function<const Class*>(l, fname, mf);
+      Basic::template register_nonvolatile_member_function<volatile Class*>(
+          l, fname);
+      Basic::template register_nonvolatile_member_function<
+          const volatile Class*>(l, fname);
+    }
+    if (!luaw_detail::is_std_shared_ptr<Class>::value) {
+      Basic::template register_member_function<std::shared_ptr<Class>*>(
+          l, fname, mf);
+      Basic::template register_member_function<const std::shared_ptr<Class>*>(
+          l, fname, mf);
+      Basic::template register_member_function<std::shared_ptr<const Class>*>(
+          l, fname, mf);
+      Basic::template register_member_function<
+          const std::shared_ptr<const Class>*>(l, fname, mf);
+    }
+    if (!luaw_detail::is_std_unique_ptr<Class>::value) {
+      Basic::template register_member_function<std::unique_ptr<Class>*>(
+          l, fname, mf);
+      Basic::template register_member_function<const std::unique_ptr<Class>*>(
+          l, fname, mf);
+      Basic::template register_member_function<std::unique_ptr<const Class>*>(
+          l, fname, mf);
+      Basic::template register_member_function<
+          const std::unique_ptr<const Class>*>(l, fname, mf);
+    }
   }
 };
 
@@ -3763,12 +4012,35 @@ struct luaw::registrar<Return (Class::*)(Args...) volatile> {
   template <typename MemberFunction>
   static void register_member(luaw& l, const char* fname, MemberFunction mf) {
     using Basic = luaw::registrar<Return (Class::*)(Args...)>;
+    {
+      Basic::template register_member_function<Class*>(l, fname, mf);
+      Basic::template register_member_function<volatile Class*>(l, fname, mf);
+      Basic::template register_nonconst_member_function<const Class*>(l, fname);
+      Basic::template register_nonconst_member_function<const volatile Class*>(
+          l, fname);
+    }
+    if (!luaw_detail::is_std_shared_ptr<Class>::value) {
+      Basic::template register_member_function<std::shared_ptr<Class>*>(
+          l, fname, mf);
+      Basic::template register_member_function<const std::shared_ptr<Class>*>(
+          l, fname, mf);
 
-    Basic::template register_member_function<Class*>(l, fname, mf);
-    Basic::template register_member_function<volatile Class*>(l, fname, mf);
-    Basic::template register_nonconst_member_function<const Class*>(l, fname);
-    Basic::template register_nonconst_member_function<const volatile Class*>(
-        l, fname);
+      Basic::template register_nonconst_member_function<
+          std::shared_ptr<const Class>*>(l, fname);
+      Basic::template register_nonconst_member_function<
+          const std::shared_ptr<const Class>*>(l, fname);
+    }
+    if (!luaw_detail::is_std_unique_ptr<Class>::value) {
+      Basic::template register_member_function<std::unique_ptr<Class>*>(
+          l, fname, mf);
+      Basic::template register_member_function<const std::unique_ptr<Class>*>(
+          l, fname, mf);
+
+      Basic::template register_nonconst_member_function<
+          std::unique_ptr<const Class>*>(l, fname);
+      Basic::template register_nonconst_member_function<
+          const std::unique_ptr<const Class>*>(l, fname);
+    }
   }
 };
 
@@ -3777,12 +4049,33 @@ struct luaw::registrar<Return (Class::*)(Args...) const volatile> {
   template <typename MemberFunction>
   static void register_member(luaw& l, const char* fname, MemberFunction mf) {
     using Basic = luaw::registrar<Return (Class::*)(Args...)>;
-
-    Basic::template register_member_function<Class*>(l, fname, mf);
-    Basic::template register_member_function<const Class*>(l, fname, mf);
-    Basic::template register_member_function<volatile Class*>(l, fname, mf);
-    Basic::template register_member_function<const volatile Class*>(
-        l, fname, mf);
+    {
+      Basic::template register_member_function<Class*>(l, fname, mf);
+      Basic::template register_member_function<const Class*>(l, fname, mf);
+      Basic::template register_member_function<volatile Class*>(l, fname, mf);
+      Basic::template register_member_function<const volatile Class*>(
+          l, fname, mf);
+    }
+    if (!luaw_detail::is_std_shared_ptr<Class>::value) {
+      Basic::template register_member_function<std::shared_ptr<Class>*>(
+          l, fname, mf);
+      Basic::template register_member_function<const std::shared_ptr<Class>*>(
+          l, fname, mf);
+      Basic::template register_member_function<std::shared_ptr<const Class>*>(
+          l, fname, mf);
+      Basic::template register_member_function<
+          const std::shared_ptr<const Class>*>(l, fname, mf);
+    }
+    if (!luaw_detail::is_std_unique_ptr<Class>::value) {
+      Basic::template register_member_function<std::unique_ptr<Class>*>(
+          l, fname, mf);
+      Basic::template register_member_function<const std::unique_ptr<Class>*>(
+          l, fname, mf);
+      Basic::template register_member_function<std::unique_ptr<const Class>*>(
+          l, fname, mf);
+      Basic::template register_member_function<
+          const std::unique_ptr<const Class>*>(l, fname, mf);
+    }
   }
 };
 
