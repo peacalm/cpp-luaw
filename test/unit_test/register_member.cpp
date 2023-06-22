@@ -803,6 +803,76 @@ TEST(register_member, fake_member_by_cfunction) {
     EXPECT_EQ(l.eval<int>("o.gi = 101; return o.gi"), 101);
     EXPECT_EQ(gi, 101);
   }
+  {
+    luaw l;
+    Obj  o;
+    l.set("o", &o);
+    l.register_member<int Obj::*>("gi", &getgi);
+
+    EXPECT_EQ(l.eval<int>("return o.gi"), gi);
+    EXPECT_EQ(l.eval<int>("o.gi = 101; return o.gi"), 101);
+    EXPECT_EQ(gi, 101);
+  }
+  {
+    luaw l;
+    auto o = std::make_shared<Obj>();
+    l.set("o", o);
+    l.register_member<int Obj::*>("gi", &getgi);
+
+    EXPECT_EQ(l.eval<int>("return o.gi"), gi);
+    EXPECT_EQ(l.eval<int>("o.gi = 101; return o.gi"), 101);
+    EXPECT_EQ(gi, 101);
+  }
+  {
+    luaw l;
+    auto o = std::make_shared<Obj>();
+    l.set("o", &o);
+    l.register_member<int Obj::*>("gi", &getgi);
+
+    EXPECT_EQ(l.eval<int>("return o.gi"), gi);
+    EXPECT_EQ(l.eval<int>("o.gi = 101; return o.gi"), 101);
+    EXPECT_EQ(gi, 101);
+  }
+  {
+    luaw       l;
+    const auto o = std::make_shared<Obj>();
+    l.set("o", &o);
+    l.register_member<int Obj::*>("gi", &getgi);
+
+    EXPECT_EQ(l.eval<int>("return o.gi"), gi);
+    EXPECT_EQ(l.eval<int>("o.gi = 101; return o.gi"), 101);
+    EXPECT_EQ(gi, 101);
+  }
+  {
+    luaw l;
+    auto o = std::make_unique<Obj>();
+    l.set("o", &o);
+    l.register_member<int Obj::*>("gi", &getgi);
+
+    EXPECT_EQ(l.eval<int>("return o.gi"), gi);
+    EXPECT_EQ(l.eval<int>("o.gi = 101; return o.gi"), 101);
+    EXPECT_EQ(gi, 101);
+  }
+  {
+    luaw l;
+    auto o = std::make_unique<Obj>();
+    l.set("o", std::move(o));
+    l.register_member<int Obj::*>("gi", &getgi);
+
+    EXPECT_EQ(l.eval<int>("return o.gi"), gi);
+    EXPECT_EQ(l.eval<int>("o.gi = 101; return o.gi"), 101);
+    EXPECT_EQ(gi, 101);
+  }
+  {
+    luaw       l;
+    const auto o = std::make_unique<Obj>();
+    l.set("o", &o);
+    l.register_member<int Obj::*>("gi", &getgi);
+
+    EXPECT_EQ(l.eval<int>("return o.gi"), gi);
+    EXPECT_EQ(l.eval<int>("o.gi = 101; return o.gi"), 101);
+    EXPECT_EQ(gi, 101);
+  }
 
   {
     // register gi as const member
@@ -821,10 +891,68 @@ TEST(register_member, fake_member_by_cfunction) {
   }
 }
 
-TEST(register_member, fake_member_lambda) {
+TEST(register_member, fake_member_by_lambda) {
   {
     luaw l;
     l.set("o", Obj{});
+    int  li    = 100;  // local i
+    auto getli = [&](const volatile Obj*) -> int& { return li; };
+    l.register_member<int Obj::*>("li", getli);
+
+    EXPECT_EQ(l.eval<int>("return o.li"), li);
+    EXPECT_EQ(l.eval<int>("o.li = 101; return o.li"), 101);
+    EXPECT_EQ(li, 101);
+  }
+  {
+    luaw l;
+    Obj  o;
+    l.set("o", &o);
+    int  li    = 100;  // local i
+    auto getli = [&](const volatile Obj*) -> int& { return li; };
+    l.register_member<int Obj::*>("li", getli);
+
+    EXPECT_EQ(l.eval<int>("return o.li"), li);
+    EXPECT_EQ(l.eval<int>("o.li = 101; return o.li"), 101);
+    EXPECT_EQ(li, 101);
+  }
+  {
+    luaw l;
+    l.set("o", std::make_shared<Obj>());
+    int  li    = 100;  // local i
+    auto getli = [&](const volatile Obj*) -> int& { return li; };
+    l.register_member<int Obj::*>("li", getli);
+
+    EXPECT_EQ(l.eval<int>("return o.li"), li);
+    EXPECT_EQ(l.eval<int>("o.li = 101; return o.li"), 101);
+    EXPECT_EQ(li, 101);
+  }
+  {
+    luaw       l;
+    const auto o = std::make_shared<Obj>();
+    l.set("o", &o);
+    int  li    = 100;  // local i
+    auto getli = [&](const volatile Obj*) -> int& { return li; };
+    l.register_member<int Obj::*>("li", getli);
+
+    EXPECT_EQ(l.eval<int>("return o.li"), li);
+    EXPECT_EQ(l.eval<int>("o.li = 101; return o.li"), 101);
+    EXPECT_EQ(li, 101);
+  }
+  {
+    luaw l;
+    l.set("o", std::make_unique<Obj>());
+    int  li    = 100;  // local i
+    auto getli = [&](const volatile Obj*) -> int& { return li; };
+    l.register_member<int Obj::*>("li", getli);
+
+    EXPECT_EQ(l.eval<int>("return o.li"), li);
+    EXPECT_EQ(l.eval<int>("o.li = 101; return o.li"), 101);
+    EXPECT_EQ(li, 101);
+  }
+  {
+    luaw       l;
+    const auto o = std::make_unique<Obj>();
+    l.set("o", &o);
     int  li    = 100;  // local i
     auto getli = [&](const volatile Obj*) -> int& { return li; };
     l.register_member<int Obj::*>("li", getli);
