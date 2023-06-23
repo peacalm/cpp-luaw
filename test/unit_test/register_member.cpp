@@ -35,6 +35,31 @@ struct Obj {
   void unsupported_fr() && {}
 };
 
+TEST(register_member, register_ctor) {
+  luaw l;
+  l.register_member("i", &Obj::i);
+  l.register_member("ci", &Obj::ci);
+
+  l.register_ctor<Obj()>("NewObj");
+  EXPECT_EQ(l.dostring("a = NewObj()"), LUA_OK);
+  EXPECT_EQ(l.eval<int>("return a.i"), 1);
+  EXPECT_EQ(l.eval<int>("a.i = 2; return a.i"), 2);
+  EXPECT_EQ(l.get<int>({"a", "i"}), 2);
+  EXPECT_EQ(l.get<int>({"a", "ci"}), 1);
+
+  l.register_ctor<std::add_const_t<Obj>()>("NewConstObj");
+  EXPECT_EQ(l.dostring("b = NewConstObj()"), LUA_OK);
+  EXPECT_EQ(l.eval<int>("return b.i"), 1);
+  EXPECT_NE(l.dostring("b.i = 2"), LUA_OK);
+  l.log_error_out();
+  EXPECT_EQ(l.get<int>({"b", "i"}), 1);
+  EXPECT_EQ(l.get<int>({"b", "ci"}), 1);
+
+  EXPECT_EQ(l.gettop(), 0);
+
+  // l.register_ctor<Obj>("NewObj"); // error
+}
+
 int getmember(const Obj* o, const char* mname) { return 123; }
 
 TEST(register_member, register_member_functions) {
@@ -340,61 +365,6 @@ TEST(register_member, result_status_of_get) {
   EXPECT_EQ(l.gettop(), 0);
 }
 
-void seti(Obj* p, int v) { p->i = v; }
-int  getci(const Obj* p) { return p->ci; }
-
-TEST(register_member, fake_member_functions) {
-  luaw l;
-  l.register_member("i", &Obj::i);
-  l.register_member<int (Obj ::*)()>("grow",
-                                     [](Obj* p) { return p->i += 1000; });
-
-  l.set("o", Obj{});
-  EXPECT_EQ(l.eval<int>("return o:grow()"), 1001);
-  EXPECT_EQ(l.eval<int>("return o.i"), 1001);
-
-  EXPECT_EQ(l.eval<int>("return o.grow(o)"), 2001);
-  EXPECT_EQ(l.eval<int>("return o.i"), 2001);
-
-  l.register_member<void (Obj ::*)(int)>("seti", &seti);
-  l.dostring("o:seti(100)");
-  EXPECT_EQ(l.eval<int>("return o.i"), 100);
-
-  // fake const member function
-  l.register_member<int (Obj::*)() const>("getci", getci);
-  l.set("co", std::add_const_t<Obj>{});
-
-  EXPECT_EQ(l.eval_int("return co:getci()"), 1);
-  EXPECT_EQ(l.eval_int("return o:getci()"), 1);
-
-  EXPECT_EQ(l.gettop(), 0);
-}
-
-TEST(register_member, register_ctor) {
-  luaw l;
-  l.register_member("i", &Obj::i);
-  l.register_member("ci", &Obj::ci);
-
-  l.register_ctor<Obj()>("NewObj");
-  EXPECT_EQ(l.dostring("a = NewObj()"), LUA_OK);
-  EXPECT_EQ(l.eval<int>("return a.i"), 1);
-  EXPECT_EQ(l.eval<int>("a.i = 2; return a.i"), 2);
-  EXPECT_EQ(l.get<int>({"a", "i"}), 2);
-  EXPECT_EQ(l.get<int>({"a", "ci"}), 1);
-
-  l.register_ctor<std::add_const_t<Obj>()>("NewConstObj");
-  EXPECT_EQ(l.dostring("b = NewConstObj()"), LUA_OK);
-  EXPECT_EQ(l.eval<int>("return b.i"), 1);
-  EXPECT_NE(l.dostring("b.i = 2"), LUA_OK);
-  l.log_error_out();
-  EXPECT_EQ(l.get<int>({"b", "i"}), 1);
-  EXPECT_EQ(l.get<int>({"b", "ci"}), 1);
-
-  EXPECT_EQ(l.gettop(), 0);
-
-  // l.register_ctor<Obj>("NewObj"); // error
-}
-
 TEST(register_member, member_no_setter) {
   luaw l;
   l.set("o", Obj{});
@@ -406,7 +376,7 @@ TEST(register_member, member_no_setter) {
   EXPECT_DEATH(l.lset("o", "i", 2), ".*Not found setter.*");
 }
 
-TEST(register_member, nonconst_non_volatile) {
+TEST(register_member, nonconst_nonvolatile) {
   luaw l;
   l.register_member("plus", &Obj::plus);
   l.register_member("geti", &Obj::geti);
@@ -703,10 +673,40 @@ TEST(register_member, unique_ptr_member_function) {
   }
 }
 
+void seti(Obj* p, int v) { p->i = v; }
+int  getci(const Obj* p) { return p->ci; }
+
+TEST(register_member, fake_member_functions) {
+  luaw l;
+  l.register_member("i", &Obj::i);
+  l.register_member<int (Obj ::*)()>("grow",
+                                     [](Obj* p) { return p->i += 1000; });
+
+  l.set("o", Obj{});
+  EXPECT_EQ(l.eval<int>("return o:grow()"), 1001);
+  EXPECT_EQ(l.eval<int>("return o.i"), 1001);
+
+  EXPECT_EQ(l.eval<int>("return o.grow(o)"), 2001);
+  EXPECT_EQ(l.eval<int>("return o.i"), 2001);
+
+  l.register_member<void (Obj ::*)(int)>("seti", &seti);
+  l.dostring("o:seti(100)");
+  EXPECT_EQ(l.eval<int>("return o.i"), 100);
+
+  // fake const member function
+  l.register_member<int (Obj::*)() const>("getci", getci);
+  l.set("co", std::add_const_t<Obj>{});
+
+  EXPECT_EQ(l.eval_int("return co:getci()"), 1);
+  EXPECT_EQ(l.eval_int("return o:getci()"), 1);
+
+  EXPECT_EQ(l.gettop(), 0);
+}
+
 int  gi = 100;  // global i
 int& getgi(const volatile Obj* o) { return gi; }
 
-TEST(register_member, fake_member_by_cfunction) {
+TEST(register_member, fake_member_variable_by_cfunction) {
   {
     // register gi as readable/writable member of Obj
 
@@ -806,7 +806,7 @@ TEST(register_member, fake_member_by_cfunction) {
   }
 }
 
-TEST(register_member, fake_member_by_lambda) {
+TEST(register_member, fake_member_variable_by_lambda) {
   {
     luaw l;
     l.set("o", Obj{});
@@ -945,6 +945,50 @@ TEST(register_member, fake_member_by_lambda) {
     li = 200;
     EXPECT_EQ(l.eval<int>("return o.li"), 100);
     EXPECT_EQ(li, 200);
+  }
+}
+
+TEST(register_member, fake_member_variable_using_addr) {
+  luaw l;
+  l.register_member<void* const Obj::*>(
+      "id", [](const volatile Obj* p) { return (void*)p; });
+  {
+    Obj o;
+    l.set("o", &o);
+    EXPECT_EQ(l.eval<void*>("return o.id"), (void*)(&o));
+  }
+  {
+    const Obj o;
+    l.set("o", &o);
+    EXPECT_EQ(l.eval<void*>("return o.id"), (void*)(&o));
+  }
+  {
+    auto o = std::make_shared<Obj>();
+    l.set("o", o);
+    EXPECT_EQ(l.eval<void*>("return o.id"), (void*)(o.get()));
+  }
+  {
+    auto o = std::make_shared<Obj>();
+    l.set("o", &o);
+    EXPECT_EQ(l.eval<void*>("return o.id"), (void*)(o.get()));
+  }
+  {
+    auto o = std::make_shared<const Obj>();
+    l.set("o", o);
+    EXPECT_EQ(l.eval<void*>("return o.id"), (void*)(o.get()));
+  }
+  {
+    auto o = std::make_shared<const Obj>();
+    l.set("o", &o);
+    EXPECT_EQ(l.eval<void*>("return o.id"), (void*)(o.get()));
+  }
+
+  //
+  {
+    // register a solid obj, id equals to userdata addr
+    l.set("o", Obj{});
+    EXPECT_EQ(l.eval<void*>("return o.id"), l.get<void*>("o"));
+    EXPECT_EQ(l.eval<void*>("return o.id"), (void*)l.get<Obj*>("o"));
   }
 }
 
