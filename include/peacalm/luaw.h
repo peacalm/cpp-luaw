@@ -1676,17 +1676,18 @@ public:
   /// getter/setter could be C function or lambda object.
   /// getter proto type: Member(const Class*, Key)
   /// setter proto type: void(Class*, Key, Member)
-  /// where Key to be `const std::string&` is recommended, Member could be
-  /// number, string, bool, luaw::luavalueidx, etc.
-  /// Besides, getter/setter could also be nullptr, indicate unregister the
-  /// generic member getter/setter, or no need to register the getter/setter.
-  template <typename Class, typename Getter, typename Setter>
+  /// where Key could be `const std::string&` or 'const char*',
+  /// Member could be number, string, bool, luaw::luavalueidx,
+  /// luaw::luavalueref, etc.
+  template <typename Getter, typename Setter>
   void register_generic_member(Getter&& getter, Setter&& setter) {
-    registrar<std::decay_t<Class>>::register_generic_member_getter(
-        *this, std::forward<Getter>(getter));
-    registrar<std::decay_t<Class>>::register_generic_member_setter(
-        *this, std::forward<Setter>(setter));
+    register_generic_member_getter(std::forward<Getter>(getter));
+    register_generic_member_setter(std::forward<Setter>(setter));
   }
+  template <typename Getter>
+  void register_generic_member_getter(Getter&& getter);
+  template <typename Setter>
+  void register_generic_member_setter(Setter&& setter);
 
   //////////////////////// evaluate expression /////////////////////////////////
 
@@ -3685,125 +3686,151 @@ public:
 
 //////////////////// registrar impl ////////////////////////////////////////////
 
+template <typename Getter>
+void luaw::register_generic_member_getter(Getter&& getter) {
+  luaw::registrar<luaw_detail::detect_callable_cfunction_t<Getter>>::
+      register_generic_member_getter(
+          *this, luaw::mock_mem_fn<Getter>(std::forward<Getter>(getter)));
+}
+
+template <typename Setter>
+void luaw::register_generic_member_setter(Setter&& setter) {
+  luaw::registrar<luaw_detail::detect_callable_cfunction_t<Setter>>::
+      register_generic_member_setter(
+          *this, luaw::mock_mem_fn<Setter>(std::forward<Setter>(setter)));
+}
+
+// Support nothing in this basic registrar.
+// Supported features should be specialized elsewhere.
 template <typename T, typename>
 struct luaw::registrar {
   // Let compile fail for unsupported member types,
   // such as ref- qualified member functions.
-  // Supported member types should be specialized elsewhere.
   static_assert(!std::is_member_pointer<T>::value, "Unsupported member type");
-  static_assert(std::is_same<T, std::decay_t<T>>::value, "T should be decayed");
 
   template <typename MemberFunction>
   static void register_member(luaw&          l,
                               const char*    fname,
                               MemberFunction mf) = delete;
 
-  // generic members
+  template <typename Getter>
+  static void register_generic_member_getter(luaw& l, Getter&& getter) = delete;
+
+  template <typename Setter>
+  static void register_generic_member_setter(luaw& l, Setter&& setter) = delete;
+};
+
+// Specialization for generic member getter
+template <typename Member, typename Class, typename Key>
+struct luaw::registrar<Member (*)(Class*, Key)> {
+  static_assert(std::is_class<Class>::value && std::is_const<Class>::value,
+                "First argument should be pointer of const class");
+  using DecayClass = std::remove_cv_t<Class>;
 
   template <typename Getter>
   static void register_generic_member_getter(luaw& l, Getter&& getter) {
-    static_assert(luaw_detail::decay_is_callable<Getter>::value,
-                  "Getter should be callable");
-    using CFPtr = luaw_detail::detect_callable_cfunction_t<Getter>;
-    static_assert(__check_getter_type(CFPtr{}).value, "Invalid getter type");
+#define REGISTER_GETTER(ObjectType)                          \
+  l.touchtb((void*)(&typeid(ObjectType)), LUA_REGISTRYINDEX) \
+      .setkv<Member (*)(Class*, Key)>(                       \
+          luaw::member_info_fields::generic_member_getter, getter);
+
+#define REGISTER_SMART_GETTER(ObjectType)                    \
+  l.touchtb((void*)(&typeid(ObjectType)), LUA_REGISTRYINDEX) \
+      .setkv<Member (*)(ObjectType, Key)>(                   \
+          luaw::member_info_fields::generic_member_getter,   \
+          [=](ObjectType o, Key k) -> Member {               \
+            PEACALM_LUAW_ASSERT(o);                          \
+            return getter(*o, k);                            \
+          });
 
     auto _g = l.make_guarder();
-    l.touchtb((void*)(&typeid(T*)), LUA_REGISTRYINDEX)
-        .setkv<luaw::function_tag>(
-            luaw::member_info_fields::generic_member_getter, getter);
-    l.touchtb((void*)(&typeid(const T*)), LUA_REGISTRYINDEX)
-        .setkv<luaw::function_tag>(
-            luaw::member_info_fields::generic_member_getter, getter);
-    l.touchtb((void*)(&typeid(volatile T*)), LUA_REGISTRYINDEX)
-        .setkv<luaw::function_tag>(
-            luaw::member_info_fields::generic_member_getter, getter);
-    l.touchtb((void*)(&typeid(const volatile T*)), LUA_REGISTRYINDEX)
-        .setkv<luaw::function_tag>(
-            luaw::member_info_fields::generic_member_getter, getter);
-  }
 
-  // Indicate no generic member getter to register.
-  // Or unregister generic member getter.
-  static void register_generic_member_getter(luaw& l, std::nullptr_t) {
-    auto _g = l.make_guarder();
-    l.touchtb((void*)(&typeid(T*)), LUA_REGISTRYINDEX)
-        .setkv(luaw::member_info_fields::generic_member_getter, nullptr);
-    l.touchtb((void*)(&typeid(const T*)), LUA_REGISTRYINDEX)
-        .setkv(luaw::member_info_fields::generic_member_getter, nullptr);
-    l.touchtb((void*)(&typeid(volatile T*)), LUA_REGISTRYINDEX)
-        .setkv(luaw::member_info_fields::generic_member_getter, nullptr);
-    l.touchtb((void*)(&typeid(const volatile T*)), LUA_REGISTRYINDEX)
-        .setkv(luaw::member_info_fields::generic_member_getter, nullptr);
+    {
+      REGISTER_GETTER(DecayClass*);
+      REGISTER_GETTER(const DecayClass*);
+
+      if (std::is_volatile<Class>::value) {
+        REGISTER_GETTER(volatile DecayClass*);
+        REGISTER_GETTER(const volatile DecayClass*);
+      }
+    }
+
+    if (!luaw_detail::is_std_shared_ptr<DecayClass>::value) {
+      REGISTER_SMART_GETTER(std::shared_ptr<DecayClass>*);
+      REGISTER_SMART_GETTER(const std::shared_ptr<DecayClass>*);
+      REGISTER_SMART_GETTER(std::shared_ptr<const DecayClass>*);
+      REGISTER_SMART_GETTER(const std::shared_ptr<const DecayClass>*);
+    }
+
+    if (!luaw_detail::is_std_unique_ptr<DecayClass>::value) {
+      REGISTER_SMART_GETTER(std::unique_ptr<DecayClass>*);
+      REGISTER_SMART_GETTER(const std::unique_ptr<DecayClass>*);
+      REGISTER_SMART_GETTER(std::unique_ptr<const DecayClass>*);
+      REGISTER_SMART_GETTER(const std::unique_ptr<const DecayClass>*);
+    }
+
+#undef REGISTER_SMART_GETTER
+#undef REGISTER_GETTER
   }
+};
+
+// Specialization for generic member setter
+template <typename Class, typename Key, typename Member>
+struct luaw::registrar<void (*)(Class*, Key, Member)> {
+  static_assert(std::is_class<Class>::value && !std::is_const<Class>::value,
+                "First argument should be pointer of non-const class");
+  using DecayClass = std::remove_cv_t<Class>;
 
   template <typename Setter>
   static void register_generic_member_setter(luaw& l, Setter&& setter) {
-    static_assert(luaw_detail::decay_is_callable<Setter>::value,
-                  "Setter should be callable");
-    using CFPtr = luaw_detail::detect_callable_cfunction_t<Setter>;
-    static_assert(__check_setter_type(CFPtr{}).value, "Invalid setter type");
+#define REGISTER_SETTER(ObjectType)                          \
+  l.touchtb((void*)(&typeid(ObjectType)), LUA_REGISTRYINDEX) \
+      .setkv<void (*)(Class*, Key, Member)>(                 \
+          luaw::member_info_fields::generic_member_setter, setter);
+
+#define REGISTER_SMART_SETTER(ObjectType)                    \
+  l.touchtb((void*)(&typeid(ObjectType)), LUA_REGISTRYINDEX) \
+      .setkv<void (*)(ObjectType, Key, Member)>(             \
+          luaw::member_info_fields::generic_member_setter,   \
+          [=](ObjectType o, Key k, Member v) {               \
+            PEACALM_LUAW_ASSERT(o);                          \
+            setter(*o, k, v);                                \
+          });
+
+#define REGISTER_SETTER_OF_CONST(ObjectType)                 \
+  l.touchtb((void*)(&typeid(ObjectType)), LUA_REGISTRYINDEX) \
+      .setkv(luaw::member_info_fields::generic_member_setter, false);
 
     auto _g = l.make_guarder();
-    l.touchtb((void*)(&typeid(T*)), LUA_REGISTRYINDEX)
-        .setkv<luaw::function_tag>(
-            luaw::member_info_fields::generic_member_setter, setter);
-    l.touchtb((void*)(&typeid(volatile T*)), LUA_REGISTRYINDEX)
-        .setkv<luaw::function_tag>(
-            luaw::member_info_fields::generic_member_setter, setter);
 
-    // const objects, set value false!
-    l.touchtb((void*)(&typeid(const T*)), LUA_REGISTRYINDEX)
-        .setkv(luaw::member_info_fields::generic_member_setter, false);
-    l.touchtb((void*)(&typeid(const volatile T*)), LUA_REGISTRYINDEX)
-        .setkv(luaw::member_info_fields::generic_member_setter, false);
-  }
+    {
+      REGISTER_SETTER(DecayClass*);
+      REGISTER_SETTER_OF_CONST(const DecayClass*);
 
-  // Indicate no generic member setter to register.
-  // Or unregister generic member setter.
-  static void register_generic_member_setter(luaw& l, std::nullptr_t) {
-    auto _g = l.make_guarder();
-    l.touchtb((void*)(&typeid(T*)), LUA_REGISTRYINDEX)
-        .setkv(luaw::member_info_fields::generic_member_setter, nullptr);
-    l.touchtb((void*)(&typeid(volatile T*)), LUA_REGISTRYINDEX)
-        .setkv(luaw::member_info_fields::generic_member_setter, nullptr);
+      if (std::is_volatile<Class>::value) {
+        REGISTER_SETTER(volatile DecayClass*);
+        REGISTER_SETTER_OF_CONST(const volatile DecayClass*);
+      }
+    }
 
-    l.touchtb((void*)(&typeid(const T*)), LUA_REGISTRYINDEX)
-        .setkv(luaw::member_info_fields::generic_member_setter, nullptr);
-    l.touchtb((void*)(&typeid(const volatile T*)), LUA_REGISTRYINDEX)
-        .setkv(luaw::member_info_fields::generic_member_setter, nullptr);
-  }
+    if (!luaw_detail::is_std_shared_ptr<DecayClass>::value) {
+      REGISTER_SMART_SETTER(std::shared_ptr<DecayClass>*);
+      REGISTER_SMART_SETTER(const std::shared_ptr<DecayClass>*);
 
-private:
-  // do nothing but a static type check
+      REGISTER_SETTER_OF_CONST(std::shared_ptr<const DecayClass>*);
+      REGISTER_SETTER_OF_CONST(const std::shared_ptr<const DecayClass>*);
+    }
 
-  template <typename Class, typename Key, typename Value>
-  static constexpr std::true_type __check_getter_type(Value (*)(Class*, Key)) {
-    static_assert(std::is_const<Class>::value,
-                  "First parameter of getter should be const 'const Class*'");
-    static_assert(std::is_same<std::remove_cv_t<Class>, T>::value,
-                  "First parameter of getter should be pointer to the template "
-                  "parameter 'Class'");
-    return std::true_type{};
-  }
+    if (!luaw_detail::is_std_unique_ptr<DecayClass>::value) {
+      REGISTER_SMART_SETTER(std::unique_ptr<DecayClass>*);
+      REGISTER_SMART_SETTER(const std::unique_ptr<DecayClass>*);
 
-  static constexpr std::false_type __check_getter_type(...) {
-    return std::false_type{};
-  }
-
-  template <typename Class, typename Key, typename Value>
-  static constexpr std::true_type __check_setter_type(void (*)(Class*,
-                                                               Key,
-                                                               Value)) {
-    static_assert(!std::is_const<Class>::value,
-                  "First parameter of setter should not be const");
-    static_assert(std::is_same<std::remove_cv_t<Class>, T>::value,
-                  "First parameter of setter should be pointer to the template "
-                  "parameter 'Class'");
-    return std::true_type{};
-  }
-
-  static constexpr std::false_type __check_setter_type(...) {
-    return std::false_type{};
+      REGISTER_SETTER_OF_CONST(std::unique_ptr<const DecayClass>*);
+      REGISTER_SETTER_OF_CONST(const std::unique_ptr<const DecayClass>*);
+    }
+#undef REGISTER_SETTER_OF_CONST
+#undef REGISTER_SMART_SETTER
+#undef REGISTER_SETTER
   }
 };
 

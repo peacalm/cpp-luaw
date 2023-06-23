@@ -446,91 +446,6 @@ TEST(register_member, nonconst_non_volatile) {
   }
 }
 
-double obj_gm_getter(const Obj* o, const char* k) {
-  assert(o);
-  auto it = o->gm.find(k);
-  if (it != o->gm.end()) return it->second;
-  return 0.0;
-}
-
-void obj_gm_setter(Obj* o, const char* k, double v) {
-  assert(o);
-  o->gm[k] = v;
-}
-
-TEST(register_member, generic_member_cfunction) {
-  luaw l;
-  l.register_generic_member<Obj>(obj_gm_getter, obj_gm_setter);
-  EXPECT_EQ(l.gettop(), 0);
-  {
-    Obj o;
-    l.set("o", &o);
-    EXPECT_EQ(l.dostring("o.a = 1; o.b = 2;"), LUA_OK);
-    EXPECT_EQ(l.eval<int>("return o.a;"), 1);
-    EXPECT_EQ(l.eval<int>("return o.b;"), 2);
-    EXPECT_EQ(l.eval_int("return o.c;", -1), 0);
-    EXPECT_EQ(l.gettop(), 0);
-
-    l.register_generic_member<Obj>(obj_gm_getter, nullptr);
-    EXPECT_NE(l.dostring("o.a = 3; o.b = 4;"), LUA_OK);
-    l.log_error_out();
-    EXPECT_EQ(l.eval_int("return o.a;", -1), 1);
-    EXPECT_EQ(l.eval_int("return o.b;", -1), 2);
-
-    l.register_generic_member<Obj>(nullptr, nullptr);
-    EXPECT_EQ(l.eval_int("return o.a;", -1), -1);
-    EXPECT_EQ(l.eval_int("return o.b;", -1), -1);
-  }
-  {
-    l.register_generic_member<Obj>(obj_gm_getter, obj_gm_setter);
-    const Obj o;
-    l.set("o", &o);
-    EXPECT_NE(l.dostring("o.a = 5; o.b = 6;"), LUA_OK);
-    l.log_error_out();
-    EXPECT_EQ(l.eval_int("return o.a;", -1), 0);
-    EXPECT_EQ(l.eval_int("return o.b;", -1), 0);
-    EXPECT_EQ(l.eval_int("return o.c;", -1), 0);
-    EXPECT_EQ(l.gettop(), 0);
-  }
-}
-
-TEST(register_member, generic_member_lambda) {
-  luaw l;
-  auto g = [](const Obj* o, const char* k) {
-    assert(o);
-    auto it = o->gm.find(k);
-    if (it != o->gm.end()) return it->second;
-    return 0.0;
-  };
-  auto s = [](Obj* o, const char* k, double v) {
-    assert(o);
-    o->gm[k] = v;
-  };
-
-  l.register_generic_member<Obj>(g, s);
-  EXPECT_EQ(l.gettop(), 0);
-
-  {
-    Obj o;
-    l.set("o", &o);
-    EXPECT_EQ(l.dostring("o.a=1; o.b=2;"), LUA_OK);
-    EXPECT_EQ(l.eval<int>("return o.a;"), 1);
-    EXPECT_EQ(l.eval<int>("return o.b;"), 2);
-    EXPECT_EQ(l.eval_int("return o.c;", -1), 0);
-    EXPECT_EQ(l.gettop(), 0);
-  }
-  {
-    const Obj o;
-    l.set("o", &o);
-    EXPECT_NE(l.dostring("o.a=1; o.b=2;"), LUA_OK);
-    l.log_error_out();
-    EXPECT_EQ(l.eval_int("return o.a;", -1), 0);
-    EXPECT_EQ(l.eval_int("return o.b;", -1), 0);
-    EXPECT_EQ(l.eval_int("return o.c;", -1), 0);
-    EXPECT_EQ(l.gettop(), 0);
-  }
-}
-
 TEST(register_member, shared_ptr_member_variable) {
   luaw l;
   l.register_member("i", &Obj::i);
@@ -1030,5 +945,206 @@ TEST(register_member, fake_member_by_lambda) {
     li = 200;
     EXPECT_EQ(l.eval<int>("return o.li"), 100);
     EXPECT_EQ(li, 200);
+  }
+}
+
+double obj_gm_getter(const Obj* o, const char* k) {
+  assert(o);
+  auto it = o->gm.find(k);
+  if (it != o->gm.end()) return it->second;
+  return 0.0;
+}
+
+void obj_gm_setter(Obj* o, const char* k, double v) {
+  assert(o);
+  o->gm[k] = v;
+}
+
+TEST(register_member, generic_member_cfunction) {
+  luaw l;
+  l.register_generic_member(obj_gm_getter, obj_gm_setter);
+  EXPECT_EQ(l.gettop(), 0);
+
+  {
+    Obj o;
+    l.set("o", &o);
+    EXPECT_EQ(l.dostring("o.a = 1; o.b = 2;"), LUA_OK);
+    EXPECT_EQ(l.eval<int>("return o.a;"), 1);
+    EXPECT_EQ(l.eval<int>("return o.b;"), 2);
+    EXPECT_EQ(l.eval_int("return o.c;", -1), 0);
+    EXPECT_EQ(l.gettop(), 0);
+  }
+  {
+    const Obj o;
+    l.set("o", &o);
+    EXPECT_NE(l.dostring("o.a = 5; o.b = 6;"), LUA_OK);
+    l.log_error_out();
+    EXPECT_EQ(l.eval_int("return o.a;", -1), 0);
+    EXPECT_EQ(l.eval_int("return o.b;", -1), 0);
+    EXPECT_EQ(l.eval_int("return o.c;", -1), 0);
+    EXPECT_EQ(l.gettop(), 0);
+  }
+
+  // for smart pointers
+  {
+    l.set("o", std::make_shared<Obj>());
+    EXPECT_EQ(l.dostring("o.a = 1; o.b = 2;"), LUA_OK);
+    EXPECT_EQ(l.eval<int>("return o.a;"), 1);
+    EXPECT_EQ(l.eval<int>("return o.b;"), 2);
+    EXPECT_EQ(l.eval_int("return o.c;", -1), 0);
+    EXPECT_EQ(l.gettop(), 0);
+  }
+
+  {
+    auto o = std::make_shared<Obj>();
+    l.set("o", &o);
+    EXPECT_EQ(l.dostring("o.a = 1; o.b = 2;"), LUA_OK);
+    EXPECT_EQ(l.eval<int>("return o.a;"), 1);
+    EXPECT_EQ(l.eval<int>("return o.b;"), 2);
+    EXPECT_EQ(l.eval_int("return o.c;", -1), 0);
+    EXPECT_EQ(l.gettop(), 0);
+  }
+
+  {
+    const auto o = std::make_shared<Obj>();
+    l.set("o", &o);
+    EXPECT_EQ(l.dostring("o.a = 1; o.b = 2;"), LUA_OK);
+    EXPECT_EQ(l.eval<int>("return o.a;"), 1);
+    EXPECT_EQ(l.eval<int>("return o.b;"), 2);
+    EXPECT_EQ(l.eval_int("return o.c;", -1), 0);
+    EXPECT_EQ(l.gettop(), 0);
+  }
+
+  {
+    l.set("o", std::make_unique<Obj>());
+    EXPECT_EQ(l.dostring("o.a = 1; o.b = 2;"), LUA_OK);
+    EXPECT_EQ(l.eval<int>("return o.a;"), 1);
+    EXPECT_EQ(l.eval<int>("return o.b;"), 2);
+    EXPECT_EQ(l.eval_int("return o.c;", -1), 0);
+    EXPECT_EQ(l.gettop(), 0);
+  }
+
+  {
+    auto o = std::make_unique<Obj>();
+    l.set("o", &o);
+    EXPECT_EQ(l.dostring("o.a = 1; o.b = 2;"), LUA_OK);
+    EXPECT_EQ(l.eval<int>("return o.a;"), 1);
+    EXPECT_EQ(l.eval<int>("return o.b;"), 2);
+    EXPECT_EQ(l.eval_int("return o.c;", -1), 0);
+    EXPECT_EQ(l.gettop(), 0);
+  }
+
+  //
+  {
+    l.set("o", std::make_shared<const Obj>());
+    EXPECT_NE(l.dostring("o.a = 5; o.b = 6;"), LUA_OK);
+    l.log_error_out();
+    EXPECT_EQ(l.eval_int("return o.a;", -1), 0);
+    EXPECT_EQ(l.eval_int("return o.b;", -1), 0);
+    EXPECT_EQ(l.eval_int("return o.c;", -1), 0);
+    EXPECT_EQ(l.gettop(), 0);
+  }
+  {
+    l.set("o", std::make_unique<const Obj>());
+    EXPECT_NE(l.dostring("o.a = 5; o.b = 6;"), LUA_OK);
+    l.log_error_out();
+    EXPECT_EQ(l.eval_int("return o.a;", -1), 0);
+    EXPECT_EQ(l.eval_int("return o.b;", -1), 0);
+    EXPECT_EQ(l.eval_int("return o.c;", -1), 0);
+    EXPECT_EQ(l.gettop(), 0);
+  }
+}
+
+TEST(register_member, generic_member_lambda) {
+  luaw l;
+  auto g = [](const Obj* o, const char* k) {
+    assert(o);
+    auto it = o->gm.find(k);
+    if (it != o->gm.end()) return it->second;
+    return 0.0;
+  };
+  auto s = [](Obj* o, const char* k, double v) {
+    assert(o);
+    o->gm[k] = v;
+  };
+
+  l.register_generic_member(g, s);
+  EXPECT_EQ(l.gettop(), 0);
+
+  {
+    l.set("o", Obj{});
+    EXPECT_EQ(l.dostring("o.a=1; o.b=2;"), LUA_OK);
+    EXPECT_EQ(l.eval<int>("return o.a;"), 1);
+    EXPECT_EQ(l.eval<int>("return o.b;"), 2);
+    EXPECT_EQ(l.eval_int("return o.c;", -1), 0);
+    EXPECT_EQ(l.gettop(), 0);
+  }
+  {
+    Obj o;
+    l.set("o", &o);
+    EXPECT_EQ(l.dostring("o.a=1; o.b=2;"), LUA_OK);
+    EXPECT_EQ(l.eval<int>("return o.a;"), 1);
+    EXPECT_EQ(l.eval<int>("return o.b;"), 2);
+    EXPECT_EQ(l.eval_int("return o.c;", -1), 0);
+    EXPECT_EQ(l.gettop(), 0);
+  }
+  {
+    const Obj o;
+    l.set("o", &o);
+    EXPECT_NE(l.dostring("o.a=1; o.b=2;"), LUA_OK);
+    l.log_error_out();
+    EXPECT_EQ(l.eval_int("return o.a;", -1), 0);
+    EXPECT_EQ(l.eval_int("return o.b;", -1), 0);
+    EXPECT_EQ(l.eval_int("return o.c;", -1), 0);
+    EXPECT_EQ(l.gettop(), 0);
+  }
+
+  //
+  {
+    auto o = std::make_shared<Obj>();
+    l.set("o", &o);
+    EXPECT_EQ(l.dostring("o.a=1; o.b=2;"), LUA_OK);
+    EXPECT_EQ(l.eval<int>("return o.a;"), 1);
+    EXPECT_EQ(l.eval<int>("return o.b;"), 2);
+    EXPECT_EQ(l.eval_int("return o.c;", -1), 0);
+    EXPECT_EQ(l.gettop(), 0);
+  }
+  {
+    l.set("o", std::make_unique<const Obj>());
+    EXPECT_NE(l.dostring("o.a=1; o.b=2;"), LUA_OK);
+    l.log_error_out();
+    EXPECT_EQ(l.eval_int("return o.a;", -1), 0);
+    EXPECT_EQ(l.eval_int("return o.b;", -1), 0);
+    EXPECT_EQ(l.eval_int("return o.c;", -1), 0);
+    EXPECT_EQ(l.gettop(), 0);
+  }
+}
+
+TEST(register_member, generic_member_volatile) {
+  luaw l;
+
+  auto g = [](const Obj* o, const char* k) {
+    assert(o);
+    auto it = o->gm.find(k);
+    if (it != o->gm.end()) return it->second;
+    return 0.0;
+  };
+  auto s = [](Obj* o, const char* k, double v) {
+    assert(o);
+    o->gm[k] = v;
+  };
+
+  l.register_generic_member(g, s);
+  EXPECT_EQ(l.gettop(), 0);
+
+  {
+    volatile Obj o;
+    l.set("o", &o);
+    EXPECT_NE(l.dostring("o.a=1; o.b=2;"), LUA_OK);
+    l.log_error_out();
+    EXPECT_EQ(l.eval_int("return o.a;", -1), -1);
+    EXPECT_EQ(l.eval_int("return o.b;", -1), -1);
+    EXPECT_EQ(l.eval_int("return o.c;", -1), -1);
+    EXPECT_EQ(l.gettop(), 0);
   }
 }
