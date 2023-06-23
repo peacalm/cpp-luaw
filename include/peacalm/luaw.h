@@ -1674,7 +1674,8 @@ public:
    * @tparam F C function type or lambda or std::function or any callable type.
    * @param name The member name.
    * @param f The function whose first parameter is pointer to the class whose
-   * member is registered to.
+   * member is registered to. If faking a member variable, the first parameter
+   * must be pointer of cv-qualified class type, e.g. `const volatile Obj*`.
    * @return void.
    */
   template <typename Hint, typename F>
