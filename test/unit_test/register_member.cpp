@@ -966,11 +966,15 @@ TEST(register_member, fake_member_variable_using_addr) {
     auto o = std::make_shared<Obj>();
     l.set("o", o);
     EXPECT_EQ(l.eval<void*>("return o.id"), (void*)(o.get()));
+    l.set("o2", o);
+    EXPECT_TRUE(l.eval<bool>("return o.id == o2.id"));
   }
   {
     auto o = std::make_shared<Obj>();
     l.set("o", &o);
     EXPECT_EQ(l.eval<void*>("return o.id"), (void*)(o.get()));
+    l.set("o2", &o);
+    EXPECT_TRUE(l.eval<bool>("return o.id == o2.id"));
   }
   {
     auto o = std::make_shared<const Obj>();
@@ -989,6 +993,8 @@ TEST(register_member, fake_member_variable_using_addr) {
     l.set("o", Obj{});
     EXPECT_EQ(l.eval<void*>("return o.id"), l.get<void*>("o"));
     EXPECT_EQ(l.eval<void*>("return o.id"), (void*)l.get<Obj*>("o"));
+    l.set("o2", Obj{});
+    EXPECT_TRUE(l.eval<bool>("return o.id ~= o2.id"));
   }
 }
 
