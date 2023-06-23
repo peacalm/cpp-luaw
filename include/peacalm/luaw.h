@@ -1655,8 +1655,28 @@ public:
     register_member<MemberPointer>(name.c_str(), mp);
   }
 
-  /// Register a fake member function, who has proto type
-  /// `Return(Class*, Args...)`.
+  /**
+   * @brief Register a fake member variable or fake member function.
+   *
+   * For example, register a const member "id" with type void* for class Obj:
+   *     `register_member<void* const Obj::*>("id", [](const volatile Obj* p) {
+   *         return (void*)p; });`
+   *
+   * Register a member function "plus" for class Obj:
+   *     `register_member<void (Obj::*)(int)>("plus", [](Obj* p, int d) {
+   *         p->value += d; })`
+   *
+   * Register a const member function "getvalue" for class Obj:
+   *     `register_member<int (Obj::*)() const>("getvalue", [](const Obj* p) {
+   *         return p->value; })`
+   *
+   * @tparam Hint The member type wanted to fake.
+   * @tparam F C function type or lambda or std::function or any callable type.
+   * @param name The member name.
+   * @param f The function whose first parameter is pointer to the class whose
+   * member is registered to.
+   * @return void.
+   */
   template <typename Hint, typename F>
   std::enable_if_t<std::is_member_pointer<Hint>::value &&
                    !std::is_same<Hint, F>::value>
