@@ -15,6 +15,9 @@
 #include "main.h"
 
 struct Obj {
+  Obj() {}
+  Obj(int v) : i(v) {}
+
   int                           i  = 1;
   const int                     ci = 1;
   volatile int                  vi = 1;
@@ -55,9 +58,16 @@ TEST(register_member, register_ctor) {
   EXPECT_EQ(l.get<int>({"b", "i"}), 1);
   EXPECT_EQ(l.get<int>({"b", "ci"}), 1);
 
-  EXPECT_EQ(l.gettop(), 0);
+  // another ctor
+  l.register_ctor<Obj(int)>("NewObj1");
+  EXPECT_EQ(l.dostring("a = NewObj1(3)"), LUA_OK);
+  EXPECT_EQ(l.eval<int>("return a.i"), 3);
+  EXPECT_EQ(l.eval<int>("a.i = 2; return a.i"), 2);
+  EXPECT_EQ(l.get<int>({"a", "i"}), 2);
+  EXPECT_EQ(l.get<int>({"a", "ci"}), 1);
 
   // l.register_ctor<Obj>("NewObj"); // error
+  EXPECT_EQ(l.gettop(), 0);
 }
 
 int getmember(const Obj* o, const char* mname) { return 123; }
