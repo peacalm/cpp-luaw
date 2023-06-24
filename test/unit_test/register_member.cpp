@@ -683,6 +683,66 @@ TEST(register_member, unique_ptr_member_function) {
   }
 }
 
+struct ObjDeleter {
+  void operator()(Obj* p) const { delete p; }
+};
+
+TEST(register_member, unique_ptr_with_custom_deleter) {
+  luaw l;
+  l.register_member("i", &Obj::i);
+  l.register_member("geti", &Obj::geti);
+
+  {
+    std::unique_ptr<Obj, const std::default_delete<Obj>> o(new Obj);
+    l.set("o", &o);
+    EXPECT_EQ(l.eval<int>("return o.i"), 1);
+    EXPECT_EQ(l.eval<int>("return o:geti()"), 1);
+
+    l.set("o", std::move(o));
+    EXPECT_EQ(l.eval<int>("return o.i"), 1);
+    EXPECT_EQ(l.eval<int>("return o:geti()"), 1);
+
+    EXPECT_EQ(l.eval<int>("o.i=2; return o.i"), 2);
+  }
+
+  {
+    std::unique_ptr<Obj, ObjDeleter> o(new Obj, ObjDeleter{});
+    l.set("o", &o);
+    EXPECT_EQ(l.eval<int>("return o.i"), 1);
+    EXPECT_EQ(l.eval<int>("return o:geti()"), 1);
+
+    l.set("o", std::move(o));
+    EXPECT_EQ(l.eval<int>("return o.i"), 1);
+    EXPECT_EQ(l.eval<int>("return o:geti()"), 1);
+
+    EXPECT_EQ(l.eval<int>("o.i=2; return o.i"), 2);
+  }
+
+  {
+    std::unique_ptr<Obj[]> o(new Obj[3]);
+    l.set("uptr_of_o_array", &o);
+
+    bool failed, exists;
+    EXPECT_EQ(l.eval<int>("return uptr_of_o_array.i", false, &failed), 0);
+    EXPECT_FALSE(failed);
+    EXPECT_EQ(l.get<int>({"uptr_of_o_array", "i"}, false, &failed, &exists), 0);
+    EXPECT_FALSE(failed);
+    EXPECT_FALSE(exists);
+
+    EXPECT_EQ(l.eval<int>("return uptr_of_o_array:geti()", false, &failed), 0);
+    EXPECT_TRUE(failed);
+
+    l.set("uptr_of_o_array", std::move(o));
+    EXPECT_EQ(l.eval<int>("return uptr_of_o_array.i"), 0);
+    EXPECT_EQ(l.eval<int>("return uptr_of_o_array:geti()"), 0);
+
+    const std::unique_ptr<Obj[]> co(new Obj[3]);
+    l.set("uptr_of_o_array", &co);
+    EXPECT_EQ(l.eval<int>("return uptr_of_o_array.i"), 0);
+    EXPECT_EQ(l.eval<int>("return uptr_of_o_array:geti()"), 0);
+  }
+}
+
 void seti(Obj* p, int v) { p->i = v; }
 int  getci(const Obj* p) { return p->ci; }
 

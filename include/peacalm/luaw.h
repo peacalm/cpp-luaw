@@ -1899,6 +1899,22 @@ struct is_std_unique_ptr : std::false_type {};
 template <typename T, typename D>
 struct is_std_unique_ptr<std::unique_ptr<T, D>> : std::true_type {};
 
+// is array version std::unique_ptr
+
+template <typename T>
+struct is_std_unique_ptr_of_array : std::false_type {};
+
+template <typename T, typename D>
+struct is_std_unique_ptr_of_array<std::unique_ptr<T[], D>> : std::true_type {};
+
+// is std::default_delete
+
+template <typename T>
+struct is_std_default_delete : std::false_type {};
+
+template <typename T>
+struct is_std_default_delete<std::default_delete<T>> : std::true_type {};
+
 // get element_type
 
 template <typename T, typename = void>
@@ -2117,10 +2133,12 @@ struct luaw::pusher {
 
 // pointer to class
 template <typename T>
-struct luaw::pusher<T*,
-                    std::enable_if_t<!std::is_function<T>::value &&
-                                     !std::is_same<T*, const char*>::value &&
-                                     std::is_class<std::decay_t<T>>::value>> {
+struct luaw::pusher<
+    T*,
+    std::enable_if_t<!std::is_function<T>::value &&
+                     !std::is_same<T*, const char*>::value &&
+                     !luaw_detail::is_std_unique_ptr<std::decay_t<T>>::value &&
+                     std::is_class<std::decay_t<T>>::value>> {
   static const size_t size = 1;
 
   template <typename Y>
@@ -2137,16 +2155,92 @@ struct luaw::pusher<T*,
 
 // non-class pointer, as lightuserdata
 template <typename T>
-struct luaw::pusher<T*,
-                    std::enable_if_t<!std::is_function<T>::value &&
-                                     !std::is_same<T*, const char*>::value &&
-                                     !std::is_class<std::decay_t<T>>::value>> {
+struct luaw::pusher<
+    T*,
+    std::enable_if_t<!std::is_function<T>::value &&
+                     !std::is_same<T*, const char*>::value &&
+                     !luaw_detail::is_std_unique_ptr<std::decay_t<T>>::value &&
+                     !std::is_class<std::decay_t<T>>::value>> {
   static const size_t size = 1;
 
   template <typename Y>
   static int push(luaw& l, Y* v) {
     l.pushlightuserdata(
         reinterpret_cast<void*>(const_cast<std::remove_cv_t<Y>*>(v)));
+    return 1;
+  }
+};
+
+// pointer to std::unique_ptr<T, D>, share metatable with pointer to
+// std::unique_ptr<T>
+template <typename T>
+struct luaw::pusher<
+    T*,
+    std::enable_if_t<luaw_detail::is_std_unique_ptr<std::decay_t<T>>::value>> {
+  static const size_t size = 1;
+
+  template <typename Y>
+  static int push(luaw& l, Y* v) {
+    using E = std::conditional_t<
+        luaw_detail::is_std_unique_ptr_of_array<std::decay_t<T>>::value,
+        typename T::element_type[],
+        typename T::element_type>;
+    using T0 = std::unique_ptr<E>;  // use default_deleter
+    using T1 =
+        std::conditional_t<std::is_const<T>::value, std::add_const_t<T0>, T0>;
+    using T2 = std::
+        conditional_t<std::is_volatile<T>::value, std::add_volatile_t<T1>, T1>;
+
+    static_assert(
+        luaw_detail::is_std_default_delete<typename T::deleter_type>::value
+            ? std::is_same<T, T2>::value
+            : true,
+        "Never happen");
+
+    l.pushlightuserdata(
+        reinterpret_cast<void*>(const_cast<std::remove_cv_t<Y>*>(v)));
+
+    luaw::metatable_factory<T2*>::push_shared_metatable(l);
+    l.setmetatable(-2);
+
+    return 1;
+  }
+};
+
+// std::unique_ptr<T, D>, share metatable with std::unique_ptr<T>
+template <typename T>
+struct luaw::pusher<
+    T,
+    std::enable_if_t<luaw_detail::is_std_unique_ptr<std::decay_t<T>>::value>> {
+  static_assert(std::is_same<T, std::decay_t<T>>::value, "T should be decayed");
+
+  static const size_t size = 1;
+
+  template <typename Y>
+  static int push(luaw& l, Y&& v) {
+    using SolidY = std::remove_reference_t<Y>;
+    using E      = std::conditional_t<
+        luaw_detail::is_std_unique_ptr_of_array<std::decay_t<T>>::value,
+        typename T::element_type[],
+        typename T::element_type>;
+    using T0 = std::unique_ptr<E>;  // use default_deleter
+    using T1 = std::
+        conditional_t<std::is_const<SolidY>::value, std::add_const_t<T0>, T0>;
+    using T2 = std::conditional_t<std::is_volatile<SolidY>::value,
+                                  std::add_volatile_t<T1>,
+                                  T1>;
+
+    static_assert(
+        luaw_detail::is_std_default_delete<typename T::deleter_type>::value
+            ? std::is_same<T0, T>::value
+            : true,
+        "Never happen");
+
+    void* p = l.newuserdata(sizeof(SolidY));
+    new (p) SolidY(std::forward<Y>(v));
+    luaw::metatable_factory<T2*>::push_shared_metatable(l);
+    l.setmetatable(-2);
+
     return 1;
   }
 };
