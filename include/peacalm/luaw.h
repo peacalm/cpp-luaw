@@ -78,8 +78,8 @@ inline int IF(lua_State* L) {
   return 1;
 }
 
-// Convert multiple arguments or a list to a set, where key's value is boolean
-// true.
+// Convert multiple arguments or a list to a set, where key's mapped value is
+// boolean true.
 inline int SET(lua_State* L) {
   int n = lua_gettop(L);
   if (n <= 0) {
@@ -112,9 +112,8 @@ inline int SET(lua_State* L) {
   return 1;
 }
 
-// Convert multiple arguments or a list to a dict, where key's value is the
-// key's appearance count.
-// Return nil if key not exists.
+// Convert multiple arguments or a list to a dict, where key's mapped value is
+// the key's appearance count. Return nil if key not exists.
 inline int COUNTER(lua_State* L) {
   int n = lua_gettop(L);
   if (n <= 0) {
