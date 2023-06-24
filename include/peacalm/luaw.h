@@ -1883,6 +1883,17 @@ namespace luaw_detail {
 template <typename T>
 using void_t = void;
 
+// whether T is std::tuple
+
+template <typename T>
+struct is_stdtuple : std::false_type {};
+
+template <typename... Ts>
+struct is_stdtuple<std::tuple<Ts...>> : std::true_type {};
+
+template <typename T>
+using decay_is_stdtuple = is_stdtuple<std::decay_t<T>>;
+
 // is std::shared_ptr
 
 template <typename T>
@@ -1927,7 +1938,7 @@ struct get_element_type<T, void_t<typename T::element_type>> {
   using type = typename T::element_type;
 };
 
-// is_stdfunction
+// is std::function
 
 template <typename T>
 struct is_stdfunction : std::false_type {};
@@ -1935,41 +1946,38 @@ struct is_stdfunction : std::false_type {};
 template <typename Return, typename... Args>
 struct is_stdfunction<std::function<Return(Args...)>> : std::true_type {};
 
-template <typename Return, typename... Args>
-struct is_stdfunction<std::function<Return(Args..., ...)>> : std::true_type {};
-
 template <typename T>
 struct decay_is_stdfunction : is_stdfunction<std::decay_t<T>> {};
 
 // Get a C function pointer type by a member function pointer type
 
 template <typename T>
-struct detect_cfunction {
+struct get_cfptr_by_member_fptr {
   using type = void;
 };
 
 template <typename Object, typename Return, typename... Args>
-struct detect_cfunction<Return (Object::*)(Args...)> {
+struct get_cfptr_by_member_fptr<Return (Object::*)(Args...)> {
   using type = Return (*)(Args...);
 };
 
 template <typename Object, typename Return, typename... Args>
-struct detect_cfunction<Return (Object::*)(Args...) const> {
+struct get_cfptr_by_member_fptr<Return (Object::*)(Args...) const> {
   using type = Return (*)(Args...);
 };
 
 template <typename Object, typename Return, typename... Args>
-struct detect_cfunction<Return (Object::*)(Args..., ...)> {
+struct get_cfptr_by_member_fptr<Return (Object::*)(Args..., ...)> {
   using type = Return (*)(Args..., ...);
 };
 
 template <typename Object, typename Return, typename... Args>
-struct detect_cfunction<Return (Object::*)(Args..., ...) const> {
+struct get_cfptr_by_member_fptr<Return (Object::*)(Args..., ...) const> {
   using type = Return (*)(Args..., ...);
 };
 
 template <typename T>
-using detect_cfunction_t = typename detect_cfunction<T>::type;
+using get_cfptr_by_member_fptr_t = typename get_cfptr_by_member_fptr<T>::type;
 
 // Detect type of callee, which is a pointer to member function operator()
 
@@ -1989,7 +1997,7 @@ using detect_callee_t = typename detect_callee<T>::type;
 // Detect C function style callee type
 
 template <typename T>
-using detect_c_callee_t = detect_cfunction_t<detect_callee_t<T>>;
+using detect_c_callee_t = get_cfptr_by_member_fptr_t<detect_callee_t<T>>;
 
 // Detect whether T maybe a captureless and non-generic lambda
 
@@ -2063,17 +2071,6 @@ using detect_callable_cfunction_t = std::conditional_t<
                        detect_c_callee_t<std::decay_t<T>>,
                        std::decay_t<T>>,
     void>;
-
-// whether T is std::tuple
-
-template <typename T>
-struct __is_stdtuple : std::false_type {};
-
-template <typename... Ts>
-struct __is_stdtuple<std::tuple<Ts...>> : std::true_type {};
-
-template <typename T>
-using is_stdtuple = __is_stdtuple<std::decay_t<T>>;
 
 }  // namespace luaw_detail
 
@@ -2700,8 +2697,9 @@ struct luaw::pusher<std::tuple<Ts...>> {
 private:
   template <size_t I, size_t N, typename T>
   static int __push(luaw& l, const T& t, std::true_type) {
-    static_assert(!luaw_detail::is_stdtuple<std::tuple_element_t<I, T>>::value,
-                  "Recursive tuple is not allowed");
+    static_assert(
+        !luaw_detail::decay_is_stdtuple<std::tuple_element_t<I, T>>::value,
+        "Recursive tuple is not allowed");
     int x = l.push(std::get<I>(t));
     int y = __push<I + 1, N>(l, t, std::integral_constant<bool, I + 1 < N>{});
     return x + y;
@@ -3231,8 +3229,9 @@ private:
                    bool  disable_log = false,
                    bool* failed      = nullptr,
                    bool* exists      = nullptr) {
-    static_assert(!luaw_detail::is_stdtuple<std::tuple_element_t<I, T>>::value,
-                  "Recursive tuple is not allowed");
+    static_assert(
+        !luaw_detail::decay_is_stdtuple<std::tuple_element_t<I, T>>::value,
+        "Recursive tuple is not allowed");
 
     bool thisfailed, thisexists;
     std::get<I>(ret) = l.to<std::tuple_element_t<I, T>>(
