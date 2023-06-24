@@ -34,8 +34,8 @@ struct Obj {
   int overloaded_f() const volatile { return i + 4000; }
   int overloaded_f(int d) { return i + d; }
 
-  void unsupported_fl() & {}
-  void unsupported_fr() && {}
+  void referenced_fl() & {}
+  void referenced_fr() && {}
 };
 
 TEST(register_member, register_ctor) {
@@ -99,8 +99,8 @@ TEST(register_member, register_member_functions) {
       "getmember4", [](const Obj* o, const char* mname) { return 123; });
 
   // unsupported
-  // l.register_member("unsupported_fl", &Obj::unsupported_fl);  // error
-  // l.register_member("unsupported_fr", &Obj::unsupported_fr);  // error
+  // l.register_member("referenced_fl", &Obj::referenced_fl);  // error
+  // l.register_member("referenced_fr", &Obj::referenced_fr);  // error
 
   EXPECT_EQ(l.gettop(), 0);
 }
