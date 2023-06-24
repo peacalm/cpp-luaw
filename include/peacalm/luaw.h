@@ -2083,6 +2083,8 @@ using is_stdtuple = __is_stdtuple<std::decay_t<T>>;
 // otherwise push as an user defined custom object.
 template <typename T, typename>
 struct luaw::pusher {
+  static_assert(std::is_same<T, std::decay_t<T>>::value, "T should be decayed");
+
   // Pointers should be specialized elsewhere.
   static_assert(!std::is_pointer<T>::value, "Cannot be pointer");
 
@@ -2090,44 +2092,16 @@ struct luaw::pusher {
 
   template <typename Y>
   static int push(luaw& l, Y&& v) {
+    static_assert(std::is_same<T, std::decay_t<Y>>::value,
+                  "Decayed Y should be same type as T");
+
     // Guess whether it may be a lambda object, if it is, then push as a
     // function, otherwise push as custom class.
-    constexpr bool push_as_function = luaw_detail::decay_maybe_lambda<Y>::value;
-    using Tag                       = std::
-        conditional_t<push_as_function, luaw::function_tag, luaw::class_tag>;
+    using Tag = std::conditional_t<luaw_detail::decay_maybe_lambda<Y>::value,
+                                   luaw::function_tag,
+                                   luaw::class_tag>;
 
-    // Ensure push v as type T if not push as function.
-
-    static_assert(std::is_same<T, std::decay_t<T>>::value,
-                  "T should be decayed");
-
-    using T0 = std::decay_t<T>;
-    using T1 =
-        std::conditional_t<std::is_const<std::remove_reference_t<Y>>::value,
-                           std::add_const_t<T0>,
-                           T0>;
-    using T2 =
-        std::conditional_t<std::is_volatile<std::remove_reference_t<Y>>::value,
-                           std::add_volatile_t<T1>,
-                           T1>;
-    using TargetType = std::conditional_t<
-        push_as_function,
-        Y,
-        std::conditional_t<std::is_lvalue_reference<Y>::value, T2&, T2>>;
-
-    static_assert(
-        (std::is_reference<TargetType>::value == std::is_reference<Y>::value) &&
-            (std::is_lvalue_reference<TargetType>::value ==
-             std::is_lvalue_reference<Y>::value) &&
-            (std::is_rvalue_reference<TargetType>::value ==
-             std::is_rvalue_reference<Y>::value) &&
-            (std::is_const<std::remove_reference_t<TargetType>>::value ==
-             std::is_const<std::remove_reference_t<Y>>::value) &&
-            (std::is_volatile<std::remove_reference_t<TargetType>>::value ==
-             std::is_volatile<std::remove_reference_t<Y>>::value),
-        "TargetType should have same cvr- as Y");
-
-    return luaw::pusher<Tag>::push(l, std::forward<TargetType>(v));
+    return luaw::pusher<Tag>::push(l, std::forward<Y>(v));
   }
 };
 
@@ -2141,10 +2115,9 @@ struct luaw::pusher<
                      std::is_class<std::decay_t<T>>::value>> {
   static const size_t size = 1;
 
-  template <typename Y>
-  static int push(luaw& l, Y* v) {
+  static int push(luaw& l, T* v) {
     l.pushlightuserdata(
-        reinterpret_cast<void*>(const_cast<std::remove_cv_t<Y>*>(v)));
+        reinterpret_cast<void*>(const_cast<std::remove_cv_t<T>*>(v)));
 
     luaw::metatable_factory<T*>::push_shared_metatable(l);
     l.setmetatable(-2);
@@ -2163,10 +2136,9 @@ struct luaw::pusher<
                      !std::is_class<std::decay_t<T>>::value>> {
   static const size_t size = 1;
 
-  template <typename Y>
-  static int push(luaw& l, Y* v) {
+  static int push(luaw& l, T* v) {
     l.pushlightuserdata(
-        reinterpret_cast<void*>(const_cast<std::remove_cv_t<Y>*>(v)));
+        reinterpret_cast<void*>(const_cast<std::remove_cv_t<T>*>(v)));
     return 1;
   }
 };
@@ -2179,8 +2151,7 @@ struct luaw::pusher<
     std::enable_if_t<luaw_detail::is_std_unique_ptr<std::decay_t<T>>::value>> {
   static const size_t size = 1;
 
-  template <typename Y>
-  static int push(luaw& l, Y* v) {
+  static int push(luaw& l, T* v) {
     using E = std::conditional_t<
         luaw_detail::is_std_unique_ptr_of_array<std::decay_t<T>>::value,
         typename T::element_type[],
@@ -2198,7 +2169,7 @@ struct luaw::pusher<
         "Never happen");
 
     l.pushlightuserdata(
-        reinterpret_cast<void*>(const_cast<std::remove_cv_t<Y>*>(v)));
+        reinterpret_cast<void*>(const_cast<std::remove_cv_t<T>*>(v)));
 
     luaw::metatable_factory<T2*>::push_shared_metatable(l);
     l.setmetatable(-2);
@@ -2218,6 +2189,9 @@ struct luaw::pusher<
 
   template <typename Y>
   static int push(luaw& l, Y&& v) {
+    static_assert(luaw_detail::is_std_unique_ptr<std::decay_t<Y>>::value,
+                  "Decayed Y should be std::unique_ptr");
+
     using SolidY = std::remove_reference_t<Y>;
     using E      = std::conditional_t<
         luaw_detail::is_std_unique_ptr_of_array<std::decay_t<T>>::value,
@@ -2232,7 +2206,7 @@ struct luaw::pusher<
 
     static_assert(
         luaw_detail::is_std_default_delete<typename T::deleter_type>::value
-            ? std::is_same<T0, T>::value
+            ? std::is_same<T2, SolidY>::value
             : true,
         "Never happen");
 
