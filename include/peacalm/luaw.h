@@ -1630,7 +1630,7 @@ private:
 public:
   //////////////////////// call Lua function ///////////////////////////////////
 
-  /// Call a global Lua function named 'fname' using C++ parameter 'args'.
+  /// Call a global Lua function specified by name using C++ parameters.
   template <typename Return, typename... Args>
   Return callf(const char* fname, const Args&... args) {
     PEACALM_LUAW_ASSERT(fname);
@@ -1643,7 +1643,7 @@ public:
     return f(args...);
   }
 
-  // Call a Lua function specified by path
+  /// Call a Lua function specified by path using C++ parameters.
   template <typename Return, typename... Args>
   Return callf(const std::initializer_list<const char*>& path,
                const Args&... args) {
