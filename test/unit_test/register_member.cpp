@@ -610,6 +610,19 @@ TEST(register_member, shared_ptr_member_function) {
   }
 
   {
+    const auto s = std::make_shared<Obj>();
+    l.set("o", s);
+    EXPECT_EQ(l.eval<int>("return o:geti()"), 1);
+    EXPECT_EQ(l.eval<int>("o:plus(); return o:geti()"), 2);
+  }
+  {
+    const auto s = std::make_shared<Obj>();
+    l.set("o", &s);
+    EXPECT_EQ(l.eval<int>("return o:geti()"), 1);
+    EXPECT_EQ(l.eval<int>("o:plus(); return o:geti()"), 2);
+  }
+
+  {
     auto s = std::make_shared<const Obj>();
     l.set("o", s);
     EXPECT_EQ(l.eval<int>("return o:geti()"), 1);
@@ -653,6 +666,13 @@ TEST(register_member, unique_ptr_member_function) {
   }
   {
     auto s = std::make_unique<Obj>();
+    l.set("o", &s);
+    EXPECT_EQ(l.eval<int>("return o:geti()"), 1);
+    EXPECT_EQ(l.eval<int>("o:plus(); return o:geti()"), 2);
+  }
+
+  {
+    const auto s = std::make_unique<Obj>();
     l.set("o", &s);
     EXPECT_EQ(l.eval<int>("return o:geti()"), 1);
     EXPECT_EQ(l.eval<int>("o:plus(); return o:geti()"), 2);
