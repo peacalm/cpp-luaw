@@ -135,22 +135,65 @@ TEST(eval, tuple) {
 
   {
     bool failed;
-    auto t = l.eval<std::tuple<>>("a=true b=2 c='tuple' ", false, &failed);
-    EXPECT_EQ(t, std::make_tuple());
-    EXPECT_FALSE(failed);
+    auto t =
+        l.eval<std::tuple<int, int>>("a=true b=2 c='str' ", false, &failed);
+    EXPECT_EQ(t, std::make_tuple(0, 0));
+    EXPECT_TRUE(failed);
+    EXPECT_EQ(l.gettop(), 0);
   }
   {
     bool failed;
-    auto t =
-        l.eval<const std::tuple<>>("a=true b=2 c='tuple' ", false, &failed);
+    auto t = l.eval<std::tuple<int, int>>(
+        "a=true b=2 c='str'; return b", false, &failed);
+    EXPECT_EQ(t, std::make_tuple(2, 0));
+    EXPECT_FALSE(failed);
+    EXPECT_EQ(l.gettop(), 0);
+  }
+  {
+    bool failed;
+    auto t = l.eval<std::tuple<int, int>>(
+        "a=true b=2 c='str'; return nil", false, &failed);
+    EXPECT_EQ(t, std::make_tuple(0, 0));
+    EXPECT_FALSE(failed);
+    EXPECT_EQ(l.gettop(), 0);
+  }
+  {
+    bool failed;
+    auto t = l.eval<std::tuple<int, int>>(
+        "a=true b=2 c='str'; return c", false, &failed);
+    EXPECT_EQ(t, std::make_tuple(0, 0));
+    EXPECT_TRUE(failed);
+    EXPECT_EQ(l.gettop(), 0);
+  }
+
+  {
+    bool failed;
+    auto t = l.eval<std::tuple<>>("a=true b=2 c='str' ", false, &failed);
     EXPECT_EQ(t, std::make_tuple());
     EXPECT_FALSE(failed);
+    EXPECT_EQ(l.gettop(), 0);
+  }
+  {
+    bool failed;
+    auto t = l.eval<const std::tuple<>>("a=true b=2 c='str' ", false, &failed);
+    EXPECT_EQ(t, std::make_tuple());
+    EXPECT_FALSE(failed);
+    EXPECT_EQ(l.gettop(), 0);
+  }
+
+  {
+    bool failed;
+    auto t = l.eval<std::tuple<>>(
+        "a=true b=2 c='str'; return a, b, c", false, &failed);
+    EXPECT_EQ(t, std::make_tuple());
+    EXPECT_FALSE(failed);
+    EXPECT_EQ(l.gettop(), 0);
   }
 }
 
 TEST(eval, void) {
   luaw l;
-  l.eval<void>("a=true b=2 c='tuple' ");
+  l.eval<void>("a=true b=2 c='str' ");
   l.eval<void>("return 1");
   l.eval<void>("return 1,2,3");
 }
