@@ -648,6 +648,20 @@ TEST(type_conversions, template_to_complex_types) {
     EXPECT_EQ(l.gettop(), sz);
   }
 
+  // deque, list, forward_list
+  {
+    const char *expr = "t={1,2,3,4}";
+    l.dostring(expr);
+    l.getglobal("t");
+    int sz = l.gettop();
+    EXPECT_EQ(l.to<std::deque<int>>(), (std::deque<int>{1, 2, 3, 4}));
+    EXPECT_EQ(l.to<std::list<int>>(), (std::list<int>{1, 2, 3, 4}));
+    EXPECT_EQ(l.to<std::forward_list<int>>(),
+              (std::forward_list<int>{1, 2, 3, 4}));
+
+    EXPECT_EQ(l.gettop(), sz);
+  }
+
   // set
   {
     const char *expr = "t={1,2,3,4,3,2}";

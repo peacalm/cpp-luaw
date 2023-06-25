@@ -3097,6 +3097,44 @@ struct luaw::convertor<std::pair<T, U>> {
   }
 };
 
+namespace luaw_detail {
+
+template <typename ListContainer>
+static ListContainer __to_list(luaw&       l,
+                               int         idx         = -1,
+                               bool        disable_log = false,
+                               bool*       failed      = nullptr,
+                               bool*       exists      = nullptr,
+                               const char* tname       = "list") {
+  using value_type = typename ListContainer::value_type;
+  ListContainer ret;
+  if (exists) *exists = !l.isnoneornil(idx);
+  if (l.isnoneornil(idx)) {
+    if (failed) *failed = false;
+    return ret;
+  }
+  if (!l.istable(idx)) {
+    if (failed) *failed = true;
+    if (!disable_log) l.log_type_convert_error(idx, tname);
+    return ret;
+  }
+  if (failed) *failed = false;
+  int sz = luaL_len(l.L(), idx);
+  for (int i = 1; i <= sz; ++i) {
+    l.geti(idx, i);
+    bool       subfailed, subexists;
+    value_type subret =
+        l.to<value_type>(-1, disable_log, &subfailed, &subexists);
+    // Only add elements exist and conversion succeeded
+    if (!subfailed && subexists) ret.push_back(std::move(subret));
+    if (subfailed && failed) *failed = true;
+    l.pop();
+  }
+  return ret;
+}
+
+}  // namespace luaw_detail
+
 // to std::vector
 // NOTICE: Discard nil in list! e.g. {1,2,nil,4} -> vector<int>{1,2,4}
 template <typename T, typename Allocator>
@@ -3107,31 +3145,51 @@ struct luaw::convertor<std::vector<T, Allocator>> {
                      bool  disable_log = false,
                      bool* failed      = nullptr,
                      bool* exists      = nullptr) {
-    if (exists) *exists = !l.isnoneornil(idx);
-    if (l.isnoneornil(idx)) {
-      if (failed) *failed = false;
-      return result_t{};
-    }
-    if (!l.istable(idx)) {
-      if (failed) *failed = true;
-      if (!disable_log) l.log_type_convert_error(idx, "vector");
-      return result_t{};
-    }
-    result_t ret;
-    if (failed) *failed = false;
-    int sz = luaL_len(l.L(), idx);
-    ret.reserve(sz);
-    for (int i = 1; i <= sz; ++i) {
-      l.geti(idx, i);
-      bool subfailed, subexists;
-      auto subret =
-          luaw::convertor<T>::to(l, -1, disable_log, &subfailed, &subexists);
-      // Only add elements exist and conversion succeeded
-      if (!subfailed && subexists) ret.push_back(std::move(subret));
-      if (subfailed && failed) *failed = true;
-      l.pop();
-    }
-    return ret;
+    return luaw_detail::__to_list<result_t>(
+        l, idx, disable_log, failed, exists, "vector");
+  }
+};
+
+// to std::deque
+template <typename T, typename Allocator>
+struct luaw::convertor<std::deque<T, Allocator>> {
+  using result_t = std::deque<T, Allocator>;
+  static result_t to(luaw& l,
+                     int   idx         = -1,
+                     bool  disable_log = false,
+                     bool* failed      = nullptr,
+                     bool* exists      = nullptr) {
+    return luaw_detail::__to_list<result_t>(
+        l, idx, disable_log, failed, exists, "deque");
+  }
+};
+
+// to std::list
+template <typename T, typename Allocator>
+struct luaw::convertor<std::list<T, Allocator>> {
+  using result_t = std::list<T, Allocator>;
+  static result_t to(luaw& l,
+                     int   idx         = -1,
+                     bool  disable_log = false,
+                     bool* failed      = nullptr,
+                     bool* exists      = nullptr) {
+    return luaw_detail::__to_list<result_t>(
+        l, idx, disable_log, failed, exists, "list");
+  }
+};
+
+// to std::forward_list
+template <typename T, typename Allocator>
+struct luaw::convertor<std::forward_list<T, Allocator>> {
+  using result_t = std::forward_list<T, Allocator>;
+  static result_t to(luaw& l,
+                     int   idx         = -1,
+                     bool  disable_log = false,
+                     bool* failed      = nullptr,
+                     bool* exists      = nullptr) {
+    auto t = luaw_detail::__to_list<std::vector<T>>(
+        l, idx, disable_log, failed, exists, "vector");
+    return result_t(t.begin(), t.end());
   }
 };
 
