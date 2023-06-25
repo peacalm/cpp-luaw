@@ -662,9 +662,15 @@ TEST(type_conversions, template_to_complex_types) {
     EXPECT_EQ(l.gettop(), sz);
   }
 
+  // compile error! const char* as key type of set is forbidden
+  // l.to<std::set<const char *>>();
+  // l.to<std::unordered_set<const char *>>();
+  // l.to<std::map<const char *, bool>>();
+  // l.to<std::unordered_map<const char *, bool>>();
+
   // set
   {
-    const char *expr = "t={1,2,3,4,3,2}";
+    const char *expr = "t=SET(1,2,3,4,3,2)";
     l.dostring(expr);
     l.getglobal("t");
     int  sz = l.gettop();
@@ -674,7 +680,17 @@ TEST(type_conversions, template_to_complex_types) {
     EXPECT_EQ(l.gettop(), sz);
   }
   {
-    const char *expr = "t={1,2,3,4,3}";
+    const char *expr = "t={[1]=true,[2]=true,[4]=true}";
+    l.dostring(expr);
+    l.getglobal("t");
+    int  sz = l.gettop();
+    auto s  = l.to<std::set<int>>();
+    watch(expr, s);
+    EXPECT_EQ(s, (std::set<int>{1, 2, 4}));
+    EXPECT_EQ(l.gettop(), sz);
+  }
+  {
+    const char *expr = "t=SET{1,2,3,4,3}";
     l.dostring(expr);
     l.getglobal("t");
     int  sz = l.gettop();
@@ -684,7 +700,7 @@ TEST(type_conversions, template_to_complex_types) {
     EXPECT_EQ(l.gettop(), sz);
   }
   {
-    const char *expr = "t={1,3,4,3}";
+    const char *expr = "t=SET{1,3,4,3}";
     l.dostring(expr);
     l.getglobal("t");
     int  sz = l.gettop();
@@ -694,17 +710,7 @@ TEST(type_conversions, template_to_complex_types) {
     EXPECT_EQ(l.gettop(), sz);
   }
   {
-    const char *expr = "t={a=1,b=2, 10,20}";
-    l.dostring(expr);
-    l.getglobal("t");
-    int  sz = l.gettop();
-    auto s  = l.to<std::set<int>>(-1);
-    watch(expr, s);
-    EXPECT_EQ(s, (std::set<int>{10, 20}));
-    EXPECT_EQ(l.gettop(), sz);
-  }
-  {
-    const char *expr = "t={1, 2, nil, 4}";
+    const char *expr = "t=SET{1, 2, nil, 4}";
     l.dostring(expr);
     l.getglobal("t");
     int  sz = l.gettop();
@@ -714,7 +720,7 @@ TEST(type_conversions, template_to_complex_types) {
     EXPECT_EQ(l.gettop(), sz);
   }
   {
-    const char *expr = "t={1, 2, nil, nil, 4}";
+    const char *expr = "t=SET(1, 2, nil, nil, 4)";
     l.dostring(expr);
     l.getglobal("t");
     int  sz = l.gettop();
@@ -724,7 +730,7 @@ TEST(type_conversions, template_to_complex_types) {
     EXPECT_EQ(l.gettop(), sz);
   }
   {
-    const char *expr = "t={1, 2, 'a', 'b', 4}";
+    const char *expr = "t=SET(1, 2, 'a', 'b', 4)";
     l.dostring(expr);
     l.getglobal("t");
     int  sz = l.gettop();
@@ -734,7 +740,7 @@ TEST(type_conversions, template_to_complex_types) {
     EXPECT_EQ(l.gettop(), sz);
   }
   {
-    const char *expr = "t={1, 2, 'a', 'b', 4}";
+    const char *expr = "t=SET(1, 2, 'a', 'b', 4)";
     l.dostring(expr);
     l.getglobal("t");
     int  sz = l.gettop();

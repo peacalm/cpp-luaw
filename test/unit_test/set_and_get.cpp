@@ -295,6 +295,30 @@ TEST(set_and_get, template_get) {
   EXPECT_TRUE(exists);
 }
 
+TEST(set_and_get, set_and_unordered_set) {
+  luaw l;
+  bool failed, exists;
+  l.dostring("a = {x=true,y=true,z=true}; b = SET(1,2,3,2,1); t = {a=a, b=b}");
+
+  EXPECT_EQ(l.get<std::set<std::string>>("a", false, &failed, &exists),
+            (std::set<std::string>{"x", "y", "z"}));
+  EXPECT_FALSE(failed);
+  EXPECT_TRUE(exists);
+  EXPECT_EQ(l.gettop(), 0);
+
+  EXPECT_EQ(l.get<std::set<std::string>>({"t", "a"}, false, &failed, &exists),
+            (std::set<std::string>{"x", "y", "z"}));
+  EXPECT_FALSE(failed);
+  EXPECT_TRUE(exists);
+  EXPECT_EQ(l.gettop(), 0);
+
+  EXPECT_EQ(l.get<std::unordered_set<int>>("b", false, &failed, &exists),
+            (std::unordered_set<int>{1, 2, 3}));
+  EXPECT_FALSE(failed);
+  EXPECT_TRUE(exists);
+  EXPECT_EQ(l.gettop(), 0);
+}
+
 TEST(set_and_get, recursive_get) {
   luaw l;
   l.dostring("a={b={c=3, d=2.0},b2=2, b3={1,2,1}} b=true s='s' d=2.5");
@@ -312,7 +336,6 @@ TEST(set_and_get, recursive_get) {
   EXPECT_EQ(l.gettop(), 0);
 
   EXPECT_EQ(l.get<int>({"a", "b2"}), 2);
-  EXPECT_EQ(l.get<std::set<int>>({"a", "b3"}), (std::set<int>{1, 2}));
   EXPECT_EQ(l.get<std::vector<int>>({"a", "b3"}), (std::vector<int>{1, 2, 1}));
 
   EXPECT_EQ(l.gettop(), 0);

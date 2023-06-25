@@ -3099,25 +3099,25 @@ struct luaw::convertor<std::pair<T, U>> {
 
 namespace luaw_detail {
 
-template <typename ListContainer>
-static ListContainer __to_list(luaw&       l,
-                               int         idx         = -1,
-                               bool        disable_log = false,
-                               bool*       failed      = nullptr,
-                               bool*       exists      = nullptr,
-                               const char* tname       = "list") {
-  using value_type = typename ListContainer::value_type;
-  ListContainer ret;
+template <typename T>
+T __to_list(luaw&       l,
+            int         idx         = -1,
+            bool        disable_log = false,
+            bool*       failed      = nullptr,
+            bool*       exists      = nullptr,
+            const char* tname       = "list") {
+  using value_type = typename T::value_type;
   if (exists) *exists = !l.isnoneornil(idx);
   if (l.isnoneornil(idx)) {
     if (failed) *failed = false;
-    return ret;
+    return T{};
   }
   if (!l.istable(idx)) {
     if (failed) *failed = true;
     if (!disable_log) l.log_type_convert_error(idx, tname);
-    return ret;
+    return T{};
   }
+  T ret;
   if (failed) *failed = false;
   int sz = luaL_len(l.L(), idx);
   for (int i = 1; i <= sz; ++i) {
@@ -3128,6 +3128,79 @@ static ListContainer __to_list(luaw&       l,
     // Only add elements exist and conversion succeeded
     if (!subfailed && subexists) ret.push_back(std::move(subret));
     if (subfailed && failed) *failed = true;
+    l.pop();
+  }
+  return ret;
+}
+
+// Convert all keys of a Lua table into a C++ set
+template <typename T>
+T __to_set(luaw&       l,
+           int         idx         = -1,
+           bool        disable_log = false,
+           bool*       failed      = nullptr,
+           bool*       exists      = nullptr,
+           const char* tname       = "set") {
+  static_assert(!std::is_same<typename T::key_type, const char*>::value,
+                "const char* as key type of set is forbidden");
+
+  if (exists) *exists = !l.isnoneornil(idx);
+  if (l.isnoneornil(idx)) {
+    if (failed) *failed = false;
+    return T{};
+  }
+  if (!l.istable(idx)) {
+    if (failed) *failed = true;
+    if (!disable_log) l.log_type_convert_error(idx, tname);
+    return T{};
+  }
+  T ret;
+  if (failed) *failed = false;
+  int absidx = l.abs_index(idx);
+  l.pushnil();
+  while (lua_next(l.L(), absidx) != 0) {
+    bool kfailed, kexists;
+    auto key = l.to<typename T::key_type>(-2, disable_log, &kfailed, &kexists);
+    if (!kfailed && kexists) { ret.insert(std::move(key)); }
+    if (kfailed && failed) *failed = true;
+    l.pop();
+  }
+  return ret;
+}
+
+template <typename T>
+T __to_map(luaw&       l,
+           int         idx         = -1,
+           bool        disable_log = false,
+           bool*       failed      = nullptr,
+           bool*       exists      = nullptr,
+           const char* tname       = "map") {
+  static_assert(!std::is_same<typename T::key_type, const char*>::value,
+                "const char* as key type of map is forbidden");
+
+  if (exists) *exists = !l.isnoneornil(idx);
+  if (l.isnoneornil(idx)) {
+    if (failed) *failed = false;
+    return T{};
+  }
+  if (!l.istable(idx)) {
+    if (failed) *failed = true;
+    if (!disable_log) l.log_type_convert_error(idx, tname);
+    return T{};
+  }
+  T ret;
+  if (failed) *failed = false;
+  int absidx = l.abs_index(idx);
+  l.pushnil();
+  while (lua_next(l.L(), absidx) != 0) {
+    bool kfailed, kexists, vfailed, vexists;
+    auto key = l.to<typename T::key_type>(-2, disable_log, &kfailed, &kexists);
+    if (!kfailed && kexists) {
+      auto val =
+          l.to<typename T::mapped_type>(-1, disable_log, &vfailed, &vexists);
+      if (!vfailed && vexists) ret.insert({std::move(key), std::move(val)});
+    }
+    if ((kfailed || vfailed) && failed) *failed = true;
     l.pop();
   }
   return ret;
@@ -3202,9 +3275,8 @@ struct luaw::convertor<std::set<Key, Compare, Allocator>> {
                      bool  disable_log = false,
                      bool* failed      = nullptr,
                      bool* exists      = nullptr) {
-    auto v =
-        l.to<std::vector<Key, Allocator>>(idx, disable_log, failed, exists);
-    return result_t(v.begin(), v.end());
+    return luaw_detail::__to_set<result_t>(
+        l, idx, disable_log, failed, exists, "set");
   }
 };
 
@@ -3217,53 +3289,10 @@ struct luaw::convertor<std::unordered_set<Key, Hash, KeyEqual, Allocator>> {
                      bool  disable_log = false,
                      bool* failed      = nullptr,
                      bool* exists      = nullptr) {
-    auto v =
-        l.to<std::vector<Key, Allocator>>(idx, disable_log, failed, exists);
-    return result_t(v.begin(), v.end());
+    return luaw_detail::__to_set<result_t>(
+        l, idx, disable_log, failed, exists, "unordered_set");
   }
 };
-
-namespace luaw_detail {
-
-template <typename T>
-T __tom(luaw&       l,
-        int         idx         = -1,
-        bool        disable_log = false,
-        bool*       failed      = nullptr,
-        bool*       exists      = nullptr,
-        const char* tname       = "map") {
-  static_assert(!std::is_same<typename T::key_type, const char*>::value,
-                "const char* as key type of map is forbidden");
-
-  if (exists) *exists = !l.isnoneornil(idx);
-  if (l.isnoneornil(idx)) {
-    if (failed) *failed = false;
-    return T{};
-  }
-  if (!l.istable(idx)) {
-    if (failed) *failed = true;
-    if (!disable_log) l.log_type_convert_error(idx, tname);
-    return T{};
-  }
-  T ret;
-  if (failed) *failed = false;
-  int absidx = l.abs_index(idx);
-  l.pushnil();
-  while (lua_next(l.L(), absidx) != 0) {
-    bool kfailed, kexists, vfailed, vexists;
-    auto key = l.to<typename T::key_type>(-2, disable_log, &kfailed, &kexists);
-    if (!kfailed && kexists) {
-      auto val =
-          l.to<typename T::mapped_type>(-1, disable_log, &vfailed, &vexists);
-      if (!vfailed && vexists) ret.insert({std::move(key), std::move(val)});
-    }
-    if ((kfailed || vfailed) && failed) *failed = true;
-    l.pop();
-  }
-  return ret;
-}
-
-}  // namespace luaw_detail
 
 // to std::map
 template <typename Key, typename Compare, typename Allocator>
@@ -3274,7 +3303,7 @@ struct luaw::convertor<std::map<Key, Compare, Allocator>> {
                      bool  disable_log = false,
                      bool* failed      = nullptr,
                      bool* exists      = nullptr) {
-    return luaw_detail::__tom<result_t>(
+    return luaw_detail::__to_map<result_t>(
         l, idx, disable_log, failed, exists, "map");
   }
 };
@@ -3288,7 +3317,7 @@ struct luaw::convertor<std::unordered_map<Key, Hash, KeyEqual, Allocator>> {
                      bool  disable_log = false,
                      bool* failed      = nullptr,
                      bool* exists      = nullptr) {
-    return luaw_detail::__tom<result_t>(
+    return luaw_detail::__to_map<result_t>(
         l, idx, disable_log, failed, exists, "unordered_map");
   }
 };
