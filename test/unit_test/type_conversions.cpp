@@ -924,36 +924,43 @@ TEST(type_conversions, template_to_complex_types) {
 
 TEST(type_conversions, to_tuple) {
   luaw l;
-  l.push(true);
-  l.push(1);
-  l.push(2.5);
-  l.push("str");
-  EXPECT_EQ(l.gettop(), 4);
+  l.dostring("t = {true, 1, 2.5, 'str'}");
+  l.gseek("t");
+  EXPECT_EQ(l.gettop(), 1);
 
   {
     bool failed, exists;
     auto t = l.to<std::tuple<bool, int, double, std::string>>(
-        -4, false, &failed, &exists);
+        -1, false, &failed, &exists);
     EXPECT_EQ(t, std::make_tuple(true, 1, 2.5, "str"));
     EXPECT_FALSE(failed);
     EXPECT_TRUE(exists);
   }
   {
     bool failed, exists;
-    auto t = l.to<std::tuple<bool, int>>(5, false, &failed, &exists);
+    auto t = l.to<std::tuple<bool, int>>(-1, false, &failed, &exists);
+    EXPECT_EQ(t, std::make_tuple(true, 1));
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+  }
+  {
+    bool failed, exists;
+    auto t = l.to<std::tuple<bool, int>>(2, false, &failed, &exists);
     EXPECT_EQ(t, std::make_tuple(false, 0));
     EXPECT_FALSE(failed);
     EXPECT_FALSE(exists);
   }
+
   {
     bool failed, exists;
-    auto t = l.to<std::tuple<bool, int>>(4, false, &failed, &exists);
-    EXPECT_EQ(t, std::make_tuple(false, 0));
+    auto t =
+        l.to<std::tuple<bool, std::tuple<int, double>, double, std::string>>(
+            1, false, &failed, &exists);
+    watch(t);
+    EXPECT_EQ(t, std::make_tuple(true, std::make_tuple(0, 0.0), 2.5, "str"));
     EXPECT_TRUE(failed);
     EXPECT_TRUE(exists);
   }
-
-  // l.to<std::tuple<bool, std::tuple<int, double>, std::string>>(1);  // error
 
   {
     // empty tuple
@@ -961,7 +968,30 @@ TEST(type_conversions, to_tuple) {
     auto t = l.to<std::tuple<>>(1, false, &failed, &exists);
     EXPECT_EQ(t, std::make_tuple());
     EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+  }
+  {
+    // empty tuple
+    bool failed, exists;
+    auto t = l.to<std::tuple<>>(2, false, &failed, &exists);
+    EXPECT_EQ(t, std::make_tuple());
+    EXPECT_FALSE(failed);
     EXPECT_FALSE(exists);
+  }
+  {
+    l.dostring("t = {true, {1, 2, 3}, 'str'}");
+    l.gseek("t");
+
+    EXPECT_EQ((l.to<std::tuple<bool, std::pair<int, int>, std::string>>()),
+              std::make_tuple(true, std::make_pair(1, 2), std::string("str")));
+
+    EXPECT_EQ(
+        (l.to<std::tuple<bool, std::vector<int>, std::string>>()),
+        std::make_tuple(true, std::vector<int>{1, 2, 3}, std::string("str")));
+
+    EXPECT_EQ(
+        (l.to<std::tuple<bool, std::tuple<int, int, int>, std::string>>()),
+        std::make_tuple(true, std::make_tuple(1, 2, 3), std::string("str")));
   }
 }
 
@@ -1167,6 +1197,71 @@ TEST(type_conversions, to_function_with_tuple_result) {
     EXPECT_TRUE(exists);
 
     EXPECT_EQ(f(1, 2), 3);
+    EXPECT_EQ(l.gettop(), sz);
+
+    EXPECT_FALSE(f.function_failed());
+    EXPECT_TRUE(f.function_exists());
+    EXPECT_FALSE(f.result_failed());
+    EXPECT_TRUE(f.result_exists());
+    EXPECT_FALSE(f.failed());
+  }
+}
+
+TEST(type_conversions, to_function_with_nested_tuple_result) {
+  luaw l;
+  l.dostring("f = function(a, b) return true, {a + b, a - b, a * b} end");
+  l.getglobal("f");
+  EXPECT_EQ(l.gettop(), 1);
+  int sz = l.gettop();
+
+  {
+    bool failed, exists;
+    auto f = l.to<
+        luaw::function<std::tuple<bool, std::tuple<int, int, int>>(int, int)>>(
+        1, false, &failed, &exists);
+
+    EXPECT_EQ(l.gettop(), sz);
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+
+    EXPECT_EQ(f(1, 2), std::make_tuple(true, std::make_tuple(3, -1, 2)));
+    EXPECT_EQ(l.gettop(), sz);
+
+    EXPECT_FALSE(f.function_failed());
+    EXPECT_TRUE(f.function_exists());
+    EXPECT_FALSE(f.result_failed());
+    EXPECT_TRUE(f.result_exists());
+    EXPECT_FALSE(f.failed());
+  }
+  {
+    bool failed, exists;
+    auto f =
+        l.to<luaw::function<std::tuple<bool, std::tuple<int, int>>(int, int)>>(
+            1, false, &failed, &exists);
+
+    EXPECT_EQ(l.gettop(), sz);
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+
+    EXPECT_EQ(f(1, 2), std::make_tuple(true, std::make_tuple(3, -1)));
+    EXPECT_EQ(l.gettop(), sz);
+
+    EXPECT_FALSE(f.function_failed());
+    EXPECT_TRUE(f.function_exists());
+    EXPECT_FALSE(f.result_failed());
+    EXPECT_TRUE(f.result_exists());
+    EXPECT_FALSE(f.failed());
+  }
+  {
+    bool failed, exists;
+    auto f = l.to<luaw::function<std::tuple<bool, std::tuple<int>>(int, int)>>(
+        1, false, &failed, &exists);
+
+    EXPECT_EQ(l.gettop(), sz);
+    EXPECT_FALSE(failed);
+    EXPECT_TRUE(exists);
+
+    EXPECT_EQ(f(1, 2), std::make_tuple(true, std::make_tuple(3)));
     EXPECT_EQ(l.gettop(), sz);
 
     EXPECT_FALSE(f.function_failed());

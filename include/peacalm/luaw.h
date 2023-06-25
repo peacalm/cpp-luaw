@@ -189,10 +189,18 @@ class luaw {
     nonvolatile_member_function
   };
 
+  // std::tuple as one Lua table, like std::pair
   template <typename T, typename = void>
   struct pusher;
   template <typename T, typename = void>
   struct convertor;
+
+  // std::tuple as multi value in stack
+  template <typename T>
+  struct pusher_for_return;
+  template <typename T>
+  struct convertor_for_return;
+
   template <typename T>
   struct register_ctor_impl;
   template <typename T, typename = void>
@@ -1827,7 +1835,8 @@ public:
       if (!disable_log) log_error("No return");
       return T();
     }
-    return to<T>(sz + 1, disable_log, failed);
+    return convertor_for_return<std::decay_t<T>>::to(
+        *this, sz + 1, disable_log, failed);
   }
   template <typename T>
   T eval(const std::string& expr,
@@ -2074,7 +2083,7 @@ using detect_callable_cfunction_t = std::conditional_t<
 
 }  // namespace luaw_detail
 
-//////////////////// push impl ////////////////////////////////////////////////
+//////////////////// pusher impl ///////////////////////////////////////////////
 
 // primary pusher. guess whether it may be a lambda, push as function if true,
 // otherwise push as an user defined custom object.
@@ -2427,8 +2436,8 @@ private:
   // Return is not void
   template <typename Callee>
   static int callback(luaw& l, Callee&& c, int start_idx, std::false_type) {
-    return l.push(
-        do_call(l, std::forward<Callee>(c), start_idx, 1, wrap<Args>{}...));
+    return luaw::pusher_for_return<std::decay_t<Return>>::push(
+        l, do_call(l, std::forward<Callee>(c), start_idx, 1, wrap<Args>{}...));
   }
 
   template <typename Callee, typename FirstArg, typename... RestArgs>
@@ -2680,34 +2689,27 @@ struct luaw::pusher<std::unordered_map<Key, Hash, KeyEqual, Allocator>> {
   }
 };
 
-// std::tuple
-// Push elements separately in order. One element takes one place in stack.
-// Any element of the tuple should not be a tuple anymore.
+// std::tuple, as a table list
 template <typename... Ts>
 struct luaw::pusher<std::tuple<Ts...>> {
-  static const size_t size = std::tuple_size<std::tuple<Ts...>>::value;
+  static const size_t size = 1;
 
   static int push(luaw& l, const std::tuple<Ts...>& v) {
-    const size_t N = size;
-    int ret_num    = __push<0, N>(l, v, std::integral_constant<bool, 0 < N>{});
-    PEACALM_LUAW_ASSERT(ret_num == N);
-    return ret_num;
+    l.newtable();
+    const size_t N = std::tuple_size<std::tuple<Ts...>>::value;
+    __push<0, N>(l, v, std::integral_constant<bool, 0 < N>{});
+    return 1;
   }
 
 private:
   template <size_t I, size_t N, typename T>
-  static int __push(luaw& l, const T& t, std::true_type) {
-    static_assert(
-        !luaw_detail::decay_is_stdtuple<std::tuple_element_t<I, T>>::value,
-        "Recursive tuple is not allowed");
-    int x = l.push(std::get<I>(t));
-    int y = __push<I + 1, N>(l, t, std::integral_constant<bool, I + 1 < N>{});
-    return x + y;
+  static void __push(luaw& l, const T& t, std::true_type) {
+    l.push(std::get<I>(t));
+    l.rawseti(-2, I + 1);
+    __push<I + 1, N>(l, t, std::integral_constant<bool, I + 1 < N>{});
   }
   template <size_t I, size_t N, typename T>
-  static int __push(luaw& l, const T& t, std::false_type) {
-    return 0;
-  }
+  static void __push(luaw& l, const T& t, std::false_type) {}
 };
 
 template <>
@@ -2729,6 +2731,40 @@ struct luaw::pusher<luaw::luavalueref> {
     PEACALM_LUAW_ASSERT(l.L() == r.L);
     l.rawgeti(LUA_REGISTRYINDEX, r.ref_id);
     return 1;
+  }
+};
+
+//////////////////// pusher_for_return impl ////////////////////////////////////
+
+template <typename T>
+struct luaw::pusher_for_return : public luaw::pusher<T> {
+  static_assert(std::is_same<T, std::decay_t<T>>::value, "T should be decayed");
+};
+
+// std::tuple
+// Push elements separately in order. One element takes one place in stack.
+template <typename... Ts>
+struct luaw::pusher_for_return<std::tuple<Ts...>> {
+  static const size_t size = std::tuple_size<std::tuple<Ts...>>::value;
+
+  static int push(luaw& l, const std::tuple<Ts...>& v) {
+    const size_t N = size;
+    int ret_num    = __push<0, N>(l, v, std::integral_constant<bool, 0 < N>{});
+    PEACALM_LUAW_ASSERT(ret_num == N);
+    return ret_num;
+  }
+
+private:
+  template <size_t I, size_t N, typename T>
+  static int __push(luaw& l, const T& t, std::true_type) {
+    int x = l.push(std::get<I>(t));
+    int y = __push<I + 1, N>(l, t, std::integral_constant<bool, I + 1 < N>{});
+    return x + y;
+  }
+
+  template <size_t I, size_t N, typename T>
+  static int __push(luaw& l, const T& t, std::false_type) {
+    return 0;
   }
 };
 
@@ -2889,7 +2925,7 @@ public:
     }
 
     int narg      = push_args(l, args...);
-    int nret      = luaw::pusher<std::decay_t<Return>>::size;
+    int nret      = luaw::pusher_for_return<std::decay_t<Return>>::size;
     int pcall_ret = l.pcall(narg, nret, 0);
 
     PEACALM_LUAW_ASSERT(l.gettop() >= sz);
@@ -2902,7 +2938,8 @@ public:
       return Return();
     }
 
-    return l.to<Return>(sz + 1, disable_log_, &result_failed_, &result_exists_);
+    return luaw::convertor_for_return<std::decay_t<Return>>::to(
+        l, sz + 1, disable_log_, &result_failed_, &result_exists_);
   }
 
 private:
@@ -3208,15 +3245,25 @@ struct luaw::convertor<std::tuple<Ts...>> {
                      bool  disable_log = false,
                      bool* failed      = nullptr,
                      bool* exists      = nullptr) {
+    result_t ret;
+    if (l.isnoneornil(idx)) {
+      if (exists) *exists = false;
+      if (failed) *failed = false;
+      return ret;
+    }
+    if (exists) *exists = true;
+    if (!(l.istable(idx) || l.indexable(idx))) {
+      if (failed) *failed = true;
+      return ret;
+    }
+
     constexpr size_t N = std::tuple_size<result_t>::value;
-    result_t         ret;
     __to<0, N>(ret,
                std::integral_constant<bool, 0 < N>{},
                l,
                l.abs_index(idx),
                disable_log,
-               failed,
-               exists);
+               failed);
     return ret;
   }
 
@@ -3227,27 +3274,24 @@ private:
                    luaw& l,
                    int   idx,
                    bool  disable_log = false,
-                   bool* failed      = nullptr,
-                   bool* exists      = nullptr) {
-    static_assert(
-        !luaw_detail::decay_is_stdtuple<std::tuple_element_t<I, T>>::value,
-        "Recursive tuple is not allowed");
+                   bool* failed      = nullptr) {
+    l.seek(I + 1, idx);
 
-    bool thisfailed, thisexists;
-    std::get<I>(ret) = l.to<std::tuple_element_t<I, T>>(
-        idx, disable_log, &thisfailed, &thisexists);
+    bool thisfailed;
+    std::get<I>(ret) =
+        l.to<std::tuple_element_t<I, T>>(-1, disable_log, &thisfailed);
 
-    bool restfailed, restexists;
+    l.pop();
+
+    bool restfailed;
     __to<I + 1, N>(ret,
                    std::integral_constant<bool, I + 1 < N>{},
                    l,
-                   idx + 1,
+                   idx,
                    disable_log,
-                   &restfailed,
-                   &restexists);
+                   &restfailed);
 
     if (failed) *failed = thisfailed || restfailed;
-    if (exists) *exists = thisexists || restexists;
   }
 
   template <size_t I, size_t N, typename T>
@@ -3256,10 +3300,8 @@ private:
                    luaw& l,
                    int   idx         = -1,
                    bool  disable_log = false,
-                   bool* failed      = nullptr,
-                   bool* exists      = nullptr) {
+                   bool* failed      = nullptr) {
     if (failed) *failed = false;
-    if (exists) *exists = false;
   }
 };
 
@@ -3303,6 +3345,72 @@ struct luaw::convertor<luaw::luavalueref> {
     if (exists) *exists = !l.isnone(idx);  // only none as not exists
     l.pushvalue(idx);                      // make a copy
     return std::move(luaw::luavalueref(l.L()));
+  }
+};
+
+//////////////////// convertor_for_return impl /////////////////////////////////
+
+template <typename T>
+struct luaw::convertor_for_return : public luaw::convertor<T> {};
+
+// to std::tuple, each element in tuple is converted from one index in stack.
+template <typename... Ts>
+struct luaw::convertor_for_return<std::tuple<Ts...>> {
+  using result_t = std::tuple<Ts...>;
+
+  static result_t to(luaw& l,
+                     int   idx         = -1,
+                     bool  disable_log = false,
+                     bool* failed      = nullptr,
+                     bool* exists      = nullptr) {
+    constexpr size_t N = std::tuple_size<result_t>::value;
+    result_t         ret;
+    __to<0, N>(ret,
+               std::integral_constant<bool, 0 < N>{},
+               l,
+               l.abs_index(idx),
+               disable_log,
+               failed,
+               exists);
+    return ret;
+  }
+
+private:
+  template <size_t I, size_t N, typename T>
+  static void __to(T& ret,
+                   std::true_type,
+                   luaw& l,
+                   int   idx,
+                   bool  disable_log = false,
+                   bool* failed      = nullptr,
+                   bool* exists      = nullptr) {
+    bool thisfailed, thisexists;
+    std::get<I>(ret) = l.to<std::tuple_element_t<I, T>>(
+        idx, disable_log, &thisfailed, &thisexists);
+
+    bool restfailed, restexists;
+    __to<I + 1, N>(ret,
+                   std::integral_constant<bool, I + 1 < N>{},
+                   l,
+                   idx + 1,
+                   disable_log,
+                   &restfailed,
+                   &restexists);
+
+    if (failed) *failed = thisfailed || restfailed;
+    if (exists) *exists = thisexists || restexists;
+  }
+
+  template <size_t I, size_t N, typename T>
+  static void __to(T& ret,
+                   std::false_type,
+                   luaw& l,
+                   int   idx         = -1,
+                   bool  disable_log = false,
+                   bool* failed      = nullptr,
+                   bool* exists      = nullptr) {
+    if (failed) *failed = false;
+    if (exists) *exists = false;
   }
 };
 
