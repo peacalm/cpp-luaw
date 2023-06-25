@@ -275,31 +275,42 @@ TEST(push, push) {
 
 TEST(push, tuple) {
   luaw l;
-  auto t = std::make_tuple(1, 2.5, "str");
-  EXPECT_EQ(l.push(t), 3);
+  auto t = std::make_tuple(1, 2.5, std::string("str"));
+  EXPECT_EQ(l.push(t), 1);
+  EXPECT_EQ(l.gettop(), 1);
 
-  EXPECT_EQ(l.gettop(), 3);
-  EXPECT_EQ(l.to_int(1), 1);
-  EXPECT_EQ(l.to_double(2), 2.5);
-  EXPECT_EQ(l.to_string(3), "str");
+  EXPECT_EQ(l.seek(1).to_int(), 1);
+  EXPECT_EQ(l.gettop(), 2);
+  l.pop();
 
-  EXPECT_EQ(l.push(std::tuple<>{}), 0);
-  EXPECT_EQ(l.gettop(), 3);
+  EXPECT_EQ(l.seek(2).to_double(), 2.5);
+  EXPECT_EQ(l.gettop(), 2);
+  l.pop();
 
-  // auto t2 = std::make_tuple(2, std::vector<int>{1, 2}, t); // error
-  // EXPECT_EQ(l.push(t2), 3);
+  EXPECT_EQ(l.seek(3).to_string(), "str");
+  EXPECT_EQ(l.gettop(), 2);
+  l.cleartop();
 
-  // EXPECT_EQ(l.push(std::tuple<int, const std::tuple<bool, double>, float>{}),
-  // 3);  // error
+  EXPECT_EQ(l.push(std::tuple<>{}), 1);
+  EXPECT_EQ(l.gettop(), 1);
+  l.cleartop();
+
+  // nested tuple
+  auto t2 = std::make_tuple(2, std::vector<int>{1, 2}, t);
+  EXPECT_EQ(l.push(t2), 1);
+  EXPECT_EQ(l.seek(3).to<decltype(t)>(), t);
+  EXPECT_EQ(l.seek(2).to_float(), 2.5);
+  EXPECT_EQ(l.push(std::tuple<int, const std::tuple<bool, double>, float>{}),
+            1);
+
+  l.cleartop();
 
   const std::tuple<int, bool> t3;
-  EXPECT_EQ(l.push(t3), 2);
-
-  EXPECT_EQ(l.gettop(), 5);
+  EXPECT_EQ(l.push(t3), 1);
 
   const auto &tr = t3;
-  EXPECT_EQ(l.push(tr), 2);
-  EXPECT_EQ(l.push(std::move(t3)), 2);
+  EXPECT_EQ(l.push(tr), 1);
+  EXPECT_EQ(l.push(std::move(t3)), 1);
 }
 
 void func(int) {}

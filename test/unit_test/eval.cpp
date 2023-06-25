@@ -126,6 +126,13 @@ TEST(eval, tuple) {
     EXPECT_EQ(t, std::make_tuple(true, 2, "tuple"));
     EXPECT_FALSE(failed);
   }
+
+  {
+    auto t = l.eval<std::tuple<bool, std::tuple<int, std::string>>>(
+        "return true, {1, 's'}");
+    EXPECT_EQ(t, std::make_tuple(true, std::make_tuple(1, std::string("s"))));
+  }
+
   {
     bool failed;
     auto t = l.eval<std::tuple<>>("a=true b=2 c='tuple' ", false, &failed);

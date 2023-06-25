@@ -16,7 +16,6 @@ if (ENABLE_MYOSTREAM_WATCH)
     add_definitions(-DENABLE_MYOSTREAM_WATCH)
 endif()
 
-
 file(GLOB SOURCE_FILES "*.cpp")
 SET(TARGET "unit_test")
 
