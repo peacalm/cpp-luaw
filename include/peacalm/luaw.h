@@ -3389,11 +3389,11 @@ struct luaw::metatable_factory<T*>
     }
 
     // whether calling nonconst member function by a const object
-    if (std::is_const<T>::value ||
-        ((luaw_detail::is_std_shared_ptr<T>::value ||
-          luaw_detail::is_std_unique_ptr<T>::value) &&
-         std::is_const<
-             typename luaw_detail::get_element_type<T>::type>::value)) {
+    if ((luaw_detail::is_std_shared_ptr<std::decay_t<T>>::value ||
+         luaw_detail::is_std_unique_ptr<std::decay_t<T>>::value)
+            ? std::is_const<
+                  typename luaw_detail::get_element_type<T>::type>::value
+            : std::is_const<T>::value) {
       l.rawgeti(-1, luaw::member_info_fields::nonconst_member_function);
       if (!l.istable(-1)) {
         l.pop();
@@ -3410,11 +3410,11 @@ struct luaw::metatable_factory<T*>
     }
 
     // whether calling nonvolatile member function by a volatile object
-    if (std::is_volatile<T>::value ||
-        ((luaw_detail::is_std_shared_ptr<T>::value ||
-          luaw_detail::is_std_unique_ptr<T>::value) &&
-         std::is_volatile<
-             typename luaw_detail::get_element_type<T>::type>::value)) {
+    if ((luaw_detail::is_std_shared_ptr<std::decay_t<T>>::value ||
+         luaw_detail::is_std_unique_ptr<std::decay_t<T>>::value)
+            ? std::is_volatile<
+                  typename luaw_detail::get_element_type<T>::type>::value
+            : std::is_volatile<T>::value) {
       l.rawgeti(-1, luaw::member_info_fields::nonvolatile_member_function);
       if (!l.istable(-1)) {
         l.pop();
