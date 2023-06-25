@@ -3252,7 +3252,7 @@ struct luaw::convertor<std::tuple<Ts...>> {
       return ret;
     }
     if (exists) *exists = true;
-    if (!(l.istable(idx) || l.indexable(idx))) {
+    if (!l.istable(idx)) {
       if (failed) *failed = true;
       return ret;
     }
