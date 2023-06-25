@@ -1628,6 +1628,45 @@ private:
   }
 
 public:
+  //////////////////////// call Lua function ///////////////////////////////////
+
+  /// Call a global Lua function named 'fname' using C++ parameter 'args'.
+  template <typename Return, typename... Args>
+  Return callf(const char* fname, const Args&... args) {
+    PEACALM_LUAW_ASSERT(fname);
+    auto f = get<luaw::function<Return(Args...)>>(fname);
+    return f(args...);
+  }
+  template <typename Return, typename... Args>
+  Return callf(const std::string& fname, const Args&... args) {
+    auto f = get<luaw::function<Return(Args...)>>(fname);
+    return f(args...);
+  }
+
+  // Call a Lua function specified by path
+  template <typename Return, typename... Args>
+  Return callf(const std::initializer_list<const char*>& path,
+               const Args&... args) {
+    auto f = get<luaw::function<Return(Args...)>>(path);
+    return f(args...);
+  }
+  template <typename Return, typename... Args>
+  Return callf(const std::initializer_list<std::string>& path,
+               const Args&... args) {
+    auto f = get<luaw::function<Return(Args...)>>(path);
+    return f(args...);
+  }
+  template <typename Return, typename... Args>
+  Return callf(const std::vector<const char*>& path, const Args&... args) {
+    auto f = get<luaw::function<Return(Args...)>>(path);
+    return f(args...);
+  }
+  template <typename Return, typename... Args>
+  Return callf(const std::vector<std::string>& path, const Args&... args) {
+    auto f = get<luaw::function<Return(Args...)>>(path);
+    return f(args...);
+  }
+
   //////////////////////// register ctor/memeber for class /////////////////////
 
   /// Register a global function to Lua who can create object of type Return,

@@ -135,3 +135,28 @@ TEST(others, indexable) {
   EXPECT_TRUE(l.callable(1));
   EXPECT_EQ(l.gettop(), 2);
 }
+
+TEST(others, callf) {
+  luaw l;
+
+  l.dostring("f1 = function(a, b) return a + b end");
+  EXPECT_EQ(l.callf<int>("f1", 1, 1), 2);
+  EXPECT_EQ(l.callf<int>("f1", 1.5, 1.5), 3);
+  EXPECT_EQ((l.callf<int, double, double>("f1", 1.5, 1.5)), 3);
+
+  l.dostring("f2 = function(a, b) return a + b, a - b end");
+  EXPECT_EQ(l.callf<int>("f2", 1, 1), 2);
+  EXPECT_EQ((l.callf<std::tuple<int, int>>("f2", 1, 1)),
+            (std::tuple<int, int>(2, 0)));
+
+  //
+  l.dostring("g ={f1=f1, f2=f2}");
+
+  EXPECT_EQ(l.callf<int>({"g", "f1"}, 1, 1), 2);
+  EXPECT_EQ(l.callf<int>({"g", "f1"}, 1.5, 1.5), 3);
+  EXPECT_EQ((l.callf<int, double, double>({"g", "f1"}, 1.5, 1.5)), 3);
+
+  EXPECT_EQ(l.callf<int>({"g", "f2"}, 1, 1), 2);
+  EXPECT_EQ((l.callf<std::tuple<int, int>>({"g", "f2"}, 1, 1)),
+            (std::tuple<int, int>(2, 0)));
+}
