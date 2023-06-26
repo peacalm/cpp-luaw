@@ -278,7 +278,7 @@ public:
       if (L) {
         lua_pushvalue(L, idx);  // make a copy
         // pops the value on top and returns its ref_id.
-        int ref_id = luaL_ref(L, LUA_REGISTRYINDEX);
+        const int ref_id = luaL_ref(L, LUA_REGISTRYINDEX);
         ref_sptr_.reset(new int(ref_id), [L](const int* p) {
           luaL_unref(L, LUA_REGISTRYINDEX, *p);
           delete p;
@@ -2894,8 +2894,8 @@ struct luaw::convertor<luaw::placeholder_tag> {
 template <typename Return, typename... Args>
 class luaw::function<Return(Args...)> {
   // component
-  lua_State*           L_ = nullptr;
-  std::shared_ptr<int> ref_sptr_;
+  lua_State*                 L_ = nullptr;
+  std::shared_ptr<const int> ref_sptr_;
   // parameters put in
   bool disable_log_ = false;
   // states put out
@@ -2931,8 +2931,8 @@ public:
     }
 
     lua_pushvalue(L_, idx);
-    int ref_ = luaL_ref(L, LUA_REGISTRYINDEX);
-    ref_sptr_.reset(new int(ref_), [L](int* p) {
+    const int ref_id = luaL_ref(L, LUA_REGISTRYINDEX);
+    ref_sptr_.reset(new int(ref_id), [L](const int* p) {
       luaL_unref(L, LUA_REGISTRYINDEX, *p);
       delete p;
     });
