@@ -20,15 +20,15 @@ TEST(luavalueidx, luavalueidx) {
   l.push(nullptr);
   {
     auto lv = l.to<luaw::luavalueidx>(1);
-    EXPECT_TRUE(lua_isinteger(lv.L, lv.idx));
+    EXPECT_TRUE(lua_isinteger(lv.L(), lv.idx()));
   }
   {
     auto lv = l.to<luaw::luavalueidx>(2);
-    EXPECT_TRUE(lua_isnil(lv.L, lv.idx));
+    EXPECT_TRUE(lua_isnil(lv.L(), lv.idx()));
   }
   {
     auto lv = l.to<luaw::luavalueidx>(3);
-    EXPECT_TRUE(lua_isnone(lv.L, lv.idx));
+    EXPECT_TRUE(lua_isnone(lv.L(), lv.idx()));
   }
 
   EXPECT_EQ(l.gettop(), 2);
@@ -40,28 +40,29 @@ TEST(luavalueref, luavalueref) {
   l.push(nullptr);
   {
     auto lr = l.to<luaw::luavalueref>(1);
-    // watch(lr.ref_id);
+    watch("ref of 1", lr.ref_id());
     lr.getvalue();
-    EXPECT_TRUE(lua_isinteger(lr.L, -1));
+    EXPECT_TRUE(l.isinteger());
+    EXPECT_EQ(l.to_int(), 1);
     l.pop();
   }
   EXPECT_EQ(l.gettop(), 2);
   {
     auto lr = l.to<luaw::luavalueref>(2);
-    // watch(lr.ref_id);
+    watch("ref of nil", lr.ref_id());
     lr.getvalue();
-    EXPECT_TRUE(lua_isnil(lr.L, -1));
+    EXPECT_TRUE(l.isnil());
     l.pop();
   }
   EXPECT_EQ(l.gettop(), 2);
   {
     // ref on none got nil
     auto lr = l.to<luaw::luavalueref>(3);
-    // watch(lr.ref_id);
+    watch("ref of none", lr.ref_id());
     lr.getvalue();
     // ref on none got nil
-    EXPECT_FALSE(lua_isnone(lr.L, -1));
-    EXPECT_TRUE(lua_isnil(lr.L, -1));
+    EXPECT_FALSE(lua_isnone(lr.L(), -1));
+    EXPECT_TRUE(lua_isnil(lr.L(), -1));
     l.pop();
   }
   EXPECT_EQ(l.gettop(), 2);
@@ -72,14 +73,14 @@ TEST(luavalueidx, as_func_arg) {
   l.dostring("g = {a=8,b=8}");
 
   auto getter = [](const luaw::luavalueidx& t, const std::string& k) {
-    luaw_fake l(t.L);
+    luaw_fake l(t.L());
     l.gseek("g").seek(k);
-    return luaw::luavalueref(t.L);
+    return luaw::luavalueref(t.L());
   };
   auto setter = [](const luaw::luavalueidx& t,
                    const std::string&       k,
                    const luaw::luavalueidx& v) {
-    luaw_fake l(t.L);
+    luaw_fake l(t.L());
     l.gseek("g").setkv(k, v);
   };
 

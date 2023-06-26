@@ -1288,3 +1288,41 @@ TEST(register_member, generic_member_volatile) {
     EXPECT_EQ(l.gettop(), 0);
   }
 }
+
+struct Foo {
+  std::unordered_map<std::string, luaw::luavalueref> m;
+};
+luaw::luavalueref foo_ggetter(const Foo* o, const std::string& k) {
+  auto entry = o->m.find(k);
+  if (entry != o->m.end()) { return entry->second; }
+  return luaw::luavalueref();
+}
+void foo_gsetter(Foo* o, const std::string& k, const luaw::luavalueref& v) {
+  o->m[k] = v;
+}
+
+TEST(register_member, luavalueref) {
+  luaw l;
+  l.register_generic_member(foo_ggetter, foo_gsetter);
+  Foo foo{};
+  l.set("foo", &foo);
+  l.dostring("foo.a=1 foo.b=true foo.c='str' ");
+  EXPECT_EQ(l.eval<int>("return foo.a"), 1);
+  EXPECT_EQ(l.eval<bool>("return foo.b"), true);
+  EXPECT_EQ(l.eval<std::string>("return foo.c"), "str");
+
+  EXPECT_EQ(l.eval<int>("return foo.d"), 0);
+
+  EXPECT_TRUE(foo.m.count("a"));
+  EXPECT_TRUE(foo.m.count("b"));
+  EXPECT_TRUE(foo.m.count("c"));
+  EXPECT_FALSE(foo.m.count("d"));
+
+  bool failed, exists;
+  EXPECT_EQ(l.get<int>({"foo", "d"}, false, &failed, &exists), 0);
+  EXPECT_FALSE(failed);
+  EXPECT_FALSE(exists);
+
+  l.lset("foo", "a", "x", 1);
+  EXPECT_EQ(l.eval<int>("return foo.a.x"), 1);
+}

@@ -256,56 +256,55 @@ public:
   struct placeholder_tag {};
 
   // Represent a Lua value in stack by index.
-  struct luavalueidx {
-    lua_State* L;
-    int        idx;
+  class luavalueidx {
+    lua_State* L_;
+    int        idx_;
 
-    luavalueidx(lua_State* s = nullptr, int i = 0) : L(s), idx(i) {
-      if (L) {
-        int sz = lua_gettop(L);
-        idx    = i < 0 && -i <= sz ? sz + i + 1 : i;
-      }
-    }
+  public:
+    luavalueidx(lua_State* L = nullptr, int idx = 0) : L_(L), idx_(idx) {}
+
+    lua_State* L() const { return L_; }
+
+    int idx() const { return idx_; }
   };
 
   // A reference of some Lua value in LUA_REGISTRYINDEX.
-  struct luavalueref {
-    lua_State* L;
-    int        ref_id;
+  class luavalueref {
+    lua_State*                 L_;  // if L_ == nullptr, as ref to nil
+    std::shared_ptr<const int> ref_sptr_;
 
-    luavalueref(lua_State* s = nullptr) : L(s), ref_id(0) {
+  public:
+    luavalueref(lua_State* L = nullptr, int idx = -1) : L_(L) {
       if (L) {
-        PEACALM_LUAW_ASSERT(lua_gettop(L) > 0);
-        // pops a value on top and returns its ref_id.
-        ref_id = luaL_ref(L, LUA_REGISTRYINDEX);
+        lua_pushvalue(L, idx);  // make a copy
+        // pops the value on top and returns its ref_id.
+        int ref_id = luaL_ref(L, LUA_REGISTRYINDEX);
+        ref_sptr_.reset(new int(ref_id), [L](const int* p) {
+          luaL_unref(L, LUA_REGISTRYINDEX, *p);
+          delete p;
+        });
+      } else {
+        ref_sptr_ = std::make_shared<const int>(LUA_NOREF);
       }
     }
 
-    luavalueref(const luavalueref&) = delete;
+    lua_State* L() const { return L_; }
 
-    luavalueref(luavalueref&& r) : L(r.L), ref_id(r.ref_id) { r.L = nullptr; }
+    int ref_id() const { return *ref_sptr_; }
 
-    ~luavalueref() {
-      if (L) {
-        luaL_unref(L, LUA_REGISTRYINDEX, ref_id);
-        L = nullptr;
-      }
-    }
-
-    luavalueref& operator=(const luavalueref&) = delete;
-
-    luavalueref& operator=(luavalueref&& r) {
-      if (L != r.L || ref_id != r.ref_id) {
-        this->~luavalueref();
-        L      = r.L;
-        ref_id = r.ref_id;
-      }
-      r.L = nullptr;
-      return *this;
+    bool isnil() const {
+      return !L_ || !ref_sptr_ || (ref_id() == LUA_NOREF) ||
+             (ref_id() == LUA_REFNIL);
     }
 
     // Push the value referenced on top of stack.
-    void getvalue() const { lua_rawgeti(L, LUA_REGISTRYINDEX, ref_id); }
+    void getvalue() const { lua_rawgeti(L_, LUA_REGISTRYINDEX, ref_id()); }
+
+    // Push the value referenced on top of other stack.
+    void getvalue(lua_State* L) const {
+      PEACALM_LUAW_ASSERT(L);
+      lua_rawgeti(L, LUA_REGISTRYINDEX, ref_id());
+    }
   };
 
   // Stack balance guarder.
@@ -2756,8 +2755,8 @@ struct luaw::pusher<luaw::luavalueidx> {
   static const size_t size = 1;
 
   static int push(luaw& l, const luaw::luavalueidx& r) {
-    PEACALM_LUAW_ASSERT(l.L() == r.L);
-    l.pushvalue(r.idx);
+    PEACALM_LUAW_ASSERT(l.L() == r.L());
+    l.pushvalue(r.idx());
     return 1;
   }
 };
@@ -2767,8 +2766,11 @@ struct luaw::pusher<luaw::luavalueref> {
   static const size_t size = 1;
 
   static int push(luaw& l, const luaw::luavalueref& r) {
-    PEACALM_LUAW_ASSERT(l.L() == r.L);
-    l.rawgeti(LUA_REGISTRYINDEX, r.ref_id);
+    if (r.isnil()) {
+      l.pushnil();
+    } else {
+      r.getvalue(l.L());
+    }
     return 1;
   }
 };
@@ -3469,8 +3471,7 @@ struct luaw::convertor<luaw::luavalueref> {
                               bool* exists      = nullptr) {
     if (failed) *failed = false;
     if (exists) *exists = !l.isnone(idx);  // only none as not exists
-    l.pushvalue(idx);                      // make a copy
-    return std::move(luaw::luavalueref(l.L()));
+    return luaw::luavalueref(l.L(), idx);
   }
 };
 
