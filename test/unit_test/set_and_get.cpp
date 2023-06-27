@@ -545,6 +545,11 @@ struct Callable {
   }
 };
 
+template <typename T>
+T tadd(T a, T b) {
+  return a + b;
+}
+
 TEST(set_and_get, set_function) {
   luaw l;
 
@@ -565,6 +570,15 @@ TEST(set_and_get, set_function) {
     EXPECT_EQ(l.eval_int("return f4(4)"), 4);
 
     EXPECT_EQ(l.gettop(), 0);
+  }
+
+  // C++ template function
+  {
+    l.set("tadd", tadd<int>);
+    EXPECT_EQ(l.eval_int("return tadd(1, 1)"), 2);
+
+    l.set<double(double, double)>("tadd2", tadd);
+    EXPECT_EQ(l.eval_int("return tadd2(1.5, 1.5)"), 3);
   }
 
   // std::function
