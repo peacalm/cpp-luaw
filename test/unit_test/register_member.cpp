@@ -21,7 +21,7 @@ struct Obj {
   int                           i  = 1;
   const int                     ci = 1;
   volatile int                  vi = 1;
-  std::map<std::string, double> gm;
+  std::map<std::string, double> dm;
 
   int geti() const { return i; }
   int cv_geti() const volatile { return i; }
@@ -1088,21 +1088,21 @@ TEST(register_member, fake_member_variable_using_addr) {
   }
 }
 
-double obj_gm_getter(const Obj* o, const char* k) {
+double obj_dm_getter(const Obj* o, const char* k) {
   assert(o);
-  auto it = o->gm.find(k);
-  if (it != o->gm.end()) return it->second;
+  auto it = o->dm.find(k);
+  if (it != o->dm.end()) return it->second;
   return 0.0;
 }
 
-void obj_gm_setter(Obj* o, const char* k, double v) {
+void obj_dm_setter(Obj* o, const char* k, double v) {
   assert(o);
-  o->gm[k] = v;
+  o->dm[k] = v;
 }
 
-TEST(register_member, generic_member_cfunction) {
+TEST(register_member, dynamic_member_cfunction) {
   luaw l;
-  l.register_generic_member(obj_gm_getter, obj_gm_setter);
+  l.register_dynamic_member(obj_dm_getter, obj_dm_setter);
   EXPECT_EQ(l.gettop(), 0);
 
   {
@@ -1195,20 +1195,20 @@ TEST(register_member, generic_member_cfunction) {
   }
 }
 
-TEST(register_member, generic_member_lambda) {
+TEST(register_member, dynamic_member_lambda) {
   luaw l;
   auto g = [](const Obj* o, const char* k) {
     assert(o);
-    auto it = o->gm.find(k);
-    if (it != o->gm.end()) return it->second;
+    auto it = o->dm.find(k);
+    if (it != o->dm.end()) return it->second;
     return 0.0;
   };
   auto s = [](Obj* o, const char* k, double v) {
     assert(o);
-    o->gm[k] = v;
+    o->dm[k] = v;
   };
 
-  l.register_generic_member(g, s);
+  l.register_dynamic_member(g, s);
   EXPECT_EQ(l.gettop(), 0);
 
   {
@@ -1260,21 +1260,21 @@ TEST(register_member, generic_member_lambda) {
   }
 }
 
-TEST(register_member, generic_member_volatile) {
+TEST(register_member, dynamic_member_volatile) {
   luaw l;
 
   auto g = [](const Obj* o, const char* k) {
     assert(o);
-    auto it = o->gm.find(k);
-    if (it != o->gm.end()) return it->second;
+    auto it = o->dm.find(k);
+    if (it != o->dm.end()) return it->second;
     return 0.0;
   };
   auto s = [](Obj* o, const char* k, double v) {
     assert(o);
-    o->gm[k] = v;
+    o->dm[k] = v;
   };
 
-  l.register_generic_member(g, s);
+  l.register_dynamic_member(g, s);
   EXPECT_EQ(l.gettop(), 0);
 
   {
@@ -1292,18 +1292,18 @@ TEST(register_member, generic_member_volatile) {
 struct Foo {
   std::unordered_map<std::string, luaw::luavalueref> m;
 };
-luaw::luavalueref foo_ggetter(const Foo* o, const std::string& k) {
+luaw::luavalueref foo_dm_getter(const Foo* o, const std::string& k) {
   auto entry = o->m.find(k);
   if (entry != o->m.end()) { return entry->second; }
   return luaw::luavalueref();
 }
-void foo_gsetter(Foo* o, const std::string& k, const luaw::luavalueref& v) {
+void foo_dm_setter(Foo* o, const std::string& k, const luaw::luavalueref& v) {
   o->m[k] = v;
 }
 
 TEST(register_member, luavalueref) {
   luaw l;
-  l.register_generic_member(foo_ggetter, foo_gsetter);
+  l.register_dynamic_member(foo_dm_getter, foo_dm_setter);
   Foo foo{};
   l.set("foo", &foo);
   l.dostring("foo.a=1 foo.b=true foo.c='str' ");

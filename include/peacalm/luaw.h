@@ -182,8 +182,8 @@ class luaw {
     member_function = 1,
     member_getter,
     member_setter,
-    generic_member_getter,
-    generic_member_setter,
+    dynamic_member_getter,
+    dynamic_member_setter,
     const_member,
     nonconst_member_function,
     nonvolatile_member_function
@@ -1738,7 +1738,7 @@ public:
     register_member<Hint, F>(name.c_str(), std::forward<F>(f));
   }
 
-  /// Register generic members by provide generic member getter and setter.
+  /// Register dynamic members by provide dynamic member getter and setter.
   /// getter/setter could be C function or lambda object.
   /// getter proto type: Member(const Class*, Key)
   /// setter proto type: void(Class*, Key, Member)
@@ -1746,14 +1746,14 @@ public:
   /// Member could be number, string, bool, luaw::luavalueidx,
   /// luaw::luavalueref, etc.
   template <typename Getter, typename Setter>
-  void register_generic_member(Getter&& getter, Setter&& setter) {
-    register_generic_member_getter(std::forward<Getter>(getter));
-    register_generic_member_setter(std::forward<Setter>(setter));
+  void register_dynamic_member(Getter&& getter, Setter&& setter) {
+    register_dynamic_member_getter(std::forward<Getter>(getter));
+    register_dynamic_member_setter(std::forward<Setter>(setter));
   }
   template <typename Getter>
-  void register_generic_member_getter(Getter&& getter);
+  void register_dynamic_member_getter(Getter&& getter);
   template <typename Setter>
-  void register_generic_member_setter(Setter&& setter);
+  void register_dynamic_member_setter(Setter&& setter);
 
   //////////////////////// evaluate expression /////////////////////////////////
 
@@ -3665,8 +3665,8 @@ struct luaw::metatable_factory<T*>
       }
     }
 
-    // generic member getter
-    l.rawgeti(-1, luaw::member_info_fields::generic_member_getter);
+    // dynamic member getter
+    l.rawgeti(-1, luaw::member_info_fields::dynamic_member_getter);
     if (l.isnil(-1)) {
       l.pop();
     } else {
@@ -3733,8 +3733,8 @@ struct luaw::metatable_factory<T*>
       }
     }
 
-    // generic member setter
-    l.rawgeti(-1, luaw::member_info_fields::generic_member_setter);
+    // dynamic member setter
+    l.rawgeti(-1, luaw::member_info_fields::dynamic_member_setter);
     if (l.isnil(-1)) {
       l.pop();
     } else if (l.isboolean(-1)) {  // which is false
@@ -4009,16 +4009,16 @@ public:
 //////////////////// registrar impl ////////////////////////////////////////////
 
 template <typename Getter>
-void luaw::register_generic_member_getter(Getter&& getter) {
+void luaw::register_dynamic_member_getter(Getter&& getter) {
   luaw::registrar<luaw_detail::detect_callable_cfunction_t<Getter>>::
-      register_generic_member_getter(
+      register_dynamic_member_getter(
           *this, luaw::mock_mem_fn<Getter>(std::forward<Getter>(getter)));
 }
 
 template <typename Setter>
-void luaw::register_generic_member_setter(Setter&& setter) {
+void luaw::register_dynamic_member_setter(Setter&& setter) {
   luaw::registrar<luaw_detail::detect_callable_cfunction_t<Setter>>::
-      register_generic_member_setter(
+      register_dynamic_member_setter(
           *this, luaw::mock_mem_fn<Setter>(std::forward<Setter>(setter)));
 }
 
@@ -4036,13 +4036,13 @@ struct luaw::registrar {
                               MemberFunction mf) = delete;
 
   template <typename Getter>
-  static void register_generic_member_getter(luaw& l, Getter&& getter) = delete;
+  static void register_dynamic_member_getter(luaw& l, Getter&& getter) = delete;
 
   template <typename Setter>
-  static void register_generic_member_setter(luaw& l, Setter&& setter) = delete;
+  static void register_dynamic_member_setter(luaw& l, Setter&& setter) = delete;
 };
 
-// Specialization for generic member getter
+// Specialization for dynamic member getter
 template <typename Member, typename Class, typename Key>
 struct luaw::registrar<Member (*)(Class*, Key)> {
   static_assert(std::is_class<Class>::value && std::is_const<Class>::value,
@@ -4050,16 +4050,16 @@ struct luaw::registrar<Member (*)(Class*, Key)> {
   using DecayClass = std::remove_cv_t<Class>;
 
   template <typename Getter>
-  static void register_generic_member_getter(luaw& l, Getter&& getter) {
+  static void register_dynamic_member_getter(luaw& l, Getter&& getter) {
 #define REGISTER_GETTER(ObjectType)                          \
   l.touchtb((void*)(&typeid(ObjectType)), LUA_REGISTRYINDEX) \
       .setkv<Member (*)(Class*, Key)>(                       \
-          luaw::member_info_fields::generic_member_getter, getter);
+          luaw::member_info_fields::dynamic_member_getter, getter);
 
 #define REGISTER_SMART_GETTER(ObjectType)                    \
   l.touchtb((void*)(&typeid(ObjectType)), LUA_REGISTRYINDEX) \
       .setkv<Member (*)(ObjectType, Key)>(                   \
-          luaw::member_info_fields::generic_member_getter,   \
+          luaw::member_info_fields::dynamic_member_getter,   \
           [=](ObjectType o, Key k) -> Member {               \
             PEACALM_LUAW_ASSERT(o);                          \
             return getter(*o, k);                            \
@@ -4096,7 +4096,7 @@ struct luaw::registrar<Member (*)(Class*, Key)> {
   }
 };
 
-// Specialization for generic member setter
+// Specialization for dynamic member setter
 template <typename Class, typename Key, typename Member>
 struct luaw::registrar<void (*)(Class*, Key, Member)> {
   static_assert(std::is_class<Class>::value && !std::is_const<Class>::value,
@@ -4104,16 +4104,16 @@ struct luaw::registrar<void (*)(Class*, Key, Member)> {
   using DecayClass = std::remove_cv_t<Class>;
 
   template <typename Setter>
-  static void register_generic_member_setter(luaw& l, Setter&& setter) {
+  static void register_dynamic_member_setter(luaw& l, Setter&& setter) {
 #define REGISTER_SETTER(ObjectType)                          \
   l.touchtb((void*)(&typeid(ObjectType)), LUA_REGISTRYINDEX) \
       .setkv<void (*)(Class*, Key, Member)>(                 \
-          luaw::member_info_fields::generic_member_setter, setter);
+          luaw::member_info_fields::dynamic_member_setter, setter);
 
 #define REGISTER_SMART_SETTER(ObjectType)                    \
   l.touchtb((void*)(&typeid(ObjectType)), LUA_REGISTRYINDEX) \
       .setkv<void (*)(ObjectType, Key, Member)>(             \
-          luaw::member_info_fields::generic_member_setter,   \
+          luaw::member_info_fields::dynamic_member_setter,   \
           [=](ObjectType o, Key k, Member v) {               \
             PEACALM_LUAW_ASSERT(o);                          \
             setter(*o, k, v);                                \
@@ -4121,7 +4121,7 @@ struct luaw::registrar<void (*)(Class*, Key, Member)> {
 
 #define REGISTER_SETTER_OF_CONST(ObjectType)                 \
   l.touchtb((void*)(&typeid(ObjectType)), LUA_REGISTRYINDEX) \
-      .setkv(luaw::member_info_fields::generic_member_setter, false);
+      .setkv(luaw::member_info_fields::dynamic_member_setter, false);
 
     auto _g = l.make_guarder();
 
