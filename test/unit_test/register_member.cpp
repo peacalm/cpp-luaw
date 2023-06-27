@@ -16,7 +16,7 @@
 
 struct Obj {
   Obj() {}
-  Obj(int v) : i(v) {}
+  Obj(int v, int cv = 1) : i(v), ci(cv) {}
 
   int                           i  = 1;
   const int                     ci = 1;
@@ -65,6 +65,12 @@ TEST(register_member, register_ctor) {
   EXPECT_EQ(l.eval<int>("a.i = 2; return a.i"), 2);
   EXPECT_EQ(l.get<int>({"a", "i"}), 2);
   EXPECT_EQ(l.get<int>({"a", "ci"}), 1);
+
+  // another ctor
+  l.register_ctor<Obj(int, int)>("NewObj2");  // constructor with 2 argument
+  EXPECT_EQ(l.dostring("a = NewObj2(4, 5)"), LUA_OK);
+  EXPECT_EQ(l.eval<int>("return a.i"), 4);
+  EXPECT_EQ(l.eval<int>("return a.ci"), 5);
 
   // l.register_ctor<Obj>("NewObj"); // error
   EXPECT_EQ(l.gettop(), 0);
