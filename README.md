@@ -51,11 +51,17 @@ peacalm::luaw l;
 
 <tr>
   <td> <ul><ul><li> Get simple type values (bool/integer/float number/string) </li></ul></ul> </td>
-  <td> ✅ </td>
+  <td> ✅ get_xxx </td>
   <td>
 
 ```C++
 l.dostring("i = 1; b = true; f = 2.5; s = 'luastring';");
+int i = l.get_int("i");
+bool b = l.get_bool("b");
+double f = l.get_double("f");
+std::string s = l.get_string("s");
+
+// Or use alternative writings:
 int i = l.get<int>("i");
 bool b = l.get<bool>("b");
 double f = l.get<double>("f");
@@ -119,11 +125,6 @@ auto s = l.get_string("s", "def"); // default value of s is 'def'
   <td> <ul><li> Set C++ values to Lua</li></ul> </td>
   <td> ✅ </td>
   <td>
-
-```C++
-// Define a luaw instance, which following examples use
-peacalm::luaw l;
-```
   </td>
 </tr>
 
@@ -212,8 +213,8 @@ int s = f(1,2);
 </tr>
 
 <tr>
-  <td> <ul><ul><li> Knows whether the call to Lua function succeeded (Get a peacalm::luaw::function object represents the Lua function) </li></ul></ul> </td>
-  <td> ✅ </td>
+  <td> <ul><ul><li> Tells whether the call to Lua function failed (Get a peacalm::luaw::function object represents the Lua function) </li></ul></ul> </td>
+  <td> ✅ use luaw::function </td>
   <td>
 
 ```C++
@@ -340,15 +341,13 @@ int vf(const char* s, ...) { /* some codes */ }
 
 ```C++
 template <typename T>
-T tadd(T a, T b) {
-  return a + b;
-}
+T tadd(T a, T b) { return a + b; }
 int main() {
   peacalm::luaw l;
   // explicitly specialize the function
   l.set("tadd", tadd<int>);
   // or provide the function proto type as hint
-  l.set<double(double, double)>("tadd2", tadd);
+  l.set<double(double, double)>("tadd", tadd);
 }
 ```
   </td>
@@ -369,6 +368,9 @@ int main() {
 ```C++
 // May not provide hint type
 l.set("add", [](int a, int b) { return a + b; });
+// Or alternative writings:
+l.set<int(int, int)>("add", [](int a, int b) { return a + b; });
+l.set<peacalm::luaw::function_tag>("add", [](int a, int b) { return a + b; });
 ```
   </td>
 </tr>
@@ -464,12 +466,15 @@ struct Obj {
 l.register_ctor<Obj()>("NewObj");     // default constructor
 l.register_ctor<Obj(int)>("NewObj1"); // constructor with 1 argument
 l.register_ctor<Obj(int, int)>("NewObj2"); // constructor with 2 argument
+
+// Then can use ctor as a global function in Lua
+l.dostring("a = NewObj(); b = NewObj1(1); c = NewObj2(1,2)");
 ```
   </td>
 </tr>
 
 <tr>
-  <td> <ul><ul><li> Register constructor to const object</li></ul></ul> </td>
+  <td> <ul><ul><li> Register constructor for const object</li></ul></ul> </td>
   <td> ✅ should provide hint type </td>
   <td>
 
@@ -479,6 +484,9 @@ using ConstObj = const Obj;
 l.register_ctor<ConstObj()>("NewConstObj");     // default constructor
 l.register_ctor<ConstObj(int)>("NewConstObj1"); // constructor with 1 argument
 l.register_ctor<ConstObj(int, int)>("NewConstObj2"); // constructor with 2 argument
+
+// Then can use ctor as a global function in Lua
+l.dostring("a = NewConstObj(); b = NewConstObj1(1); c = NewConstObj2(1,2)");
 ```
   </td>
 </tr>
@@ -524,14 +532,14 @@ l.register_member<int (Obj::*)(int)>("plusby", &Obj::plus);
   <td>
 
 ```C++
-// if type of dynamic members are unknown, use luaw::luavalueref
+// if types of dynamic members are unknown, use luaw::luavalueref
 struct Foo {
   std::unordered_map<std::string, peacalm::luaw::luavalueref> m;
 };
 peacalm::luaw::luavalueref foo_dm_getter(const Foo* o, const std::string& k) {
   auto entry = o->m.find(k);
   if (entry != o->m.end()) { return entry->second; }
-  return peacalm::luaw::luavalueref();
+  return peacalm::luaw::luavalueref(); // default value is nil
 }
 void foo_dm_setter(Foo* o, const std::string& k, const peacalm::luaw::luavalueref& v) {
   o->m[k] = v;
@@ -559,6 +567,19 @@ Obj o;
 l.set("o", &o);
 assert(l.eval<void*>("return o.id") == (void*)(&o));
 ```
+
+```C++
+int  gi = 100;  // global i, member to be faked
+int& getgi(const volatile Obj* o) { return gi; }
+int main() {
+    luaw l;
+    l.register_member<int Obj::*>("gi", getgi);
+    l.set("o", Obj{});
+    assert(l.eval<int>("return o.gi") == gi);
+    assert(l.eval<int>("o.gi = 101; return o.gi") == 101);
+    assert(gi == 101);
+}
+```
   </td>
 </tr>
 
@@ -576,7 +597,7 @@ l.register_member<void (Obj ::*)(int)>(
 </tr>
 
 <tr>
-  <td> <ul><ul><li> Set class instance directly </li></ul></ul> </td>
+  <td> <ul><ul><li> Set class instance directly to Lua </li></ul></ul> </td>
   <td> ✅  </td>
   <td>
 
@@ -587,7 +608,7 @@ l.set("o", o); // by copy
 l.set("o", std::move(o)); // by move
 // or
 l.set("o", Obj{});
-// the variable "o" can access members of Obj registered in Lua scripts.
+// The variable "o" can access all registered members of Obj
 ```
   </td>
 </tr>
@@ -600,7 +621,7 @@ l.set("o", Obj{});
 ```C++
 Obj o;
 l.set("o", &o);
-// the variable "o" can access members of Obj registered in Lua scripts.
+// The variable "o" can access all registered members of Obj
 ```
   </td>
 </tr>
@@ -616,7 +637,7 @@ auto o = std::make_shared<Obj>();
 l.set("o", o);
 // unique_ptr
 l.set("o", std::make_unique<Obj>());
-// the variable "o" can access members of Obj registered in Lua scripts.
+// The variable "o" can access all registered members of Obj
 ```
   </td>
 </tr>
@@ -633,7 +654,7 @@ l.set("o", &o);
 // pointer of unique_ptr
 auto o = std::make_unique<Obj>();
 l.set("o", &o);
-// the variable "o" can access members of Obj registered in Lua scripts.
+// The variable "o" can access all registered members of Obj
 ```
   </td>
 </tr>
@@ -651,7 +672,7 @@ std::unique_ptr<Obj, ObjDeleter> o(new Obj, ObjDeleter{});
 l.set("o", &o);
 // or
 l.set("o", std::move(o));
-// the variable "o" can access members of Obj registered in Lua scripts.
+// The variable "o" can access all registered members of Obj
 ```
   </td>
 </tr>
@@ -663,16 +684,15 @@ l.set("o", std::move(o));
 
 ```C++
 l.register_ctor<Obj()>("NewObj");
-l.register_ctor<std::add_const_t<Obj>()>("NewConstObj");
+l.register_ctor<std::add_const_t<Obj>()>("NewConstObj"); // ctor for const object
 l.register_member("i", &Obj::i);
-l.register_member("ci", &Obj::ci);
-l.register_member<int (Obj::*)()>("plus", &Obj::plus);
+l.register_member("ci", &Obj::ci); // const member
+l.register_member<int (Obj::*)()>("plus", &Obj::plus); // nonconst member function
 
 // const property of member ci is kept
 int retcode = l.dostring("o = NewObj(); o.ci = 3");
 assert(retcode != LUA_OK);
-l.log_error_out();
-// error log: Const member cannot be changed: ci
+l.log_error_out(); // error log: Const member cannot be changed: ci
 
 const Obj o{};
 l.set("o", &o); // "o" is pointer of const Obj
@@ -684,6 +704,23 @@ l.eval<void>("o = NewConstObj(); o:plus()");
 ```
   </td>
 </tr>
+
+<tr>
+  <td> <ul><ul><li> Get object instance created in Lua </li></ul></ul> </td>
+  <td> ✅  </td>
+  <td>
+
+```C++
+l.register_member("i", &Obj::i);
+l.register_ctor<Obj()>("NewObj");
+l.dostring("a = NewObj(); a.i = 3;"); // creat a instance of Obj
+Obj a = l.get<Obj>("a");
+assert(a.i == 3);
+assert(a.ci == 1);
+```
+  </td>
+</tr>
+
 
 <tr>
   <td> <ul><li> Evaluate a Lua script and get results </li></ul> </td>
@@ -698,7 +735,7 @@ int ret = l.eval<int>("return 1");
 
 <tr>
   <td> <ul><ul><li> Return simple type result (bool/integer/float number/string) </li></ul></ul> </td>
-  <td> ✅ </td>
+  <td> ✅ eval_xxx </td>
   <td>
 
 ```C++
@@ -745,7 +782,7 @@ auto ret = l.eval<std::tuple<int, int, int>>("return 1,2,3");
   <td>
 
 ```C++
-// Equivalent to l.dostring
+// Equivalent to l.dostring, but this will print error log automatically
 l.eval<void>("a=1 b=2");
 ```
   </td>
