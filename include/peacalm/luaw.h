@@ -2505,7 +2505,10 @@ private:
 // variadic function, not supported
 template <typename Return, typename... Args>
 struct luaw::pusher<Return (*)(Args..., ...)> {
-  // write nothing to let compile fail
+  // to let compile fail
+
+  template <typename F>
+  static int push(luaw& l, F&& f) = delete;
 };
 
 // bool
