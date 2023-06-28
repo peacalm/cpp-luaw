@@ -21,17 +21,17 @@
 struct provider {
   provider() { puts("provider()"); }
   ~provider() { puts("~provider()"); }
-  bool provide(peacalm::luaw* l, const char* vname) {
+  bool provide(peacalm::luaw& l, const char* vname) {
     if (strcmp(vname, "a") == 0)
-      l->push(1);
+      l.push(1);
     else if (strcmp(vname, "b") == 0)
-      l->push(2);
+      l.push(2);
     else if (strcmp(vname, "c") == 0)
-      l->push(3);
+      l.push(3);
     else
       return false;
     // If variables won't change, could set them to global:
-    // l->copy_to_global(vname);
+    // l.copy_to_global(vname);
     return true;
   }
 };

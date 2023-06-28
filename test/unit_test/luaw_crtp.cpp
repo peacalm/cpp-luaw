@@ -24,8 +24,8 @@ struct vprovider {
   ~vprovider() {
     // printf("~vprovider(%d)\n", def);
   }
-  void provide(const std::string &v, luaw *l) { l->set_integer(v, def); }
-  void provide(const std::vector<std::string> &vars, luaw *l) {
+  void provide(const std::string &v, luaw &l) { l.set_integer(v, def); }
+  void provide(const std::vector<std::string> &vars, luaw &l) {
     for (const auto &v : vars) provide(v, l);
   }
 };

@@ -17,30 +17,30 @@
 struct dummy_provider {
   int def = 0;
   dummy_provider(int i = 1) : def(i) {}
-  bool provide(luaw *l, const char *vname) {
-    l->push(def);
+  bool provide(luaw &l, const char *vname) {
+    l.push(def);
     return true;
   }
 };
 
 struct bad_provider {
   // error: pushes nothing
-  bool provide(luaw *l, const char *vname) { return true; }
+  bool provide(luaw &l, const char *vname) { return true; }
 };
 
 struct bad_provider2 {
   // error: pushes more than 1 value
-  bool provide(luaw *l, const char *vname) {
-    l->push(0);
-    l->push(1);
+  bool provide(luaw &l, const char *vname) {
+    l.push(0);
+    l.push(1);
     return true;
   }
 };
 
 struct bad_provider3 {
   // error: returns false
-  bool provide(luaw *l, const char *vname) {
-    l->push(0);
+  bool provide(luaw &l, const char *vname) {
+    l.push(0);
     return false;
   }
 };

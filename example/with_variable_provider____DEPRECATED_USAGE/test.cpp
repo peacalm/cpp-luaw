@@ -21,16 +21,16 @@
 struct provider {
   provider() { puts("provider()"); }
   ~provider() { puts("~provider()"); }
-  void provide(const std::vector<std::string> &vars, peacalm::luaw *l) {
+  void provide(const std::vector<std::string> &vars, peacalm::luaw &l) {
     for (const auto &v : vars) provide(v, l);
   }
-  void provide(const std::string &v, peacalm::luaw *l) {
+  void provide(const std::string &v, peacalm::luaw &l) {
     if (v == "a")
-      l->set_integer(v, 1);
+      l.set_integer(v, 1);
     else if (v == "b")
-      l->set_integer(v, 2);
+      l.set_integer(v, 2);
     else if (v == "c")
-      l->set_integer(v, 3);
+      l.set_integer(v, 3);
     else
       std::cout << "unknown: " << v << std::endl;
   }

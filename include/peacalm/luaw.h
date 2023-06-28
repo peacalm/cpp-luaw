@@ -331,6 +331,7 @@ public:
 
   public:
     opt() {}
+
     /// Ignore all standard libs.
     opt& ignore_libs() {
       libopt_ = ignore;
@@ -4565,7 +4566,7 @@ public:
 private:
   bool provide(lua_State* L, const char* var_name) {
     luaw_fake l(L);
-    return provider() && provider()->provide(&l, var_name);
+    return provider() && provider()->provide(l, var_name);
   }
 
   void set_globale_metateble() {
@@ -4848,7 +4849,7 @@ public:
   provider_t& provider() { return static_cast<provider_t&>(*this); }
 
   void provide(const std::vector<std::string>& vars) {
-    provider().provide(vars, this);
+    provider().provide(vars, *this);
   }
 };
 
@@ -4879,10 +4880,10 @@ public:
 
 private:
   void __provide(const std::vector<std::string>& vars, std::true_type) {
-    provider()->provide(vars, this);
+    provider()->provide(vars, *this);
   }
   void __provide(const std::vector<std::string>& vars, std::false_type) {
-    provider().provide(vars, this);
+    provider().provide(vars, *this);
   }
 };
 

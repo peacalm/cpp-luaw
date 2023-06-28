@@ -38,27 +38,27 @@ struct provider {
   bool cache = false;
   provider(bool c = false) : cache(c) {}
 
-  bool provide(luaw* l, const char* vname) {
+  bool provide(luaw& l, const char* vname) {
     char s[2]  = {0, 0};
     bool found = false;
     for (int i = 0; i < 26; ++i) {
       s[0] = 'a' + i;
       if (strcmp(vname, s) == 0) {
-        l->push(i + 1);
+        l.push(i + 1);
         found = true;
         break;
       }
     }
     if (!found) return false;
-    if (cache) l->copy_to_global(vname);
+    if (cache) l.copy_to_global(vname);
     return true;
   }
 
-  void provide(const std::vector<std::string>& vars, luaw* l) {
+  void provide(const std::vector<std::string>& vars, luaw& l) {
     for (const auto& v : vars) {
       for (int i = 0; i < 26; ++i) {
         if (v == std::string{char('a' + i)}) {
-          l->set_number(v, i + 1);
+          l.set_number(v, i + 1);
           break;
         }
       }
