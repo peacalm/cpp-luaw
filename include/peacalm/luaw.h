@@ -53,13 +53,13 @@ namespace peacalm {
 
 namespace luaexf {  // Useful extended functions for Lua
 
-// Short writing for if-elseif-else statement.
-// The number of arguments should be odd and at least 3.
-// Usage: IF(expr1, result_if_expr1_is_true,
-//           expr2, result_if_expr2_is_true,
-//           ...,
-//           result_if_all_exprs_are_false)
-// Example: return IF(a > b, 'good', 'bad')
+/// Short writing for if-elseif-else statement.
+/// The number of arguments should be odd and at least 3.
+/// Usage: IF(expr1, result_if_expr1_is_true,
+///           expr2, result_if_expr2_is_true,
+///           ...,
+///           result_if_all_exprs_are_false)
+/// Example: return IF(a > b, 'good', 'bad')
 inline int IF(lua_State* L) {
   int n = lua_gettop(L);
   if (n < 3 || (~n & 1)) {
@@ -78,8 +78,8 @@ inline int IF(lua_State* L) {
   return 1;
 }
 
-// Convert multiple arguments or a list to a set, where key's mapped value is
-// boolean true.
+/// Convert multiple arguments or a list to a set, where key's mapped value is
+/// boolean true.
 inline int SET(lua_State* L) {
   int n = lua_gettop(L);
   if (n <= 0) {
@@ -112,8 +112,8 @@ inline int SET(lua_State* L) {
   return 1;
 }
 
-// Convert multiple arguments or a list to a dict, where key's mapped value is
-// the key's appearance count. Return nil if key not exists.
+/// Convert multiple arguments or a list to a dict, where key's mapped value is
+/// the key's appearance count. Return nil if key not exists.
 inline int COUNTER(lua_State* L) {
   int n = lua_gettop(L);
   if (n <= 0) {
@@ -159,7 +159,7 @@ static inline int COUNTER0__index(lua_State* L) {
   return 1;
 }
 
-// Like COUNTER but return 0 if key not exists.
+/// Like COUNTER but return 0 if key not exists.
 inline int COUNTER0(lua_State* L) {
   COUNTER(L);
   if (luaL_newmetatable(L, "COUNTER0_mt")) {
@@ -201,6 +201,7 @@ class luaw {
   template <typename T>
   struct convertor_for_return;
 
+  // Implementation for registering members of classes
   template <typename T>
   struct register_ctor_impl;
   template <typename T, typename = void>
@@ -221,41 +222,41 @@ public:
   using lua_number_t    = lua_Number;     // double as default
   using lua_integer_t   = lua_Integer;    // long long as default
 
-  // To generate shared/exclusive metatable of type T.
+  /// To generate shared/exclusive metatable of type T.
   template <typename T, typename = void>
   struct metatable_factory;
 
-  // A callable wrapper for Lua functions. Like std::function and can convert to
-  // std::function, but contains more status information.
-  // Used within method get.
+  /// A callable wrapper for Lua functions. Like std::function and can convert
+  /// to std::function, but contains more status information. Used within method
+  /// get.
   template <typename T>
   class function;
 
-  // Used as hint type for set/push/setkv, indicate the value is a user defined
-  // custom class object.
+  /// Used as hint type for set/push/setkv, indicate the value is a class
+  /// object.
   struct class_tag {};
 
-  // Used as hint type for set/push/setkv, indicate the value is a function or a
-  // callable object used as a function.
+  /// Used as hint type for set/push/setkv, indicate the value is a function or
+  /// a callable object used as a function.
   struct function_tag {};
 
-  // Used as a value for set/push, indicate that should set/push a new empty
-  // table to Lua.
+  /// Used as a value for set/push/setkv, indicate that should set/push a new
+  /// empty table to Lua.
   struct newtable_tag {};
 
-  // Used as a key for seek/touchtb/setkv/lset, indicate that we're
-  // getting/setting a value's metatable.
+  /// Used as a key for seek/touchtb/setkv/lset, indicate that we're
+  /// getting/setting a value's metatable.
   struct metatable_tag {
     const char* tname;
     metatable_tag(const char* name = nullptr) : tname(name) {}
   };
 
-  // Indicate that convert a Lua value to nothing, the Lua value is useless.
-  // Any Lua value can convert to this.
-  // Maybe used as a C++ function formal parameter.
+  /// Indicate that convert a Lua value to nothing, the Lua value is useless.
+  /// Any Lua value can convert to this.
+  /// Maybe used as a C++ function formal parameter.
   struct placeholder_tag {};
 
-  // Represent a Lua value in stack by index.
+  /// Represent a Lua value in stack by index.
   class luavalueidx {
     lua_State* L_;
     int        idx_;
@@ -268,22 +269,24 @@ public:
     int idx() const { return idx_; }
   };
 
-  // A reference of some Lua value in LUA_REGISTRYINDEX.
+  /// A reference of some Lua value in LUA_REGISTRYINDEX.
   class luavalueref {
     lua_State*                 L_;  // if L_ == nullptr, as ref to nil
     std::shared_ptr<const int> ref_sptr_;
 
   public:
+    /// Make a reference of the value at index "idx" in the stack "L".
     luavalueref(lua_State* L = nullptr, int idx = -1) : L_(L) {
       if (L) {
         lua_pushvalue(L, idx);  // make a copy
         // pops the value on top and returns its ref_id.
         const int ref_id = luaL_ref(L, LUA_REGISTRYINDEX);
         ref_sptr_.reset(new int(ref_id), [L](const int* p) {
-          luaL_unref(L, LUA_REGISTRYINDEX, *p);
+          luaL_unref(L, LUA_REGISTRYINDEX, *p);  // release the ref_id
           delete p;
         });
       } else {
+        // ref to nil
         ref_sptr_ = std::make_shared<const int>(LUA_NOREF);
       }
     }
@@ -297,18 +300,18 @@ public:
              (ref_id() == LUA_REFNIL);
     }
 
-    // Push the value referenced on top of stack.
+    /// Push the value referenced on top of stack.
     void getvalue() const { lua_rawgeti(L_, LUA_REGISTRYINDEX, ref_id()); }
 
-    // Push the value referenced on top of other stack.
+    /// Push the value referenced on top of other stack.
     void getvalue(lua_State* L) const {
       PEACALM_LUAW_ASSERT(L);
       lua_rawgeti(L, LUA_REGISTRYINDEX, ref_id());
     }
   };
 
-  // Stack balance guarder.
-  // Automatically set stack to a specific size when destruct.
+  /// Stack balance guarder.
+  /// Automatically set stack to a specific size when destruct.
   class guarder {
     lua_State* L_;
     int        topsz_;
@@ -322,40 +325,42 @@ public:
   guarder make_guarder(int sz) const { return guarder(L_, sz); }
   guarder make_guarder(lua_State* L, int sz) const { return guarder(L, sz); }
 
-  // Initialization options for luaw
+  /// Initialization options for luaw.
   class opt {
     enum libopt : char { ignore = 0, load = 1, preload = 2 };
 
   public:
     opt() {}
-    // Ignore all standard libs
+    /// Ignore all standard libs.
     opt& ignore_libs() {
       libopt_ = ignore;
       return *this;
     }
-    // Load all standard libs
+    /// Load all standard libs.
     opt& load_libs() {
       libopt_ = load;
       return *this;
     }
-    // Preload all standard libs
+    /// Preload all standard libs.
     opt& preload_libs() {
       libopt_ = preload;
       return *this;
     }
 
-    // Register extended functions
+    /// Register extended functions.
     opt& register_exfunctions(bool r) {
       exfunc_ = r;
       return *this;
     }
 
+    /// Use already existed lua_State.
     opt& use_state(lua_State* L) {
+      PEACALM_LUAW_ASSERT(L);
       L_ = L;
       return *this;
     }
 
-    // Load user specified libs
+    /// Load user specified libs.
     opt& custom_load(const std::vector<luaL_Reg>& l) {
       libs_load_ = l;
       return *this;
@@ -365,7 +370,7 @@ public:
       return *this;
     }
 
-    // Preload user specified libs
+    /// Preload user specified libs.
     opt& custom_preload(const std::vector<luaL_Reg>& l) {
       libs_preload_ = l;
       return *this;
@@ -384,11 +389,19 @@ public:
     friend class luaw;
   };
 
+  // Default constructor
   luaw(const opt& o = opt{}) { init(o); }
+
   luaw(lua_State* L) : L_(L) {}
+
+  // Not copyable
   luaw(const luaw&) = delete;
+
+  // Movable
   luaw(luaw&& l) : L_(l.release()) {}
+
   luaw& operator=(const luaw&) = delete;
+
   luaw& operator=(luaw&& r) {
     if (this == &r) {
       // do nothing
@@ -400,23 +413,30 @@ public:
     }
     return *this;
   }
+
   ~luaw() { close(); }
 
   void init(const opt& o = opt{}) {
+    // Initialize lua_State
     if (o.L_) {
       L_ = o.L_;
     } else {
       L_ = luaL_newstate();
     }
 
+    // Initialize standard libs
     if (o.libopt_ == opt::libopt::load) {
+      // Load all libs, which is costly
       luaL_openlibs(L_);
     } else if (o.libopt_ == opt::libopt::preload) {
+      // Preload all libs, which is light
       preload_libs();
     }
 
+    // Register extended functions
     if (o.exfunc_) { register_exfunctions(); }
 
+    // Load user specified libs
     if (!o.libs_load_.empty()) {
       for (const luaL_Reg& l : o.libs_load_) {
         luaL_requiref(L_, l.name, l.func, 1);
@@ -424,6 +444,7 @@ public:
       }
     }
 
+    // Preload user specified libs
     if (!o.libs_preload_.empty()) {
       // Should load base and package first for any preload.
       luaL_requiref(L_, LUA_GNAME, luaopen_base, 1);
@@ -795,10 +816,24 @@ public:
   /**
    * @brief Convert a value in Lua stack to complex C++ type.
    *
-   * @tparam T The result type user expected. T can be any type composited by
-   * bool, integer types, float number types, std::string, std::vector,
-   * std::set, std::unordered_set, std::map, std::unordered_map, std::pair.
-   * Note that c_str "const char*" is not supported.
+   * Can get a C++ data type.
+   * T could be any type composited by bool, integer types, float number types,
+   * C string, std::string, std::pair, std::tuple, std::vector, std::set,
+   * std::unordered_set, std::map, std::unordered_map, std::deque, std::list,
+   * std::forward_list.
+   * Also, T could be cv-qualified, but cannot be a reference.
+   * Note that using C string "const char*" as key type of set or map is
+   * forbidden, and anytime using "const char*" is not recommended, should
+   * better us std::string instead.
+   *
+   * Can get a user define class type.
+   *
+   * Can get a callable function like type.
+   * T could be std::function or luaw::function.
+   *
+   * Can get a pointer type.
+   *
+   * @tparam T The result type user expected.
    * @param [in] idx value's index in stack.
    * @param [in] disable_log Whether print a log when exception occurs.
    * @param [out] failed Will be set whether the operation is failed if this
@@ -1166,7 +1201,12 @@ public:
   /**
    * @brief Set a global variable to Lua.
    *
+   * T could be data type, pointer type, C function, lambda, std::function and
+   * user defined class types.
+   *
    * set(name, nullptr) means set nil to 'name'.
+   * set(name, luaw::newtable_tag) means set a new empty table to 'name'.
+   *
    */
   template <typename T>
   void set(const char* name, T&& value) {
@@ -1233,7 +1273,7 @@ public:
   }
 
   /// Long set. The last argument is value, the rest arguments are indices and
-  /// sub-indices, where could contain metatable_tag.
+  /// sub-indices, where could contain luaw::metatable_tag.
   template <typename... Args>
   void lset(Args&&... args) {
     constexpr size_t N = sizeof...(Args);
@@ -1243,6 +1283,7 @@ public:
     using T = std::tuple_element_t<N - 1, std::tuple<Args...>>;
     __lset<T>(std::forward<Args>(args)...);
   }
+
   /// Long set with a hint type.
   template <typename Hint, typename... Args>
   void lset(Args&&... args) {
@@ -1406,10 +1447,9 @@ public:
   /**
    * @brief Get a global variable in Lua and convert it to complex C++ type.
    *
-   * @tparam T The result type user expected. T can be any type composited by
-   * bool, integer types, float number types, std::string, std::vector,
-   * std::set, std::unordered_set, std::map, std::unordered_map, std::pair. Note
-   * that here const char* is not supported, which is unsafe.
+   * @sa method "to"
+   *
+   * @tparam T The result type user expected.
    * @param [in] name The variable's name.
    * @param [in] disable_log Whether print a log when exception occurs.
    * @param [out] failed Will be set whether the operation is failed if this
@@ -1430,10 +1470,9 @@ public:
         bool        disable_log = false,
         bool*       failed      = nullptr,
         bool*       exists      = nullptr) {
+    auto _g = make_guarder();
     getglobal(name);
-    auto ret = to<T>(-1, disable_log, failed, exists);
-    pop();
-    return ret;
+    return to<T>(-1, disable_log, failed, exists);
   }
   template <typename T>
   T get(const std::string& name,
@@ -1561,6 +1600,7 @@ public:
 
   /** @} */
 
+  /// Options used as first parameter for "lget".
   struct lgetopt {
     bool  disable_log;
     bool *failed, *exists;
@@ -1630,6 +1670,7 @@ public:
   //////////////////////// call Lua function ///////////////////////////////////
 
   /// Call a global Lua function specified by name using C++ parameters.
+  /// Should at least provide return type.
   template <typename Return, typename... Args>
   Return callf(const char* fname, const Args&... args) {
     PEACALM_LUAW_ASSERT(fname);
@@ -1668,9 +1709,9 @@ public:
 
   //////////////////////// register ctor/memeber for class /////////////////////
 
-  /// Register a global function to Lua who can create object of type Return,
-  /// where Return is the return type of Ctor.
-  /// e.g. register_ctor<Object(int)>("NewObject").
+  /// Register a global function to Lua who can create object of type `Return`,
+  /// where `Return` is the return type of `Ctor`. `Ctor` should be function
+  /// type. e.g. register_ctor<Object(int)>("NewObject").
   template <typename Ctor>
   void register_ctor(const char* fname) {
     static_assert(std::is_function<Ctor>::value,
@@ -1685,7 +1726,7 @@ public:
 
   /// Register a real member, ether member variable or member function.
   /// For overloaded member function, you can explicitly pass in the template
-  /// parameter MemberPointer. e.g.
+  /// parameter `MemberPointer`. e.g.
   /// `register_member<Return(Class::*)(Args)>("mf", &Class::mf)`
   template <typename MemberPointer>
   std::enable_if_t<std::is_member_pointer<MemberPointer>::value>
@@ -1843,11 +1884,15 @@ public:
   /**
    * @brief Evaluate a Lua expression and get result in complex C++ type.
    *
-   * @tparam T The result type user expected. T can be any type composited by
-   * bool, integer types, float number type, std::string, std::vector, std::set,
-   * std::unordered_set, std::map, std::unordered_map, std::pair, std::tuple.
-   * What's more, T can be void or std::tuple<> to represent a expression who
-   * has no results or we don't use the results.
+   * @sa method "to".
+   * But more, T could be void or std::tuple<> to represent the expression has
+   * no return, or we'll discard all it's returns.
+   * Besides, T could be std::tuple to accept multiple returns of the
+   * expression. If T is a nested std::tuple, only the outmost level std::tuple
+   * is mapped to multiple values of return, any inner std::tuple is mapped to a
+   * Lua table.
+   *
+   * @tparam T The result type user expected.
    * @param [in] expr Lua expression, which can have no return, one return or
    * multiple returns.
    * @param [in] disable_log Whether print a log when exception occurs.
@@ -1855,7 +1900,7 @@ public:
    * pointer is not nullptr. If T is a container type, it regards the operation
    * as failed if any element failed.
    * @return The expression's result in type T. If T is not void or
-   * std::tuple<>, the expression must provide results.
+   * std::tuple<>, the expression must provide return values.
    */
   template <typename T>
   T eval(const char* expr, bool disable_log = false, bool* failed = nullptr) {
@@ -1930,17 +1975,6 @@ namespace luaw_detail {
 template <typename T>
 using void_t = void;
 
-// whether T is std::tuple
-
-template <typename T>
-struct is_stdtuple : std::false_type {};
-
-template <typename... Ts>
-struct is_stdtuple<std::tuple<Ts...>> : std::true_type {};
-
-template <typename T>
-using decay_is_stdtuple = is_stdtuple<std::decay_t<T>>;
-
 // is std::shared_ptr
 
 template <typename T>
@@ -1984,17 +2018,6 @@ template <typename T>
 struct get_element_type<T, void_t<typename T::element_type>> {
   using type = typename T::element_type;
 };
-
-// is std::function
-
-template <typename T>
-struct is_stdfunction : std::false_type {};
-
-template <typename Return, typename... Args>
-struct is_stdfunction<std::function<Return(Args...)>> : std::true_type {};
-
-template <typename T>
-struct decay_is_stdfunction : is_stdfunction<std::decay_t<T>> {};
 
 // Get a C function pointer type by a member function pointer type
 
