@@ -827,7 +827,7 @@ public:
    * forbidden, and anytime using "const char*" is not recommended, should
    * better us std::string instead.
    *
-   * Can get a user define class type.
+   * Can get a user defined class type.
    *
    * Can get a callable function like type.
    * T could be std::function or luaw::function.
@@ -1205,8 +1205,8 @@ public:
    * T could be data type, pointer type, C function, lambda, std::function and
    * user defined class types.
    *
-   * set(name, nullptr) means set nil to 'name'.
-   * set(name, luaw::newtable_tag) means set a new empty table to 'name'.
+   * set(name, nullptr) means set nil to "name".
+   * set(name, luaw::newtable_tag) means set a new empty table to "name".
    *
    */
   template <typename T>
