@@ -733,6 +733,16 @@ TEST(set_and_get, lget) {
   // l.lget<int>({}); // compile error
 }
 
+TEST(set_and_get, lset) {
+  luaw l;
+
+  l.lset("g", "gg", 1, "b", 2);
+  EXPECT_EQ(l.lget<int>({}, "g", "gg", 1, "b"), 2);
+
+  l.set({"a", "b"}, 3);
+  EXPECT_EQ(l.get_int({"a", "b"}), 3);
+}
+
 int ret1(lua_State *L) {
   lua_pushnumber(L, 1);
   return 1;
