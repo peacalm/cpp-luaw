@@ -1332,3 +1332,13 @@ TEST(register_member, luavalueref) {
   l.lset("foo", "a", "x", 1);
   EXPECT_EQ(l.eval<int>("return foo.a.x"), 1);
 }
+
+TEST(register_member, get_object_created_by_lua) {
+  luaw l;
+  l.register_member("i", &Obj::i);
+  l.register_ctor<Obj()>("NewObj");
+  l.dostring("a = NewObj(); a.i = 3;");
+  Obj a = l.get<Obj>("a");
+  EXPECT_EQ(a.i, 3);
+  EXPECT_EQ(a.ci, 1);
+}
