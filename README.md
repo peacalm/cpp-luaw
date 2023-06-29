@@ -1190,6 +1190,8 @@ int main {
   l.set("fadd", &fadd);
   auto& ref = fadd;
   l.set("fadd", ref);
+
+  assert(l.eval<int>("return fadd(1, 2)"), 3);
 }
 ```
 
