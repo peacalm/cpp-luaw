@@ -14,6 +14,7 @@ Features:
 * Get and call Lua functions in C++
 * Bind C++ functions(also lambda, std::function or callable objects) to Lua
 * Bind C++ classes to Lua
+* Bind C++ copyable objects, movable objects, raw pointer or smart pointer to Lua
 * Evaluate Lua expressions in C++ to get results
 * If a variable provider is provided, it can automatically seek variabls from 
 provider while evaluate expressions.
