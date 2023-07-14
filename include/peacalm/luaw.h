@@ -707,7 +707,7 @@ public:
   // 5. Non-number-literal-string, including empty string, can't convert to any
   //    other types, default value will be returned (can't convert to true as
   //    Lua does)
-  // 6. Integer's precision won't lost if it's value is representable by 64bit
+  // 6. Integer's precision won't be lost if its value is representable by 64bit
   //    signed integer type, i.e. between [-2^63, 2^63 -1], which is
   //    [-9223372036854775808, 9223372036854775807]
   //
