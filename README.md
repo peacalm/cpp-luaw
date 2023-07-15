@@ -44,7 +44,7 @@ This lib depends only on Lua:
   <td>
 
 ```C++
-// Define a luaw instance, which following examples use
+// Define a luaw instance, which is used by the following examples
 peacalm::luaw l;
 ```
   </td>
