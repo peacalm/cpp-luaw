@@ -828,7 +828,7 @@ double, string to string, then cast it to target type by C++'s type
 conversion strategy. Note that number in Lua is also string, and
 number-literal-string is also number.
 
-This lib mainly uses C++'s value conversion strategy, in addition, a implicitly
+This lib mainly uses C++'s value conversion strategy, in addition, an implicitly
 conversion strategy between number and number-literal-string, which is
 supported by Lua.
 
