@@ -1937,13 +1937,28 @@ public:
     std::cerr << "Lua: " << s << std::endl;
   }
 
-  void log_error_in_stack(int idx = -1) const {
-    std::cerr << "Lua: " << lua_tostring(L_, idx) << std::endl;
+  const char* get_error_info_in_stack(int idx = -1) const {
+    return lua_tostring(L_, idx);
   }
 
-  void log_error_out(int idx = -1) {
-    log_error_in_stack(idx);
-    pop();
+  bool log_error_in_stack(int idx = -1) const {
+    const char* s = get_error_info_in_stack(idx);
+    if (s) {
+      std::cerr << "Lua: " << s << std::endl;
+      return true;
+    } else {
+      std::cerr << "No valid error info in stack" << std::endl;
+      return false;
+    }
+  }
+
+  // Output error info on top on stack and pop it if it is a valid string.
+  bool log_error_out() {
+    if (log_error_in_stack(-1)) {
+      pop();
+      return true;
+    }
+    return false;
   }
 
   void log_type_convert_error(int idx, const char* to) {
