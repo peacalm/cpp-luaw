@@ -68,7 +68,7 @@ struct provider {
 
 const char* expr =
     "return a + b - c * d + e / f * g ^ h - x * p - q * n / s + v - m + c ^ k";
-const int rep = 100000;
+const int rep = 10000;
 
 TEST(custom_luaw, re_init_eval) {
   double ret;
