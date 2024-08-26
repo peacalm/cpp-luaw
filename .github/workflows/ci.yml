@@ -21,9 +21,8 @@ jobs:
     steps:
     - name: Install Lua
       run: |
-        curl -R -O http://www.lua.org/ftp/lua-5.4.4.tar.gz
-        tar zxf lua-5.4.4.tar.gz
-        cd lua-5.4.4
+        git clone git@github.com:lua/lua.git
+        cd lua
         make all test
         sudo make install
   
