@@ -27,6 +27,12 @@ struct Obj {
   int cv_geti() const volatile { return i; }
 
   int plus() { return ++i; }
+  int plusby(int d) {
+    i += d;
+    return i;
+  }
+
+  void reset() { i = 0; }
 
   int overloaded_f() { return i + 1000; }
   int overloaded_f() const { return i + 2000; }
@@ -342,6 +348,46 @@ TEST(register_member, member_functions) {
 
   EXPECT_EQ(l.eval_int("return o:overloaded_f4()"), 4002);
   EXPECT_EQ(o.i, 2);
+
+  EXPECT_EQ(l.gettop(), 0);
+}
+
+TEST(register_member, member_functions_by_wrong_syntax_call) {
+  luaw l;
+
+  l.register_member("i", &Obj::i);
+  l.register_member("plus", &Obj::plus);
+  l.register_member("plusby", &Obj::plusby);
+  l.register_member("reset", &Obj::reset);
+
+  Obj o;
+  l.set("o", &o);
+
+  int ret_code = l.dostring("o.plus()");
+  EXPECT_NE(ret_code, LUA_OK);
+  l.log_error_out();
+  EXPECT_EQ(o.i, 1);
+
+  bool failed;
+  int  reti = l.eval_int("return o.plus()", -1, false, &failed);
+  EXPECT_EQ(reti, -1);
+  EXPECT_TRUE(failed);
+
+  ret_code = l.dostring("o:plus()");
+  EXPECT_EQ(ret_code, LUA_OK);
+  EXPECT_EQ(o.i, 2);
+
+  ret_code = l.dostring("o:reset()");
+  EXPECT_EQ(ret_code, LUA_OK);
+  EXPECT_EQ(o.i, 0);
+
+  ret_code = l.dostring("o.plusby(3)");
+  EXPECT_NE(ret_code, LUA_OK);
+  l.log_error_out();
+  EXPECT_EQ(o.i, 0);
+
+  EXPECT_EQ(l.eval_int("return o.plusby(o, 5)"), 5);
+  EXPECT_EQ(l.eval_int("return o:plusby(5)"), 10);
 
   EXPECT_EQ(l.gettop(), 0);
 }

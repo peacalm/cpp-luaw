@@ -4336,7 +4336,11 @@ struct luaw::registrar<Return (Class::*)(Args...)> {
   static void register_member_function(luaw&            l,
                                        const char*      fname,
                                        MemberFunction&& mf) {
-    auto f = [=](ObjectType o, Args... args) -> Return {
+    auto f = [mf, &l](ObjectType o, Args... args) -> Return {
+      if (!o) {
+        luaL_error(l.L(), "Calling member function by null pointer of object");
+        return Return();
+      }
       PEACALM_LUAW_ASSERT(o);
       return mf(*o, std::move(args)...);
     };
