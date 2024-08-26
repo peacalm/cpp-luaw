@@ -852,7 +852,7 @@ Details:
 Examples:
 * number 2.5 -> string "2.5" (By Lua)
 * number 3 -> string "3.0" (By Lua)
-* ingeger 3 -> string "3" (By Lua)
+* integer 3 -> string "3" (By Lua)
 * string "2.5" -> double 2.5 (By Lua)
 * number 2.5 -> int 2 (By C++)
 * string "2.5" -> int 2 (Firstly "2.5"->2.5 by lua, then 2.5->2 by C++)
