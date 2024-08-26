@@ -1947,7 +1947,8 @@ public:
       std::cerr << "Lua: " << s << std::endl;
       return true;
     } else {
-      std::cerr << "No valid error info in stack" << std::endl;
+      std::cerr << "No valid error info in stack at index: " << idx
+                << std::endl;
       return false;
     }
   }
