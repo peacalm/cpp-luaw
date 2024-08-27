@@ -1114,11 +1114,6 @@ In C++ we use std::tuple to represent multiple returns in Lua.
 
 #### 3.1 Call a Lua function directly:
 
-In this case you can call a Lua function with C++ arguments directly and conveniently, 
-but you can't know whether it works correctly. If you want to know it, 
-you should get a callable object `luaw::function` firstly, then call it with C++ arguments, 
-see the following document for details.
-
 API:
 
 ```C++
@@ -1139,6 +1134,9 @@ assert(l.callf<int>("f1", 1, 1) == 2);
 assert(l.callf<int>({"g", "f1"}, 1, 1) == 2);
 assert(l.callf<std::tuple<int, int>>({"g", "f2"}, 1, 1) == std::tuple<int, int>(2, 0));
 ```
+
+In this case you can call a Lua function with C++ arguments directly and conveniently, 
+but you can't know whether it works correctly. If you want to know, see the following.
 
 #### 3.2 Get a callable object represents the Lua function
 
