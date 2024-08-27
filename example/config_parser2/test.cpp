@@ -53,7 +53,7 @@ int main() {
   auto m_c = l.get_string({"m", "c"}, "nx");
 
   auto g_flag      = l.get<std::map<std::string, std::string>>({"g", "flag"});
-  auto g_bigcities = l.get<std::set<std::string>>({"g", "bigcities"});
+  auto g_bigcities = l.get<std::vector<std::string>>({"g", "bigcities"});
   auto g_flag_star_num = l.get<int>({"g", "flag", "star_num"});
   auto g_population    = l.get_llong({"g", "population"}, -1);
 
@@ -70,6 +70,6 @@ mii_by_v = {1: 1, 2: 3, 3: 5, 4: 7}
 m = {a: 1, b: 2, c: 3, d: 4}
 m_c = 3
 g_flag = {bgcolor: red, star_color: yellow, star_num: 5, star_orientation: upper left}
-g_bigcities = {Beijing, Guangzhou, Shanghai, Shenzhen}
+g_bigcities = [Beijing, Shanghai, Guangzhou, Shenzhen]
 g_population = -1
 */
