@@ -1361,7 +1361,7 @@ register_member(const char* name, MemberPointer mp);
 ```
 
 Const/volatile property is kept in Lua.
-That is you can modify a const member's value in Lua.
+That is you can't modify a const member's value in Lua.
 
 Example:
 ```C++
