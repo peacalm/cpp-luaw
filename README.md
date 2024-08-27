@@ -1135,8 +1135,8 @@ assert(l.callf<int>({"g", "f1"}, 1, 1) == 2);
 assert(l.callf<std::tuple<int, int>>({"g", "f2"}, 1, 1) == std::tuple<int, int>(2, 0));
 ```
 
-In this case you can call a Lua function with C++ arguments directly and conveniently, 
-but you can't know whether it works correctly. If you want to know, see the following.
+In this case we can call a Lua function with C++ arguments directly and conveniently, 
+but can't know whether it works correctly. If you want to know, see the following.
 
 #### 3.2 Get a callable object represents the Lua function
 
