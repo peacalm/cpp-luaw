@@ -197,7 +197,7 @@ frem = function(a, b) return a // b, a % b end
 
 ```C++
 // Should provide result type
-int s = l.callf<int>("fadd", 1, 2); // c = 1 + 2
+int s = l.callf<int>("fadd", 1, 2); // s = 1 + 2
 ```
   </td>
 </tr>
