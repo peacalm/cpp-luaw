@@ -14,7 +14,7 @@ Features:
 * Get and call Lua functions in C++
 * Bind C++ functions (also lambda, std::function or callable objects) to Lua
 * Bind C++ classes to Lua (can bind members, member functions, even overloaded member functions, etc to Lua, 
-members's property "const" will be kept and have same behavier in Lua as it is in C++)
+members's property "const" will be kept and have same behavier in Lua as it does in C++)
 * Bind C++ copyable objects, movable objects, raw pointer or smart pointer of objects to Lua
 * Evaluate Lua expressions in C++ to get results
 * If a variable provider is provided, it can automatically seek variabls from 
