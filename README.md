@@ -1524,6 +1524,13 @@ l.register_member<void* const Obj::*>(
 Obj o;
 l.set("o", &o);
 assert(l.eval<void*>("return o.id") == (void*)(&o));
+
+// For smart pointer of Obj, id also returns the underlying's address
+auto so = std::make_shared<Obj>();
+l.set("so", so);
+assert(l.eval<void*>("return so.id") == (void*)(so.get()));
+l.set("so2", &so);
+assert(l.eval<void*>("return so2.id") == (void*)(so.get()));
 ```
 
 If want to fake a mutable member, then the special function must return lvalue 
