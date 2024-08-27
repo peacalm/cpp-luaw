@@ -695,7 +695,7 @@ l.register_member<int (Obj::*)()>("plus", &Obj::plus); // nonconst member functi
 // Const property of member ci is kept in Lua
 int retcode = l.dostring("o = NewObj(); o.ci = 3");
 assert(retcode != LUA_OK);
-l.log_error_out(); // error log: Const member cannot be changed: ci
+l.log_error_out(); // error log: Const member cannot be modified: ci
 
 const Obj o{};
 l.set("o", &o); // "o" is pointer of const Obj
@@ -1374,7 +1374,7 @@ l.register_member("ci", &Obj::ci); // const member
 
 // Assume ctor is registered like that shows in above examples
 l.dostring("a = NewObj(); a.i = 2"); // OK
-l.dostring("a = NewObj(); a.ci = 2"); // Error: Const member cannot be changed: ci
+l.dostring("a = NewObj(); a.ci = 2"); // Error: Const member cannot be modified: ci
 ```
 
 #### 5.3 Register member functions

@@ -3774,7 +3774,7 @@ struct luaw::metatable_factory<T*>
       l.rawget(-2);
       if (!l.isnil()) {  // found, more it is a bool value true
         const char* key = l.to_c_str(2);
-        return luaL_error(l.L(), "Const member cannot be changed: %s", key);
+        return luaL_error(l.L(), "Const member cannot be modified: %s", key);
       }
     }
 
