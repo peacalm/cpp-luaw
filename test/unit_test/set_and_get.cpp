@@ -674,6 +674,34 @@ TEST(set_and_get, function_return_tuple) {
   EXPECT_EQ(l.gettop(), 0);
 }
 
+std::tuple<int, int> point(int x = 3, int y = 4) {
+  return std::make_tuple(x, y);
+}
+
+TEST(set_and_get, function_with_default_arguments) {
+  luaw l;
+  l.set("point", point);
+
+  l.dostring("x1, y1 = point(1, 2)");
+  EXPECT_EQ(l.get_int("x1"), 1);
+  EXPECT_EQ(l.get_int("y1"), 2);
+
+  l.dostring("x2, y2 = point(1)");
+  EXPECT_EQ(l.get_int("x2"), 1);
+  EXPECT_EQ(l.get_int("y2"), 0);  // not 4
+
+  l.dostring("x3, y3 = point()");
+  EXPECT_EQ(l.get_int("x3"), 0);  // not 3
+  EXPECT_EQ(l.get_int("y3"), 0);  // not 4
+
+  // also for lambda
+  auto f = [](int x = 3, int y = 4) { return std::make_tuple(x, y); };
+  l.set("f", f);
+  l.dostring("x4, y4 = f(1)");
+  EXPECT_EQ(l.get_int("x4"), 1);
+  EXPECT_EQ(l.get_int("y4"), 0);
+}
+
 TEST(set_and_get, recursive_set) {
   luaw l;
   {

@@ -108,7 +108,7 @@ if (!exists) {
 
 <tr>
   <td> <ul><ul><li> Support a default value on target not exists or operation failed </li></ul></ul> </td>
-  <td> ✅ Only for simple types (get_xxx) </td>
+  <td> ✅ only for simple types (get_xxx) </td>
   <td>
 
 ```C++
@@ -379,7 +379,7 @@ l.set<peacalm::luaw::function_tag>("add", [](int a, int b) { return a + b; });
 
 <tr>
   <td> <ul><ul><ul><li> Set not-captureless lambdas to Lua </li></ul></ul></ul> </td>
-  <td> ✅ Should provide hint type </td>
+  <td> ✅ should provide hint type </td>
   <td>
 
 ```C++
@@ -395,7 +395,7 @@ l.set<peacalm::luaw::function_tag>("add", f);
 
 <tr>
   <td> <ul><ul><ul><li> Set generic lambdas to Lua </li></ul></ul></ul> </td>
-  <td> ✅ Should provide hint type </td>
+  <td> ✅ should provide hint type </td>
   <td>
 
 ```C++
@@ -436,6 +436,27 @@ l.dostring("q, r = rem(7, 3)"); // q == 2, r == 1
   </td>
 </tr>
 
+
+<tr>
+  <td> <ul><ul><li> Support default arguments provided in C++ when binding C++ functions </li></ul></ul> </td>
+  <td> ❌ argumengts will be default-initialized no matter what default values provided in C++ </td>
+  <td>
+
+```C++
+// The default argument values 3 and 4 have no effect in Lua
+std::tuple<int,int> point(int x = 3, int y = 4) {
+  return std::make_tuple(x, y);
+}
+int main() {
+  peacalm::luaw l;
+  l.set("point", point);
+  l.dostring("x, y = point(1)");
+  assert(l.get_int("x") == 1);  // ok, 1 is explicitly provided
+  assert(l.get_int("y") == 0);  // y will be default-initialized to 0, not 4
+}
+```
+  </td>
+</tr>
 
 <tr>
   <td> <ul><li> Bind C++ classes to Lua </li></ul> </td>
@@ -809,7 +830,7 @@ if (failed) {
 
 <tr>
   <td> <ul><ul><li> Support a defult value used for operation failed </li></ul></ul> </td>
-  <td> ✅ Only supported by eval simple types (eval_xxx) </td>
+  <td> ✅ only supported by eval simple types (eval_xxx) </td>
   <td>
 
 ```C++
