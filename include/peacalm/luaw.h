@@ -1941,6 +1941,7 @@ public:
     return lua_tostring(L_, idx);
   }
 
+  /// Output the error info at given index of stack to stderr.
   bool log_error_in_stack(int idx = -1) const {
     const char* s = get_error_info_in_stack(idx);
     if (s) {
@@ -1953,7 +1954,7 @@ public:
     }
   }
 
-  // Output error info on top on stack and pop it if it is a valid string.
+  /// Output the error info on top of stack to stderr then pop it.
   bool log_error_out() {
     if (log_error_in_stack(-1)) {
       pop();
