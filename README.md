@@ -438,8 +438,10 @@ l.dostring("q, r = rem(7, 3)"); // q == 2, r == 1
 
 
 <tr>
-  <td> <ul><ul><li> Support default arguments provided in C++ when binding C++ functions </li></ul></ul> </td>
-  <td> ❌ argumengts will be default-initialized no matter what default values provided in C++ </td>
+  <td> <ul><ul><li> Support default arguments provided in C++ when binding C++ functions 
+  (Bind C++ default arguments to Lua when binding C++ functions) </li></ul></ul> </td>
+  <td> ❌ argumengts(not given real parameter in Lua) will be default initialized 
+  no matter what default values provided in C++ </td>
   <td>
 
 ```C++
