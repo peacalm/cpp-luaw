@@ -726,6 +726,10 @@ l.eval<void>("o:plus()"); // call a nonconst member function
 
 l.eval<void>("o = NewConstObj(); o:plus()");
 // error log: Nonconst member function: plus
+
+// Member of const object is also const
+l.eval<void>("o = NewConstObj(); o.i = 3");
+// error log: Const member cannot be modified: i
 ```
   </td>
 </tr>
