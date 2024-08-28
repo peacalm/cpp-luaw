@@ -16,7 +16,8 @@
 
 struct Obj {
   Obj() {}
-  Obj(int v, int cv = 1) : i(v), ci(cv) {}
+  Obj(int v) : i(v) {}
+  Obj(int v, int cv) : i(v), ci(cv) {}
 
   int                           i  = 1;
   const int                     ci = 1;

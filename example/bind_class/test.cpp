@@ -19,7 +19,8 @@ struct Obj {
   const int ci = 1;
 
   Obj() {}
-  Obj(int v, int cv = 1) : i(v), ci(cv) {}
+  Obj(int v) : i(v) {}
+  Obj(int v, int cv) : i(v), ci(cv) {}
 
   int abs() const { return std::abs(i); }
 
