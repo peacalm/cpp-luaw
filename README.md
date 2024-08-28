@@ -2146,7 +2146,7 @@ luaw l4(luaw::opt()
 
 
 ## Build and Install
-Install Lua first:
+Install Lua first (here use lua-5.4.4 just as an example, of course can use later versions):
 ```bash
 curl -R -O http://www.lua.org/ftp/lua-5.4.4.tar.gz
 tar zxf lua-5.4.4.tar.gz
