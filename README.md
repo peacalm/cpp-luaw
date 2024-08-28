@@ -488,9 +488,9 @@ struct Obj {
   <td>
 
 ```C++
-l.register_ctor<Obj()>("NewObj");     // default constructor
-l.register_ctor<Obj(int)>("NewObj1"); // constructor with 1 argument
-l.register_ctor<Obj(int, int)>("NewObj2"); // constructor with 2 argument
+l.register_ctor<Obj()>("NewObj");          // default constructor
+l.register_ctor<Obj(int)>("NewObj1");      // constructor with 1 argument
+l.register_ctor<Obj(int, int)>("NewObj2"); // constructor with 2 argument2
 
 // Then can use ctor as a global function in Lua
 l.dostring("a = NewObj(); b = NewObj1(1); c = NewObj2(1,2)");
@@ -506,9 +506,9 @@ l.dostring("a = NewObj(); b = NewObj1(1); c = NewObj2(1,2)");
 ```C++
 // The constructors will generate a const instance of Obj in Lua
 using ConstObj = const Obj;
-l.register_ctor<ConstObj()>("NewConstObj");     // default constructor
-l.register_ctor<ConstObj(int)>("NewConstObj1"); // constructor with 1 argument
-l.register_ctor<ConstObj(int, int)>("NewConstObj2"); // constructor with 2 argument
+l.register_ctor<ConstObj()>("NewConstObj");          // default constructor
+l.register_ctor<ConstObj(int)>("NewConstObj1");      // constructor with 1 argument
+l.register_ctor<ConstObj(int, int)>("NewConstObj2"); // constructor with 2 argument2
 
 // Then can use ctor as a global function in Lua
 l.dostring("a = NewConstObj(); b = NewConstObj1(1); c = NewConstObj2(1,2)");

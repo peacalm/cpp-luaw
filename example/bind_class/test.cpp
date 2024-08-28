@@ -36,7 +36,7 @@ int main() {
 
   l.register_ctor<Obj()>("NewObj");           // default constructor
   l.register_ctor<Obj(int)>("NewObj1");       // constructor with 1 argument
-  l.register_ctor<Obj(int, int)>("NewObj2");  // constructor with 2 argument
+  l.register_ctor<Obj(int, int)>("NewObj2");  // constructor with 2 argument2
 
   // the constructors will generate a const instance of Obj in Lua
   using ConstObj = const Obj;
@@ -44,7 +44,7 @@ int main() {
   l.register_ctor<ConstObj(int)>(
       "NewConstObj1");  // constructor with 1 argument
   l.register_ctor<ConstObj(int, int)>(
-      "NewConstObj2");  // constructor with 2 argument
+      "NewConstObj2");  // constructor with 2 argument2
 
   // Register members
   l.register_member("i", &Obj::i);
