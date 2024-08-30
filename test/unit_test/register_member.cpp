@@ -1091,6 +1091,23 @@ TEST(register_member, fake_member_variable_by_lambda) {
   }
 }
 
+TEST(register_member, fake_const_member_variable_by_returned_rvalue) {
+  luaw l;
+  l.register_member("i", &Obj::i);
+  l.register_member("ci", &Obj::ci);
+
+  // define a const member sum as i + ci
+  l.register_member<const int Obj::*>(
+      "sum", [](const volatile Obj* o) { return o->i + o->ci; });
+
+  Obj o;
+  l.set("o", &o);
+  EXPECT_EQ(l.eval<int>("return o.sum"), o.i + o.ci);
+  EXPECT_EQ(l.eval<int>("o.i = 5; return o.sum"), 5 + o.ci);
+  o.i = 6;
+  EXPECT_EQ(l.eval<int>("return o.sum"), 6 + o.ci);
+}
+
 TEST(register_member, fake_member_variable_using_addr) {
   luaw l;
   l.register_member<void* const Obj::*>(
@@ -1384,7 +1401,8 @@ TEST(register_member, get_object_created_by_lua) {
   luaw l;
   l.register_member("i", &Obj::i);
   l.register_ctor<Obj()>("NewObj");
-  l.dostring("a = NewObj(); a.i = 3;");
+  int retcode = l.dostring("a = NewObj(); a.i = 3;");
+  EXPECT_EQ(retcode, LUA_OK);
   Obj a = l.get<Obj>("a");
   EXPECT_EQ(a.i, 3);
   EXPECT_EQ(a.ci, 1);
