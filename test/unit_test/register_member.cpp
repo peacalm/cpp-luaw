@@ -1108,6 +1108,28 @@ TEST(register_member, fake_const_member_variable_by_returned_rvalue) {
   EXPECT_EQ(l.eval<int>("return o.sum"), 6 + o.ci);
 }
 
+class Obj2 {
+public:
+  ~Obj2() { delete pi; }
+  int* pi = new int(1);
+};
+
+TEST(register_member, fake_member_variable_by_deref_member_pointer) {
+  luaw l;
+  l.register_member("pi", &Obj2::pi);
+  l.register_member<int Obj2::*>(
+      "deref_pi", [](const volatile Obj2* o) -> int& { return *o->pi; });
+
+  Obj2 o;
+  l.set("o", &o);
+  EXPECT_EQ(l.eval<int>("return o.deref_pi"), 1);
+  EXPECT_EQ(l.eval<int>("return o.deref_pi"), *o.pi);
+  *o.pi = 2;
+  EXPECT_EQ(l.eval<int>("return o.deref_pi"), 2);
+  EXPECT_EQ(l.eval<int>("o.deref_pi = 3; return o.deref_pi"), 3);
+  EXPECT_EQ(*o.pi, 3);
+}
+
 TEST(register_member, fake_member_variable_using_addr) {
   luaw l;
   l.register_member<void* const Obj::*>(
