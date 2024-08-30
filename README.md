@@ -12,13 +12,12 @@ Features:
 * Get Lua values in C++
 * Set C++ values to Lua
 * Get and call Lua functions in C++
-* Bind C++ functions (also lambda, std::function or callable objects) to Lua
-* Bind C++ classes to Lua (can bind members, member functions, even overloaded member functions, etc to Lua, 
-members's property "const" will be kept and have same behavier in Lua as it does in C++)
-* Bind C++ copyable objects, movable objects, raw pointer or smart pointer of objects to Lua
-* Evaluate Lua expressions in C++ to get results
-* If a variable provider is provided, it can automatically seek variabls from 
-provider while evaluate expressions.
+* Bind C++ functions to Lua (including C function, lambda, std::function and user defined callable objects)
+* Bind C++ classes to Lua (can bind constructors, member variables and member functions, etc)
+* Bind C++ copyable objects, movable objects, smart pointer of objects or raw pointer of objects to Lua
+* Evaluate Lua expressions to get results in C++
+* If a variable provider is provided, it can automatically seek variables from 
+provider while evaluating expressions in C++.
 
 This lib depends only on Lua:
 * Lua version >= 5.4
@@ -57,14 +56,19 @@ peacalm::luaw l;
   <td>
 
 ```C++
-l.dostring("i = 1; b = true; f = 2.5; s = 'luastring';");
+int retcode = l.dostring("i = 1; b = true; f = 2.5; s = 'luastring';");
+if (retcode != LUA_OK) {
+  // error handler...
+}
 int i = l.get_int("i");
+long long ll = l.get_llong("i");
 bool b = l.get_bool("b");
 double f = l.get_double("f");
 std::string s = l.get_string("s");
 
 // Or use alternative writings:
 int i = l.get<int>("i");
+long long ll = l.get<long long>("i");
 bool b = l.get<bool>("b");
 double f = l.get<double>("f");
 std::string s = l.get<std::string>("s");
@@ -79,17 +83,26 @@ std::string s = l.get<std::string>("s");
   <td>
 
 ```C++
-l.dostring("a = {1,2,3}; b = {x=1,y=2}; c = {x={1,2},y={3,4}}; d = {true, 1, 'str'}");
+int retcode = l.dostring("a = {1,2,3}; b = {x=1,y=2}; c = {x={1,2},y={3,4}}; d = {true, 1, 'str'}");
+if (retcode != LUA_OK) {
+  // error handler...
+}
 auto a = l.get<std::vector<int>>("a");
 auto b = l.get<std::map<std::string, int>>("b");
 auto c = l.get<std::unordered_map<std::string, std::vector<int>>>("c");
 auto d = l.get<std::tuple<bool, int, std::string>>("d");
+
+// About set: only collect keys of a table in Lua into a C++ container set.
+l.dostring("ss={a=true,b=true,c=true}; si={}; si[1]=true si[2]=true;");
+auto ss = l.get<std::set<std::string>>("ss");
+auto si = l.get<std::set<int>>("si");
 ```
   </td>
 </tr>
 
 <tr>
-  <td> <ul><ul><li> Tells whether the target exists or whether the operation failed </li></ul></ul> </td>
+  <td> <ul><ul><li> Tell whether the target exists or whether the operation failed 
+  (we don't regard target's non-existence as a failure) </li></ul></ul> </td>
   <td> ✅ </td>
   <td>
 
@@ -107,7 +120,7 @@ if (!exists) {
 </tr>
 
 <tr>
-  <td> <ul><ul><li> Support a default value on target not exists or operation failed </li></ul></ul> </td>
+  <td> <ul><ul><li> Support a default value on target does not exist or operation fails </li></ul></ul> </td>
   <td> ✅ only for simple types (get_xxx) </td>
   <td>
 
@@ -157,7 +170,9 @@ l.set("s2", std::string("std::string"));
 // All containers map to Lua table
 l.set("a", std::vector<int>{1,2,3});
 l.set("b", std::map<std::string, int>{{"a",1},{"b",2}});
-l.set("c", std::make_pair("c", true));
+l.set("c", std::make_pair("s", true)); // c[1] == "s", c[2] == true
+// Map set to table whose keys are from C++ set and values are boolean true.
+l.set("s", std::set<int>{1,2,3});
 ```
   </td>
 </tr>
@@ -185,7 +200,7 @@ l.set_nil("x");
 ```Lua
 -- Functions defined in Lua
 fadd = function(a, b) return a + b end
-frem = function(a, b) return a // b, a % b end
+fdiv = function(a, b) return a // b, a % b end
 ```
   </td>
 </tr>
@@ -196,14 +211,18 @@ frem = function(a, b) return a // b, a % b end
   <td>
 
 ```C++
-// Should provide result type
+// Should at least provide result type
 int s = l.callf<int>("fadd", 1, 2); // s = 1 + 2
+assert(s == 3);
+// Or provide result type and some argument types
+auto d = l.callf<double, double, double>("fadd", 1.25, 2.5);
+assert(d == 3.75);
 ```
   </td>
 </tr>
 
 <tr>
-  <td> <ul><ul><li> Get a std::function object represents the Lua function </li></ul></ul> </td>
+  <td> <ul><ul><li> Get a std::function object to represent the Lua function </li></ul></ul> </td>
   <td> ✅ </td>
   <td>
 
@@ -215,7 +234,19 @@ int s = f(1,2);
 </tr>
 
 <tr>
-  <td> <ul><ul><li> Tells whether the call to Lua function failed (Get a peacalm::luaw::function object represents the Lua function) </li></ul></ul> </td>
+  <td>
+    <ul><ul>
+      <li> Get a peacalm::luaw::function object to represent the Lua function, which can: </li>
+      <ul>
+        <li> Tell whether call the Lua function and get result successfully </li>
+        <li> Tell whether the function fails while running in Lua </li>
+        <li> Tell whether the Lua function exists </li>
+        <li> Tell whether converting the Lua function result to C++ fails </li>
+        <li> Tell whether the Lua function returns result </li>
+      </ul>
+    </ul></ul> 
+  </td>
+
   <td> ✅ use luaw::function </td>
   <td>
 
@@ -225,12 +256,12 @@ int s = f(1,2);
 // After call, check status:
 if (f.failed()) {
   // error handlers
+  // See more details using:
+  // f.function_failed();
+  // f.function_exists();
+  // f.result_failed();
+  // f.result_exists();
 }
-// See more details using:
-// f.function_failed();
-// f.function_exists();
-// f.result_failed();
-// f.result_exists();
 ```
   </td>
 </tr>
@@ -242,18 +273,20 @@ if (f.failed()) {
 
 ```C++
 // Call it directly
-auto q = l.callf<std::tuple<int, int>>("frem", 7, 3); // q == make_tuple(2, 1)
+auto q = l.callf<std::tuple<int, int>>("fdiv", 7, 3); // q == make_tuple(2, 1)
+assert(std::get<0>(q) == 2 && std::get<1>(q) == 1);
 
 // Get a function object first
-auto f = l.get<peacalm::luaw::function<std::tuple<int,int>(int, int)>>("frem");
+auto f = l.get<peacalm::luaw::function<std::tuple<int,int>(int, int)>>("fdiv");
 auto q2 = f(7, 3);
+assert(q2 == std::make_tuple(2, 1));
 ```
   </td>
 </tr>
 
 
 <tr>
-  <td> <ul><li> Bind C++ functions(also lambda, std::function or callable objects) to Lua </li></ul> </td>
+  <td> <ul><li> Bind C++ functions to Lua (also lambda, std::function or callable objects) </li></ul> </td>
   <td> ✅ </td>
   <td>
   </td>
@@ -385,8 +418,10 @@ l.set<peacalm::luaw::function_tag>("add", [](int a, int b) { return a + b; });
 ```C++
 int x = 1;
 auto f = [&](int a) { return a + x; };
+
 // Provide a function type hint: int(int)
 l.set<int(int)>("add", f);
+
 // Alternative writing: could use luaw::function_tag as hint type
 l.set<peacalm::luaw::function_tag>("add", f);
 ```
@@ -418,7 +453,12 @@ l.set<double(double, double)>("add2", f);
 
 ```C++
 std::function<int(int, int)> f = [](auto a, auto b) { return a + b; };
-l.set("f", std::move(f)); // or l.set("f", f);
+
+// Set f by copy:
+l.set("f", f);
+
+// Or set f by move:
+l.set("f", std::move(f));
 ```
   </td>
 </tr>
@@ -429,9 +469,10 @@ l.set("f", std::move(f)); // or l.set("f", f);
   <td>
 
 ```C++
-std::tuple<int, int> rem(int a, int b) { return std::make_tuple(a / b, a % b); }
-l.set("rem", rem);
-l.dostring("q, r = rem(7, 3)"); // q == 2, r == 1
+std::tuple<int, int> fdiv(int a, int b) { return std::make_tuple(a / b, a % b); }
+
+l.set("fdiv", fdiv);
+l.dostring("q, r = fdiv(7, 3)"); // q == 2, r == 1
 ```
   </td>
 </tr>
@@ -507,7 +548,7 @@ l.dostring("a = NewObj(); b = NewObj1(1); c = NewObj2(1,2)");
 
 ```C++
 // The constructors will generate a const instance of Obj in Lua
-using ConstObj = const Obj;
+using ConstObj = const Obj;  // or use std::add_const_t<Obj>
 l.register_ctor<ConstObj()>("NewConstObj");          // default constructor
 l.register_ctor<ConstObj(int)>("NewConstObj1");      // constructor with 1 argument
 l.register_ctor<ConstObj(int, int)>("NewConstObj2"); // constructor with 2 argument2
@@ -525,7 +566,7 @@ l.dostring("a = NewConstObj(); b = NewConstObj1(1); c = NewConstObj2(1,2)");
 
 ```C++
 l.register_member("i", &Obj::i);
-l.register_member("ci", &Obj::ci);
+l.register_member("ci", &Obj::ci);  // register const member
 ```
   </td>
 </tr>
@@ -554,7 +595,7 @@ l.register_member<int (Obj::*)(int)>("plusby", &Obj::plus);
 </tr>
 
 <tr>
-  <td> <ul><ul><li> Register dynamic members (members whose name is dynamically defined in Lua, like keys of a table) </li></ul></ul> </td>
+  <td> <ul><ul><li> Register dynamic members (members whose name are dynamically defined in Lua, like keys of a table) </li></ul></ul> </td>
   <td> ✅ </td>
   <td>
 
@@ -574,6 +615,7 @@ void foo_dm_setter(Foo* o, const std::string& k, const peacalm::luaw::luavaluere
 int main() {
   peacalm::luaw l;
   l.register_dynamic_member(foo_dm_getter, foo_dm_setter);
+  int retcode = l.dostring("f.a = 1; f.b = true; f.c = 10.5; f.d = 'str'");
   // ...
 }
 ```
@@ -590,17 +632,17 @@ int main() {
 l.register_member<void* const Obj::*>(
     "id", [](const volatile Obj* p) { return (void*)p; });
 
-Obj o;
-l.set("o", &o);
-assert(l.eval<void*>("return o.id") == (void*)(&o));
+auto o = std::make_shared<Obj>();
+l.set("o", o);
+assert(l.eval<void*>("return o.id") == (void*)(o.get()));
 ```
-
+---
 ```C++
-int  gi = 100;  // global i, member to be faked
-int& getgi(const volatile Obj* o) { return gi; }
+int gi = 100;  // global i, member to be faked
 int main() {
     peacalm::luaw l;
-    l.register_member<int Obj::*>("gi", getgi);
+    // gi will be shared by all instances of Obj in Lua, like a static member
+    l.register_member<int Obj::*>("gi", [&](const volatile Obj*) -> int& { return gi; });
     l.set("o", Obj{});
     assert(l.eval<int>("return o.gi") == gi);
     assert(l.eval<int>("o.gi = 101; return o.gi") == 101);
@@ -634,21 +676,17 @@ l.set("o", o); // by copy
 // or
 l.set("o", std::move(o)); // by move
 // or
-l.set("o", Obj{});
+l.set("o", Obj{}); // by move
 // The variable "o" can access all registered members of Obj
-```
-  </td>
-</tr>
 
-<tr>
-  <td> <ul><ul><li> Set class instance by raw pointer </li></ul></ul> </td>
-  <td> ✅  </td>
-  <td>
-
-```C++
-Obj o;
-l.set("o", &o);
-// The variable "o" can access all registered members of Obj
+const Obj co;
+l.set("co", co); // set const instance by copy
+// or
+l.set("co", std::move(co)); // set const instance by move
+// or
+l.set("co", std::add_const_t<Obj>{}); // set const instance by move
+// The variable "co" is const, it can access all registered members variables 
+// and registered const member functins of Obj.
 ```
   </td>
 </tr>
@@ -661,45 +699,96 @@ l.set("o", &o);
 ```C++
 // shared_ptr
 auto o = std::make_shared<Obj>();
-l.set("o", o);
+l.set("o", o); // by copy
+// or
+l.set("o", std::move(o)); // by move
+
 // unique_ptr
-l.set("o", std::make_unique<Obj>());
+l.set("o", std::make_unique<Obj>()); // by move
+
 // The variable "o" can access all registered members of Obj
 ```
   </td>
 </tr>
 
 <tr>
-  <td> <ul><ul><li> Set class instance by pointer of smart pointer </li></ul></ul> </td>
-  <td> ✅  </td>
+  <td> <ul><ul><li> Set class instance by raw pointer 
+  (set a lightuserdata and set metatable simultaneously for not only it but for all lightuserdata) </li></ul></ul> </td>
+  <td> ✅ (❗But NOT recommend) </td>
   <td>
 
 ```C++
-// pointer of shared_ptr
+Obj o;
+l.set("o", &o); // set a lightuserdata which has metatable of class Obj
+// The variable "o" can access all registered members of Obj
+// Now all lightuserdata in Lua share the same metatable as "o"!
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Set class instance by raw pointer of smart pointer 
+  (set a lightuserdata and set metatable simultaneously for not only it but for all lightuserdata) </li></ul></ul> </td>
+  <td> ✅ (❗But NOT recommend) </td>
+  <td>
+
+```C++
 auto o = std::make_shared<Obj>();
-l.set("o", &o);
-// pointer of unique_ptr
-auto o = std::make_unique<Obj>();
-l.set("o", &o);
+l.set("o", &o); // set a lightuserdata with metatable of class Obj
 // The variable "o" can access all registered members of Obj
+// Now all lightuserdata in Lua share the same metatable as "o"!
 ```
   </td>
 </tr>
 
 <tr>
-  <td> <ul><ul><li> Set class instance by unique_ptr with custom deleter (will share the same metatable with that unique_ptr with default deleter) </li></ul></ul> </td>
+  <td> <ul><ul><li> Set address of class instance (no setting metatable) </li></ul></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+Obj o;
+// Set address of o, which will be a lightuserdata without metatable if there 
+// are no metatable installed for lightuserdata before!
+l.set<void*>("o", &o);
+// or alternative writing:
+l.set("o", (void*)(&o));
+// or alternative writing:
+l.set<void*>("o", (void*)(&o));
+
+// The variable "o" is a lightuserdata without metatable, so it can not 
+// access members of Obj. But metatable can be installed later. 
+// Then it can access members...
+```
+---
+```C++
+Obj o;
+// Really set address of "o" as a number in Lua, not as lightuserdata
+l.set("addr", reinterpret_cast<long long>(&o));
+assert(l.get_llong("addr") == reinterpret_cast<long long>(&o));
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Set class instance by unique_ptr with custom deleter </li></ul></ul> </td>
   <td> ✅  </td>
   <td>
 
 ```C++
+// Define deleter
 struct ObjDeleter {
   void operator()(Obj* p) const { delete p; }
 };
+
+// ...
+
 std::unique_ptr<Obj, ObjDeleter> o(new Obj, ObjDeleter{});
-l.set("o", &o);
-// or
 l.set("o", std::move(o));
-// The variable "o" can access all registered members of Obj
+// The variable "o" can access all registered members of Obj,
+// just like that unique_ptr with default deleter.
+
+l.close(); // ObjDeleter will be called when destructing "o"
 ```
   </td>
 </tr>
@@ -721,8 +810,7 @@ int retcode = l.dostring("o = NewObj(); o.ci = 3");
 assert(retcode != LUA_OK);
 l.log_error_out(); // error log: Const member cannot be modified: ci
 
-const Obj o{};
-l.set("o", &o); // "o" is pointer of const Obj
+l.set("o", std::add_const_t<Obj>{}); // "o" is const Obj
 l.eval<void>("o:plus()"); // call a nonconst member function
 // error log: Nonconst member function: plus
 
@@ -820,7 +908,7 @@ l.eval<void>("a=1 b=2");
 </tr>
 
 <tr>
-  <td> <ul><ul><li> Tells whether the eval operation failed </li></ul></ul> </td>
+  <td> <ul><ul><li> Tell whether the evaluation fails </li></ul></ul> </td>
   <td> ✅ </td>
   <td>
 
@@ -835,7 +923,7 @@ if (failed) {
 </tr>
 
 <tr>
-  <td> <ul><ul><li> Support a defult value used for operation failed </li></ul></ul> </td>
+  <td> <ul><ul><li> Support a defult value returned when evaluation fails </li></ul></ul> </td>
   <td> ✅ only supported by eval simple types (eval_xxx) </td>
   <td>
 
@@ -1232,12 +1320,12 @@ int main {
 Multiple returns:
 
 ```C++
-std::tuple<int, int> frem(int x, int y) { return std::make_tuple(x / y, x % y); }
+std::tuple<int, int> fdiv(int x, int y) { return std::make_tuple(x / y, x % y); }
 
 int main {
   peacalm::luaw l;
-  l.set("frem", frem);
-  l.dostring("q, r = frem(7, 3)");
+  l.set("fdiv", fdiv);
+  l.dostring("q, r = fdiv(7, 3)");
 }
 ```
 
@@ -1541,25 +1629,42 @@ Except real members of a class, we can also register fake members by some specia
 function, and with a hint type which indicates the member's type that we want to fake.
 
 When faking a member variable, the function's first and only parameter should be
-a pointer to both const and volatile qualified class.
+a pointer to both const and volatile qualified class, e.g. `const volatile Obj* o`.
 
 For example, fake a const member "id" for class Obj:
 
 ```C++
 // Fake a const member "id" whose value is the object's address
 l.register_member<void* const Obj::*>(
-    "id", [](const volatile Obj* p) { return (void*)p; });
+    "id", [](const volatile Obj* o) { return (void*)o; });
 
 Obj o;
-l.set("o", &o);
+l.set("o", &o); // lightuserdata
 assert(l.eval<void*>("return o.id") == (void*)(&o));
 
 // For smart pointer of Obj, id also returns the underlying's address
 auto so = std::make_shared<Obj>();
 l.set("so", so);
 assert(l.eval<void*>("return so.id") == (void*)(so.get()));
-l.set("so2", &so);
-assert(l.eval<void*>("return so2.id") == (void*)(so.get()));
+l.set("so2", so);
+assert(l.eval_bool("return so.id == so2.id"));
+assert(l.eval_bool("return so ~= so2"));
+```
+
+Or we can fake const members generated by operation on other members:
+```C++
+// Fake a const member 'sum' which is the sum of member i and member ci
+l.register_member<const int Obj::*>(
+  "sum", [](const volatile Obj* o) { return o->i + o->ci; });
+
+// Fake a const member 'q' which is the quotient of member i and member ci
+l.register_member<const double Obj::*>(
+  "q", [](const volatile Obj* o) { return double(o->i) / double(o->ci); });
+
+Obj o(3, 2);
+l.set("o", o);
+assert(l.eval<int>("return o.sum") == 5);
+assert(l.eval<double>("return o.q") == 1.5);
 ```
 
 If want to fake a mutable member, then the special function must return lvalue 
@@ -1581,7 +1686,7 @@ int main() {
 }
 ```
 
-Or we can fake member variable using lambda:
+Or we can fake member variables using lambda:
 
 ```C++
   peacalm::luaw l;
@@ -1594,6 +1699,44 @@ Or we can fake member variable using lambda:
   EXPECT_EQ(l.eval<int>("return o.li"), li);
   EXPECT_EQ(l.eval<int>("o.li = 101; return o.li"), 101);
   EXPECT_EQ(li, 101);
+```
+
+Or we can fake member variables by dereference of pointer members of the object:
+```C++
+class Foo {
+public:
+  ~Foo() { delete pi; }
+  int* pi = new int(1);
+};
+
+int main() {
+  peacalm::luaw l;
+
+  // Fake a member 'i' for Foo in Lua by dereference the pointer member 'pi'
+  // The member 'i' is mutable in Lua
+  l.register_member<int Foo::*>(
+      "i", [](const volatile Foo* o) -> int& { return *o->pi; });
+  
+  auto o = std::make_shared<Foo>();
+  l.set("o", o);
+
+  assert(l.eval<int>("return o.i") == 1);
+  assert(l.eval<int>("return o.i") == *o->pi);
+
+  *o->pi = 2;
+  assert(l.eval<int>("return o.i") == 2);
+
+  assert(l.eval<int>("o.i = 3; return o.i") == 3);
+  assert(*o->pi == 3);
+
+  // const instance of Foo can also access 'i', but cannot modify it
+  auto c = std::make_shared<const Foo>();
+  l.set("c", c);
+  assert(l.eval<int>("return c.i") == 1);
+  assert(l.dostring("c.i = 2") != LUA_OK);
+  l.log_error_out(); // Const member cannot be modified: i
+  return 0;
+}
 ```
 
 #### 5.6 Register fake member functions
@@ -1614,11 +1757,11 @@ int main() {
   l.register_member<void (Obj ::*)(int)>("seti", &seti);
   l.register_member<int (Obj::*)() const>("geti", geti);
 
-  Obj o;
-  l.set("o", &o);
+  auto o = std::make_shared<Obj>();
+  l.set("o", o);
   l.dostring("print(o:geti())"); // prints 1
   l.dostring("o:seti(5)");
-  assert(o.i == 5);
+  assert(o->i == 5);
 }
 ```
 
@@ -1684,15 +1827,15 @@ l.register_member<int (Obj::*)()>("plus", &Obj::plus);
 
 
 const Obj o;
-l.set("o1", &o); // pointer to const instance
+l.set("o1", o); // set a const instance by copy
 l.dostring("o1.i = 2"); // error
 
 const auto s = std::make_shared<Obj>(); // high level const
-l.set("o2", &s);
+l.set("o2", s);
 l.dostring("o2.i = 2"); // OK
 
 auto cs = std::make_shared<const Obj>(); // low level const
-l.set("o3", &cs);
+l.set("o3", cs);
 l.dostring("o3.i = 2"); // error
 ```
 

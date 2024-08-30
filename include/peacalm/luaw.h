@@ -624,6 +624,7 @@ public:
     lua_getfield(L_, -1, "__index");
     // if __index exists, then regard as indexable
     bool ret = !isnoneornil(-1);
+    // maybe more checks?
     return ret;
   }
 
@@ -635,6 +636,7 @@ public:
     lua_getfield(L_, -1, "__newindex");
     // if __newindex exists, then regard as newindexable
     bool ret = !isnoneornil(-1);
+    // maybe more checks?
     return ret;
   }
 
@@ -647,6 +649,7 @@ public:
     lua_getfield(L_, -2, "__newindex");
     // if both __index and __newindex exists
     bool ret = !isnoneornil(-1) && !isnoneornil(-2);
+    // maybe more checks?
     return ret;
   }
 
@@ -2050,6 +2053,7 @@ public:
     return false;
   }
 
+  /// Output error: Can't convert value at given index to target type.
   void log_type_convert_error(int idx, const char* to) {
     std::cerr << "Lua: Can't convert to " << to << " by ";
     if (isnumber(idx) || isstring(idx) || isboolean(idx) || isinteger(idx)) {
