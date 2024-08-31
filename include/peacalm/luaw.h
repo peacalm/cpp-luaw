@@ -2299,7 +2299,7 @@ struct luaw::pusher<
 
     void* p = l.newuserdata(sizeof(SolidY));
     new (p) SolidY(std::forward<Y>(v));
-    luaw::metatable_factory<T2*>::push_shared_metatable(l);
+    luaw::metatable_factory<T2>::push_shared_metatable(l);
     l.setmetatable(-2);
 
     return 1;
@@ -2336,7 +2336,7 @@ private:
   static void __push(luaw& l, Y&& v, std::false_type) {
     void* p = l.newuserdata(sizeof(SolidY));
     new (p) SolidY(std::forward<Y>(v));
-    luaw::metatable_factory<SolidY*>::push_shared_metatable(l);
+    luaw::metatable_factory<SolidY>::push_shared_metatable(l);
     l.setmetatable(-2);
   }
 };
@@ -3593,8 +3593,23 @@ namespace luaw_detail {
 
 template <typename T, typename Derived>
 struct metatable_factory_base {
+  // For: T is pointer type
+  static bool gtouchmetatb(luaw& l, std::true_type) {
+    return l.gtouchmetatb(typeid(T).name());
+  }
+
+  // For: T is not pointer type
+  static bool gtouchmetatb(luaw& l, std::false_type) {
+    // Since no-cv T and cv-qualified T have same name using typeid,
+    // so make an unique type name by their pointer.
+    auto name = std::string("*") + std::string(typeid(T*).name());
+    return l.gtouchmetatb(name.c_str());
+  }
+
+  // Objects with same type (cv- is concerned) share a common metatable
   static void push_shared_metatable(luaw& l) {
-    bool first_create = l.gtouchmetatb(typeid(T).name());
+    bool first_create = gtouchmetatb(l, std::is_pointer<T>{});
+    // Only build metatable once to improve performance
     if (first_create) Derived::set_metamethods(l);
   }
 
