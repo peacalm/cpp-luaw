@@ -1934,6 +1934,39 @@ public:
     return eval<T>(expr.c_str(), disable_log, failed);
   }
 
+  ///////////////////////// metatable for lightuserdata ////////////////////////
+
+  /**
+   * @brief Set lightuserdata's metatable by a pointer type.
+   *
+   * Light userdata (unlike heavy userdata) have no per-value metatables. All
+   * light userdata share the same metatable, which by default is not set (nil).
+   *
+   * This method builds a metatable by a pointer type then set it to all light
+   * userdata.
+   *
+   * Behavior of light userdata with wrong type's metatable is undefined!
+   *
+   * @tparam T A pointer type indicates whose metatable lightuserdata use.
+   */
+  template <typename T>
+  void set_lightuserdata_metatable() {
+    static_assert(std::is_pointer<T>::value,
+                  "Should provide a pointer type for lightuserdata");
+    auto _g = make_guarder();
+    pushlightuserdata(static_cast<T>(0));
+    metatable_factory<T>::push_shared_metatable(*this);
+    setmetatable(-2);
+  }
+
+  /// Remove lightuserdata's metatable, i.e. set nil as metatable.
+  void clear_lightuserdata_metatable() {
+    auto _g = make_guarder();
+    pushlightuserdata(static_cast<void*>(0));
+    pushnil();
+    setmetatable(-2);
+  }
+
   ///////////////////////// error log //////////////////////////////////////////
 
   void log_error(const char* s) const {
