@@ -2324,6 +2324,7 @@ struct luaw::pusher<luaw::class_tag> {
   }
 
 private:
+  // SolidY is pointer type
   template <typename SolidY, typename Y>
   static void __push(luaw& l, Y&& v, std::true_type) {
     l.pushlightuserdata(reinterpret_cast<void*>(
@@ -2332,6 +2333,7 @@ private:
     l.setmetatable(-2);
   }
 
+  // SolidY is not pointer type
   template <typename SolidY, typename Y>
   static void __push(luaw& l, Y&& v, std::false_type) {
     void* p = l.newuserdata(sizeof(SolidY));
@@ -4138,14 +4140,15 @@ struct luaw::registrar<Member (*)(Class*, Key)> {
       }
     }
 
-    if (!luaw_detail::is_std_shared_ptr<DecayClass>::value) {
+    // Do not support nested smart pointers, which is meaningless!
+    // Currently DO NOT support volatile for smart pointers!
+    if (!luaw_detail::is_std_shared_ptr<DecayClass>::value &&
+        !luaw_detail::is_std_unique_ptr<DecayClass>::value) {
       REGISTER_SMART_GETTER(std::shared_ptr<DecayClass>*);
       REGISTER_SMART_GETTER(const std::shared_ptr<DecayClass>*);
       REGISTER_SMART_GETTER(std::shared_ptr<const DecayClass>*);
       REGISTER_SMART_GETTER(const std::shared_ptr<const DecayClass>*);
-    }
 
-    if (!luaw_detail::is_std_unique_ptr<DecayClass>::value) {
       REGISTER_SMART_GETTER(std::unique_ptr<DecayClass>*);
       REGISTER_SMART_GETTER(const std::unique_ptr<DecayClass>*);
       REGISTER_SMART_GETTER(std::unique_ptr<const DecayClass>*);
@@ -4196,21 +4199,23 @@ struct luaw::registrar<void (*)(Class*, Key, Member)> {
       }
     }
 
-    if (!luaw_detail::is_std_shared_ptr<DecayClass>::value) {
+    // Do not support nested smart pointers, which is meaningless!
+    // Currently DO NOT support volatile for smart pointers!
+    if (!luaw_detail::is_std_shared_ptr<Class>::value &&
+        !luaw_detail::is_std_unique_ptr<Class>::value) {
       REGISTER_SMART_SETTER(std::shared_ptr<DecayClass>*);
       REGISTER_SMART_SETTER(const std::shared_ptr<DecayClass>*);
 
       REGISTER_SETTER_OF_CONST(std::shared_ptr<const DecayClass>*);
       REGISTER_SETTER_OF_CONST(const std::shared_ptr<const DecayClass>*);
-    }
 
-    if (!luaw_detail::is_std_unique_ptr<DecayClass>::value) {
       REGISTER_SMART_SETTER(std::unique_ptr<DecayClass>*);
       REGISTER_SMART_SETTER(const std::unique_ptr<DecayClass>*);
 
       REGISTER_SETTER_OF_CONST(std::unique_ptr<const DecayClass>*);
       REGISTER_SETTER_OF_CONST(const std::unique_ptr<const DecayClass>*);
     }
+
 #undef REGISTER_SETTER_OF_CONST
 #undef REGISTER_SMART_SETTER
 #undef REGISTER_SETTER
@@ -4245,19 +4250,22 @@ struct luaw::registrar<
       DEFINE_GETTER(volatile Class*);
       DEFINE_GETTER(const volatile Class*);
     }
+
+    // Do not support nested smart pointers, which is meaningless!
     // Currently DO NOT support volatile for smart pointers!
-    if (!luaw_detail::is_std_shared_ptr<Class>::value) {
+    if (!luaw_detail::is_std_shared_ptr<Class>::value &&
+        !luaw_detail::is_std_unique_ptr<Class>::value) {
       DEFINE_GETTER(std::shared_ptr<Class>*);
       DEFINE_GETTER(std::shared_ptr<const Class>*);
       DEFINE_GETTER(const std::shared_ptr<Class>*);
       DEFINE_GETTER(const std::shared_ptr<const Class>*);
-    }
-    if (!luaw_detail::is_std_unique_ptr<Class>::value) {
+
       DEFINE_GETTER(std::unique_ptr<Class>*);
       DEFINE_GETTER(std::unique_ptr<const Class>*);
       DEFINE_GETTER(const std::unique_ptr<Class>*);
       DEFINE_GETTER(const std::unique_ptr<const Class>*);
     }
+
 #undef DEFINE_GETTER
 
     __register_setters(l, mname, std::forward<F>(f), std::is_const<Member>{});
@@ -4285,13 +4293,16 @@ private:
       __register_const_member<volatile Class*>(l, mname);
       __register_const_member<const volatile Class*>(l, mname);
     }
-    if (!luaw_detail::is_std_shared_ptr<Class>::value) {
+
+    // Do not support nested smart pointers, which is meaningless!
+    // Currently DO NOT support volatile for smart pointers!
+    if (!luaw_detail::is_std_shared_ptr<Class>::value &&
+        !luaw_detail::is_std_unique_ptr<Class>::value) {
       __register_const_member<std::shared_ptr<Class>*>(l, mname);
       __register_const_member<std::shared_ptr<const Class>*>(l, mname);
       __register_const_member<const std::shared_ptr<Class>*>(l, mname);
       __register_const_member<const std::shared_ptr<const Class>*>(l, mname);
-    }
-    if (!luaw_detail::is_std_unique_ptr<Class>::value) {
+
       __register_const_member<std::unique_ptr<Class>*>(l, mname);
       __register_const_member<std::unique_ptr<const Class>*>(l, mname);
       __register_const_member<const std::unique_ptr<Class>*>(l, mname);
@@ -4325,13 +4336,16 @@ private:
       __register_const_member<const Class*>(l, mname);
       __register_const_member<const volatile Class*>(l, mname);
     }
-    if (!luaw_detail::is_std_shared_ptr<Class>::value) {
+
+    // Do not support nested smart pointers, which is meaningless!
+    // Currently DO NOT support volatile for smart pointers!
+    if (!luaw_detail::is_std_shared_ptr<Class>::value &&
+        !luaw_detail::is_std_unique_ptr<Class>::value) {
       DEFINE_SETTER(std::shared_ptr<Class>*);
       DEFINE_SETTER(const std::shared_ptr<Class>*);
       __register_const_member<std::shared_ptr<const Class>*>(l, mname);
       __register_const_member<const std::shared_ptr<const Class>*>(l, mname);
-    }
-    if (!luaw_detail::is_std_unique_ptr<Class>::value) {
+
       DEFINE_SETTER(std::unique_ptr<Class>*);
       DEFINE_SETTER(const std::unique_ptr<Class>*);
       __register_const_member<std::unique_ptr<const Class>*>(l, mname);
@@ -4400,7 +4414,11 @@ struct luaw::registrar<Return (Class::*)(Args...)> {
       register_nonvolatile_member_function<volatile Class*>(l, fname);
       register_nonvolatile_member_function<const volatile Class*>(l, fname);
     }
-    if (!luaw_detail::is_std_shared_ptr<Class>::value) {
+
+    // Do not support nested smart pointers, which is meaningless!
+    // Currently DO NOT support volatile for smart pointers!
+    if (!luaw_detail::is_std_shared_ptr<Class>::value &&
+        !luaw_detail::is_std_unique_ptr<Class>::value) {
       register_member_function<std::shared_ptr<Class>*>(l, fname, mf);
       register_member_function<const std::shared_ptr<Class>*>(l, fname, mf);
 
@@ -4408,8 +4426,7 @@ struct luaw::registrar<Return (Class::*)(Args...)> {
                                                                        fname);
       register_nonconst_member_function<const std::shared_ptr<const Class>*>(
           l, fname);
-    }
-    if (!luaw_detail::is_std_unique_ptr<Class>::value) {
+
       register_member_function<std::unique_ptr<Class>*>(l, fname, mf);
       register_member_function<const std::unique_ptr<Class>*>(l, fname, mf);
 
@@ -4434,7 +4451,11 @@ struct luaw::registrar<Return (Class::*)(Args...) const> {
       Basic::template register_nonvolatile_member_function<
           const volatile Class*>(l, fname);
     }
-    if (!luaw_detail::is_std_shared_ptr<Class>::value) {
+
+    // Do not support nested smart pointers, which is meaningless!
+    // Currently DO NOT support volatile for smart pointers!
+    if (!luaw_detail::is_std_shared_ptr<Class>::value &&
+        !luaw_detail::is_std_unique_ptr<Class>::value) {
       Basic::template register_member_function<std::shared_ptr<Class>*>(
           l, fname, mf);
       Basic::template register_member_function<const std::shared_ptr<Class>*>(
@@ -4443,8 +4464,7 @@ struct luaw::registrar<Return (Class::*)(Args...) const> {
           l, fname, mf);
       Basic::template register_member_function<
           const std::shared_ptr<const Class>*>(l, fname, mf);
-    }
-    if (!luaw_detail::is_std_unique_ptr<Class>::value) {
+
       Basic::template register_member_function<std::unique_ptr<Class>*>(
           l, fname, mf);
       Basic::template register_member_function<const std::unique_ptr<Class>*>(
@@ -4469,7 +4489,11 @@ struct luaw::registrar<Return (Class::*)(Args...) volatile> {
       Basic::template register_nonconst_member_function<const volatile Class*>(
           l, fname);
     }
-    if (!luaw_detail::is_std_shared_ptr<Class>::value) {
+
+    // Do not support nested smart pointers, which is meaningless!
+    // Currently DO NOT support volatile for smart pointers!
+    if (!luaw_detail::is_std_shared_ptr<Class>::value &&
+        !luaw_detail::is_std_unique_ptr<Class>::value) {
       Basic::template register_member_function<std::shared_ptr<Class>*>(
           l, fname, mf);
       Basic::template register_member_function<const std::shared_ptr<Class>*>(
@@ -4479,8 +4503,7 @@ struct luaw::registrar<Return (Class::*)(Args...) volatile> {
           std::shared_ptr<const Class>*>(l, fname);
       Basic::template register_nonconst_member_function<
           const std::shared_ptr<const Class>*>(l, fname);
-    }
-    if (!luaw_detail::is_std_unique_ptr<Class>::value) {
+
       Basic::template register_member_function<std::unique_ptr<Class>*>(
           l, fname, mf);
       Basic::template register_member_function<const std::unique_ptr<Class>*>(
@@ -4506,7 +4529,11 @@ struct luaw::registrar<Return (Class::*)(Args...) const volatile> {
       Basic::template register_member_function<const volatile Class*>(
           l, fname, mf);
     }
-    if (!luaw_detail::is_std_shared_ptr<Class>::value) {
+
+    // Do not support nested smart pointers, which is meaningless!
+    // Currently DO NOT support volatile for smart pointers!
+    if (!luaw_detail::is_std_shared_ptr<Class>::value &&
+        !luaw_detail::is_std_unique_ptr<Class>::value) {
       Basic::template register_member_function<std::shared_ptr<Class>*>(
           l, fname, mf);
       Basic::template register_member_function<const std::shared_ptr<Class>*>(
@@ -4515,8 +4542,7 @@ struct luaw::registrar<Return (Class::*)(Args...) const volatile> {
           l, fname, mf);
       Basic::template register_member_function<
           const std::shared_ptr<const Class>*>(l, fname, mf);
-    }
-    if (!luaw_detail::is_std_unique_ptr<Class>::value) {
+
       Basic::template register_member_function<std::unique_ptr<Class>*>(
           l, fname, mf);
       Basic::template register_member_function<const std::unique_ptr<Class>*>(
