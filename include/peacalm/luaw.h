@@ -974,10 +974,13 @@ public:
     setglobal(name);
   }
 
-  /// Pushes the global environment onto the stack.
+  /// Push the global environment onto the stack.
   void pushglobaltable() { lua_pushglobaltable(L_); }
 
-  /// Pushes the thread represented by L onto the stack.
+  /// Push a new table onto the stack.
+  void pushnewtable() { lua_newtable(L_); }
+
+  /// Push the thread represented by L onto the stack.
   /// Returns 1 if this thread is the main thread of its state.
   int pushthread() { return lua_pushthread(L_); }
 
