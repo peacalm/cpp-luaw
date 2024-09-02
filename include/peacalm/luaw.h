@@ -3597,15 +3597,16 @@ template <typename T, typename Derived>
 struct metatable_factory_base {
   // For: T is pointer type
   static bool gtouchmetatb(luaw& l, std::true_type) {
-    return l.gtouchmetatb(typeid(T).name());
+    // Make metatable for lightuserdata have a different name with userdata.
+    auto name = std::string("&") + std::string(typeid(T).name());
+    return l.gtouchmetatb(name.c_str());
   }
 
   // For: T is not pointer type
   static bool gtouchmetatb(luaw& l, std::false_type) {
     // Since no-cv T and cv-qualified T have same name using typeid,
     // so make an unique type name by their pointer.
-    auto name = std::string("*") + std::string(typeid(T*).name());
-    return l.gtouchmetatb(name.c_str());
+    return l.gtouchmetatb(typeid(T*).name());
   }
 
   // Objects with same type (cv- is concerned) share a common metatable
