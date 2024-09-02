@@ -1945,7 +1945,9 @@ public:
    * This method builds a metatable by a pointer type then set it to all light
    * userdata.
    *
-   * @tparam T A pointer type indicates whose metatable lightuserdatas.
+   * Behavior of light userdata with wrong type's metatable is undefined!
+   *
+   * @tparam T A pointer type indicates whose metatable lightuserdata use.
    */
   template <typename T>
   void set_lightuserdata_metatable() {
