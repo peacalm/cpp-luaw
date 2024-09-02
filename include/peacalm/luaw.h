@@ -1954,7 +1954,7 @@ public:
     static_assert(std::is_pointer<T>::value,
                   "Should provide a pointer type for lightuserdata");
     auto _g = make_guarder();
-    pushlightuserdata(static_cast<T>(0));
+    pushlightuserdata(static_cast<void*>(0));
     metatable_factory<T>::push_shared_metatable(*this);
     setmetatable(-2);
   }
