@@ -2352,7 +2352,7 @@ struct luaw::pusher<
   }
 };
 
-// std::unique_ptr<T, D>, share metatable with std::unique_ptr<T>
+// std::unique_ptr<T, D>, not share metatable with std::unique_ptr<T>
 template <typename T>
 struct luaw::pusher<
     T,
@@ -2386,7 +2386,12 @@ struct luaw::pusher<
 
     void* p = l.newuserdata(sizeof(SolidY));
     new (p) SolidY(std::forward<Y>(v));
-    luaw::metatable_factory<T2>::push_shared_metatable(l);
+
+    bool first_create = luaw::metatable_factory<SolidY>::gtouchmetatb(l);
+    if (first_create) {
+      luaw::metatable_factory<T2*>::set_metamethods(l);
+      luaw::metatable_factory<SolidY>::set_gc_to_metatable(l);
+    }
     l.setmetatable(-2);
 
     return 1;
@@ -3682,6 +3687,12 @@ namespace luaw_detail {
 
 template <typename T, typename Derived>
 struct metatable_factory_base {
+  // Touch (push onto stack) metatable by type T, create a new metatable if it
+  // doesn't exist. Return whether created a new one.
+  static bool gtouchmetatb(luaw& l) {
+    return gtouchmetatb(l, std::is_pointer<T>{});
+  }
+
   // For: T is pointer type
   static bool gtouchmetatb(luaw& l, std::true_type) {
     // Make metatable for lightuserdata have a different name with userdata.
@@ -3722,8 +3733,16 @@ struct luaw::metatable_factory<T*>
   //               "Only class and it's pointer could have metatable");
 
   static void set_metamethods(luaw& l) {
-    l.setkv("__index", __index, -1);
-    l.setkv("__newindex", __newindex, -1);
+    set_index_to_metatable(l, -1);
+    set_newindex_to_metatable(l, -1);
+  }
+
+  static void set_index_to_metatable(luaw& l, int idx = -1) {
+    l.setkv("__index", __index, idx);
+  }
+
+  static void set_newindex_to_metatable(luaw& l, int idx = -1) {
+    l.setkv("__newindex", __newindex, idx);
   }
 
   static int __index(lua_State* L) {
@@ -3921,7 +3940,13 @@ struct luaw::metatable_factory
 
   static void set_metamethods(luaw& l) {
     luaw::metatable_factory<T*>::set_metamethods(l);
-    if (!std::is_trivially_destructible<T>::value) { l.setkv("__gc", __gc); }
+    if (!std::is_trivially_destructible<T>::value) {
+      set_gc_to_metatable(l, -1);
+    }
+  }
+
+  static void set_gc_to_metatable(luaw& l, int idx = -1) {
+    l.setkv("__gc", __gc, idx);
   }
 
   static int __gc(lua_State* L) {
