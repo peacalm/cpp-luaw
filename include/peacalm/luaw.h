@@ -1967,6 +1967,57 @@ public:
     setmetatable(-2);
   }
 
+  /// Tell whether lightuserdata has metatable (not nil).
+  bool lightuserdata_has_metatable() {
+    auto _g = make_guarder();
+    pushlightuserdata(static_cast<void*>(0));
+    bool has = getmetatable(-1);
+    return has;
+  }
+
+  /**
+   * @brief Get lightuserdata's metatable name
+   *
+   * @param [in] def Value returned if lightuserdata doesn't have metatable or
+   * "__name" doesn't exist in it's metatable or the value in metatable paired
+   * to "__name" can't convert to string.
+   * @param [out] has_metatable Will be set whether lightuserdata has metatable.
+   * @param [in] disable_log Whether print a log when exception occurs.
+   * @param [out] failed Will be set whether converting the value paired to
+   * "__name" in lightuserdata's metatable to string failed.
+   * @param [out] exists Will be set whether "__name" exists in lightuserdata's
+   * metatable.
+   * @return std::string
+   */
+  std::string get_lightuserdata_metatable_name(const std::string& def = "",
+                                               bool* has_metatable    = nullptr,
+                                               bool  disable_log      = false,
+                                               bool* failed           = nullptr,
+                                               bool* exists = nullptr) {
+    auto _g = make_guarder();
+    pushlightuserdata(static_cast<void*>(0));
+    bool has = getmetatable(-1);
+    if (has_metatable) *has_metatable = has;
+    if (!has) return def;
+    getfield(-1, "__name");
+    return to_string(-1, def, disable_log, failed, exists);
+  }
+
+  /// Get metatable name for value at given index.
+  std::string get_metatable_name(int                idx           = -1,
+                                 const std::string& def           = "",
+                                 bool*              has_metatable = nullptr,
+                                 bool               disable_log   = false,
+                                 bool*              failed        = nullptr,
+                                 bool*              exists        = nullptr) {
+    auto _g  = make_guarder();
+    bool has = getmetatable(idx);
+    if (has_metatable) *has_metatable = has;
+    if (!has) return def;
+    getfield(-1, "__name");
+    return to_string(-1, def, disable_log, failed, exists);
+  }
+
   ///////////////////////// error log //////////////////////////////////////////
 
   void log_error(const char* s) const {

@@ -27,6 +27,7 @@ TEST(lightuserdata_metatable, set_addr_like_number) {
   EXPECT_EQ(a.v, 1);
 
   l.set<void*>("a", (void*)(&a));
+  EXPECT_FALSE(l.lightuserdata_has_metatable());
 
   {
     bool failed;
@@ -37,6 +38,7 @@ TEST(lightuserdata_metatable, set_addr_like_number) {
 
   // After set mebtatable
   l.set_lightuserdata_metatable<Foo*>();
+  EXPECT_TRUE(l.lightuserdata_has_metatable());
   {
     bool failed;
     int  v = l.eval_int("return a.v", -1, false, &failed);
@@ -46,6 +48,7 @@ TEST(lightuserdata_metatable, set_addr_like_number) {
 
   // After clear metatable
   l.clear_lightuserdata_metatable();
+  EXPECT_FALSE(l.lightuserdata_has_metatable());
   {
     bool failed;
     int  v = l.eval_int("return a.v", -1, false, &failed);
@@ -62,6 +65,7 @@ TEST(lightuserdata_metatable, set_pointer_to_class) {
   EXPECT_EQ(a.v, 1);
 
   l.set("a", &a);
+  EXPECT_TRUE(l.lightuserdata_has_metatable());
   {
     bool failed;
     int  v = l.eval_int("return a.v", -1, false, &failed);
@@ -71,6 +75,7 @@ TEST(lightuserdata_metatable, set_pointer_to_class) {
 
   // After clear metatable
   l.clear_lightuserdata_metatable();
+  EXPECT_FALSE(l.lightuserdata_has_metatable());
   {
     bool failed;
     int  v = l.eval_int("return a.v", -1, false, &failed);
@@ -95,13 +100,20 @@ TEST(lightuserdata_metatable, two_types) {
   l.set("b", &b);
   std::string metatablename1 =
       l.lget<std::string>({}, "b", peacalm::luaw::metatable_tag{}, "__name");
+  EXPECT_NE(metatablename1, "");
 
+  std::string metatablename1_1 = l.get_lightuserdata_metatable_name();
+  EXPECT_EQ(metatablename1, metatablename1_1);
+  {
+    auto _g = l.make_guarder();
+    l.gseek("b");
+    std::string metatablename1_2 = l.get_metatable_name(-1);
+    EXPECT_EQ(metatablename1, metatablename1_2);
+  }
   EXPECT_EQ(l.eval_int("return b.v"), 0);
 
   l.set("a", &a);
-  std::string metatablename2 =
-      l.lget<std::string>({}, "b", peacalm::luaw::metatable_tag{}, "__name");
-
+  std::string metatablename2 = l.get_lightuserdata_metatable_name();
   EXPECT_NE(metatablename1, metatablename2);
 
   // Behavior with wrong metatable is undefined,
@@ -122,12 +134,11 @@ TEST(lightuserdata_metatable, two_types) {
 
   // metatable for Bar* and const Bar* is different
   l.set_lightuserdata_metatable<const Bar*>();
-  std::string metatablename3 =
-      l.lget<std::string>({}, "b", peacalm::luaw::metatable_tag{}, "__name");
+  std::string metatablename3 = l.get_lightuserdata_metatable_name();
   EXPECT_NE(metatablename3, metatablename1);
 
   l.set_lightuserdata_metatable<Bar*>();
-  std::string metatablename4 =
-      l.lget<std::string>({}, "b", peacalm::luaw::metatable_tag{}, "__name");
+  std::string metatablename4 = l.get_lightuserdata_metatable_name();
+
   EXPECT_EQ(metatablename4, metatablename1);
 }
