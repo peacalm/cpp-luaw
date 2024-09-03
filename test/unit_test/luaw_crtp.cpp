@@ -16,6 +16,7 @@
 
 #include "main.h"
 
+namespace {
 struct vprovider {
   int def = 1;
   vprovider(int i = 1) : def(i) {
@@ -33,6 +34,8 @@ struct vprovider {
 std::set<std::string> toset(const std::vector<std::string> &v) {
   return std::set<std::string>(v.begin(), v.end());
 }
+
+}  // namespace
 
 TEST(luaw_crtp, detect_variable_names_eval) {
   luaw_is_provider<vprovider> l;

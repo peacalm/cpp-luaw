@@ -14,6 +14,8 @@
 
 #include "main.h"
 
+namespace {
+
 struct Obj {
   Obj() {}
   Obj(int v) : i(v) {}
@@ -44,6 +46,8 @@ struct Obj {
   void referenced_fl() & {}
   void referenced_fr() && {}
 };
+
+}  // namespace
 
 TEST(register_member, register_ctor) {
   luaw l;
@@ -756,9 +760,11 @@ TEST(register_member, unique_ptr_member_function) {
   }
 }
 
+namespace {
 struct ObjDeleter {
   void operator()(Obj* p) const { delete p; }
 };
+}  // namespace
 
 TEST(register_member, unique_ptr_with_custom_deleter) {
   luaw l;
@@ -1108,11 +1114,13 @@ TEST(register_member, fake_const_member_variable_by_returned_rvalue) {
   EXPECT_EQ(l.eval<int>("return o.sum"), 6 + o.ci);
 }
 
+namespace {
 class Obj2 {
 public:
   ~Obj2() { delete pi; }
   int* pi = new int(1);
 };
+}  // namespace
 
 TEST(register_member, fake_member_variable_by_deref_member_pointer) {
   luaw l;
@@ -1381,6 +1389,8 @@ TEST(register_member, dynamic_member_volatile) {
   }
 }
 
+namespace {
+
 struct Foo {
   std::unordered_map<std::string, luaw::luavalueref> m;
 };
@@ -1392,6 +1402,8 @@ luaw::luavalueref foo_dm_getter(const Foo* o, const std::string& k) {
 void foo_dm_setter(Foo* o, const std::string& k, const luaw::luavalueref& v) {
   o->m[k] = v;
 }
+
+}  // namespace
 
 TEST(register_member, luavalueref) {
   luaw l;

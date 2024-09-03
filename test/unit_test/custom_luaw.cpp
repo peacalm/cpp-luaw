@@ -14,6 +14,8 @@
 
 #include "main.h"
 
+namespace {
+
 struct dummy_provider {
   int def = 0;
   dummy_provider(int i = 1) : def(i) {}
@@ -44,6 +46,8 @@ struct bad_provider3 {
     return false;
   }
 };
+
+}  // namespace
 
 TEST(custom_luaw, eval) {
   custom_luaw<std::unique_ptr<dummy_provider>> l;

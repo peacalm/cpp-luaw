@@ -516,6 +516,8 @@ TEST(set_and_get, template_set) {
   }
 }
 
+namespace {
+
 int echo(int i) {
   printf("echo %d\n", i);
   return i;
@@ -549,6 +551,8 @@ template <typename T>
 T tadd(T a, T b) {
   return a + b;
 }
+
+}  // namespace
 
 TEST(set_and_get, set_function) {
   luaw l;

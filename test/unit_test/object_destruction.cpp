@@ -14,6 +14,7 @@
 
 #include "main.h"
 
+namespace {
 struct A {
   A() { ++ctor; }
   A(const A&) { ++ctor; }
@@ -30,6 +31,7 @@ std::atomic<int> A::ctor{0};
 std::atomic<int> A::dtor{0};
 
 struct B {};
+}  // namespace
 
 TEST(object_destruction, raw_object) {
   {
