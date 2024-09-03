@@ -3992,28 +3992,32 @@ public:
 
   template <typename... Ys>
   Return operator()(const std::shared_ptr<DecayFirstArg>& f, Ys&&... ys) const {
-    PEACALM_LUAW_ASSERT(f.get());
+    // No assert, the smart pointer could contain nullptr if user want it to.
+    // PEACALM_LUAW_ASSERT(f.get());
     return o(f.get(), std::forward<Ys>(ys)...);
   }
 
   template <typename... Ys>
   Return operator()(const std::shared_ptr<const DecayFirstArg>& f,
                     Ys&&... ys) const {
-    PEACALM_LUAW_ASSERT(f.get());
+    // No assert, the smart pointer could contain nullptr if user want it to.
+    // PEACALM_LUAW_ASSERT(f.get());
     return o(f.get(), std::forward<Ys>(ys)...);
   }
 
   template <typename... Ys>
   Return operator()(const std::shared_ptr<volatile DecayFirstArg>& f,
                     Ys&&... ys) const {
-    PEACALM_LUAW_ASSERT(f.get());
+    // No assert, the smart pointer could contain nullptr if user want it to.
+    // PEACALM_LUAW_ASSERT(f.get());
     return o(f.get(), std::forward<Ys>(ys)...);
   }
 
   template <typename... Ys>
   Return operator()(const std::shared_ptr<const volatile DecayFirstArg>& f,
                     Ys&&... ys) const {
-    PEACALM_LUAW_ASSERT(f.get());
+    // No assert, the smart pointer could contain nullptr if user want it to.
+    // PEACALM_LUAW_ASSERT(f.get());
     return o(f.get(), std::forward<Ys>(ys)...);
   }
 
@@ -4022,28 +4026,32 @@ public:
   template <typename D, typename... Ys>
   Return operator()(const std::unique_ptr<DecayFirstArg, D>& f,
                     Ys&&... ys) const {
-    PEACALM_LUAW_ASSERT(f.get());
+    // No assert, the smart pointer could contain nullptr if user want it to.
+    // PEACALM_LUAW_ASSERT(f.get());
     return o(f.get(), std::forward<Ys>(ys)...);
   }
 
   template <typename D, typename... Ys>
   Return operator()(const std::unique_ptr<const DecayFirstArg, D>& f,
                     Ys&&... ys) const {
-    PEACALM_LUAW_ASSERT(f.get());
+    // No assert, the smart pointer could contain nullptr if user want it to.
+    // PEACALM_LUAW_ASSERT(f.get());
     return o(f.get(), std::forward<Ys>(ys)...);
   }
 
   template <typename D, typename... Ys>
   Return operator()(const std::unique_ptr<volatile DecayFirstArg, D>& f,
                     Ys&&... ys) const {
-    PEACALM_LUAW_ASSERT(f.get());
+    // No assert, the smart pointer could contain nullptr if user want it to.
+    // PEACALM_LUAW_ASSERT(f.get());
     return o(f.get(), std::forward<Ys>(ys)...);
   }
 
   template <typename D, typename... Ys>
   Return operator()(const std::unique_ptr<const volatile DecayFirstArg, D>& f,
                     Ys&&... ys) const {
-    PEACALM_LUAW_ASSERT(f.get());
+    // No assert, the smart pointer could contain nullptr if user want it to.
+    // PEACALM_LUAW_ASSERT(f.get());
     return o(f.get(), std::forward<Ys>(ys)...);
   }
 };
