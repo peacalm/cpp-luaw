@@ -94,15 +94,15 @@ auto d = l.get<std::tuple<bool, int, std::string>>("d");
 
 // About set: only collect keys of a table in Lua into a C++ container set.
 l.dostring("ss={a=true,b=true,c=true}; si={}; si[1]=true si[2]=true;");
-auto ss = l.get<std::set<std::string>>("ss");
-auto si = l.get<std::set<int>>("si");
+auto ss = l.get<std::set<std::string>>("ss"); // ss == std::set<std::string>{"a", "b", "c"}
+auto si = l.get<std::set<int>>("si"); // si == std::set<int>{1, 2}
 ```
   </td>
 </tr>
 
 <tr>
-  <td> <ul><ul><li> Tell whether the target exists or whether the operation failed 
-  (we don't regard target's non-existence as a failure) </li></ul></ul> </td>
+  <td> <ul><ul><li> Tell whether the target exists or whether the operation fails 
+  (we don't regard target's non-existence as fail) </li></ul></ul> </td>
   <td> ✅ </td>
   <td>
 
@@ -135,6 +135,26 @@ auto s = l.get_string("s", "def"); // default value of s is 'def'
   </td>
 </tr>
 
+<tr>
+  <td> <ul><ul><li> Recursively get element in table by a given path </li></ul></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+peacalm::luaw l;
+int retcode = l.dostring("a=true; m={p1={x=1,y=2},p2={x=3.2,y=4.5}}");
+if (retcode != LUA_OK) {
+  // error handlers...
+}
+
+bool a = l.get_bool({"a"});  // same to l.get_bool("a"), a == true
+int p1x = l.get_int({"m", "p1", "x"}, -1); // p1x == 1
+double p2y = l.get<double>({"m", "p2", "y"}); // p2y == 4.5
+// p2 = std::map<std::string, double>{{"x", 3.2}, {"y", 4.5}}
+auto p2 = l.get<std::map<std::string, double>>({"m", "p2"}); 
+```
+  </td>
+</tr>
 
 <tr>
   <td> <ul><li> Set C++ values to Lua</li></ul> </td>
@@ -241,7 +261,7 @@ int s = f(1,2);
         <li> Tell whether call the Lua function and get result successfully </li>
         <li> Tell whether the function fails while running in Lua </li>
         <li> Tell whether the Lua function exists </li>
-        <li> Tell whether converting the Lua function result to C++ fails </li>
+        <li> Tell whether converting the Lua function's result to C++ fails </li>
         <li> Tell whether the Lua function returns result </li>
       </ul>
     </ul></ul> 
@@ -368,6 +388,31 @@ int vf(const char* s, ...) { /* some codes */ }
   </td>
 </tr>
 
+
+<tr>
+  <td> <ul><ul><li> Bind C++ overloaded functions to Lua </li></ul></ul> </td>
+  <td> ✅ should provide hint type</td>
+  <td>
+
+```C++
+// Overloaded functions f
+int f(int i) { return i * 2; }
+double f(double d) { return d / 2; }
+double f(double a, double b) { return a * b; }
+int main() {
+  peacalm::luaw l;
+  // Provide the function proto type as hint
+  l.set<int(int)>("f1", f);
+  l.set<double(double)>("f2", f);
+  l.set<double(double, double)>("f3", f);
+  // Or could use function pointer proto type as hint
+  l.set<int(*)(int)>("f1", f);
+  l.set<double(*)(double)>("f2", f);
+  l.set<double(*)(double, double)>("f3", f);
+}
+```
+  </td>
+</tr>
 
 <tr>
   <td> <ul><ul><li> Bind C++ template functions to Lua </li></ul></ul> </td>
@@ -1058,6 +1103,8 @@ l.get_double({"m", "p2", "x"}); // 3.2
 API:
 
 ```C++
+/// Get values, functions, userdatas, pointers etc.
+/// @param path Could be single string or a list of string.
 template <typename T>
 T get(@PATH_TYPE@ path, bool disable_log = false, 
       bool* failed = nullptr, bool* exists = nullptr);
@@ -1108,7 +1155,7 @@ recommended, should better use std::string instead.
 
 When getting a container type and the variable exists, the result will contain 
 elements who are successfully converted, and discard who are not or who are nil.
-Regard the operation as failed if any element failed.
+Regard the operation as failed if any element's conversion failed.
 
 * @tparam T The result type user expected. 
 * @param [in] path The target variable's name or path.
@@ -1148,26 +1195,54 @@ l.dostring("g={gg={{a=1,b=2},{a=10,b=20,c='s'}}}");
 int b = l.lget<int>({}, "g", "gg", 2, "b"); // 20
 ```
 
+Another example, could use lget to get a userdata's metatable name:
+```C++
+struct Obj {};
+
+int main() {
+  peacalm::luaw l;
+  l.register_member<void* const Obj::*>(
+    "id", [](const volatile Obj* p) { return (void*)p; });
+
+  auto s = std::make_shared<Obj>();
+  l.set("s", s);
+
+  void* sid = l.eval<void*>("return s.id");
+  void* sid2 = l.get<void*>({"s", "id"});
+  assert(sid == sid2);
+  assert(sid == (void*)(s.get()));
+
+  void* saddr = l.get<void*>("s"); // the shared ptr s itself's address
+  assert(saddr != sid);
+
+  // Use lget to get metatable name
+  bool disable_log, failed, exists;
+  auto metatbname = l.lget<std::string>({disable_log, &failed, &exists},
+    "s", peacalm::luaw::metatable_tag{}, "__name");
+  std::cout << "metatable name of s: " << metatbname << std::endl;
+}
+```
+
 ### 2. Set C++ values to Lua
 API:
 
 ```C++
-// Set value as a global variable or a subfield of a table
+/// Set value as a global variable or a subfield of a table
 template <typename T>
 void set(@PATH_TYPE@ path, T&& value);
 
-// set with a hint type
+/// Set with a hint type
 template <typename Hint, typename T>
 std::enable_if_t<!std::is_same<Hint, T>::value>
 void set(@PATH_TYPE@ path, T&& value);
 
 
-// Long set. The last argument is value, the rest arguments are indices and
-// sub-indices, where could contain luaw::metatable_tag.
+/// Long set. The last argument is value, the rest arguments are indexes and
+/// sub-indexes, where could contain luaw::metatable_tag.
 template <typename... Args>
 void lset(Args&&... args);
 
-// Long set with a hint type.
+/// Long set with a hint type.
 template <typename Hint, typename... Args>
 void lset(Args&&... args)
 
@@ -1182,10 +1257,11 @@ void set_string(@NAME_TYPE@ name, const char* value);
 void set_string(@NAME_TYPE@ name, const std::string& value);
 ```
 
-Also, `@PATH_TYPE@` could be single string or string list.
-If it is a single string, this API set a global variable to Lua;
-If it is a string list, this API set a subfield of a Lua table, and if keys 
-in path doesn't exist or it is not a table (or indexable and newindexable userdata), 
+Also, `@PATH_TYPE@` could be a single string or a string list.
+If it is a single string, this API sets a global variable to Lua;
+If it is a string list, this API sets a subfield of a Lua table, and if keys 
+in path doesn't exist or it is not a table 
+(or not indexable and newindexable userdata), 
 it will creat a new table for it.
 
 So the set operation will always succeed.
@@ -1196,13 +1272,21 @@ it can be used as a key of a table, such as string, integer, void*, and
 
 
 The value type can be:
-1. C++ data type: simple types or container types.
-2. C function or lambda or std::function.
-3. Custom class types, and it's pointer or smart pointer.
+1. C++ data type: simple types or container types
+2. C function or lambda or std::function
+3. Custom class types
+4. smart pointers
+5. raw pointers
+6. nullptr
+7. luaw::newtable_tag
 
-`set(name, nullptr)` means set nil to "name".
+Especially to say:
 
-`set(name, luaw::newtable_tag)` means set a new empty table to "name".
+`nullptr` means nil in Lua. e.g. `set(name, nullptr)` means setting nil to "name".
+
+`set(name, luaw::newtable_tag{})` means setting a new empty table to "name".
+
+Setting a raw pointer means setting a lightuserdata to Lua.
 
 Example:
 
@@ -1221,6 +1305,11 @@ l.set("x", nullptr); // set nil to "x"
 l.set("t", peacalm::luaw::newtable_tag); // set "t" as a new empty table
 
 l.lset("g", "b", "v", 1); // set g.b.v = 1, and make g, b as table
+
+// These are equivalent to: l.dostring("nums = { en = {'one', 'two', 'three'}}");
+l.lset("nums", "en", 1, "one");
+l.lset("nums", "en", 2, "two");
+l.dostring("nums.en[3] = 'three'");
 ```
 
 
@@ -1258,91 +1347,184 @@ but can't know whether it works correctly. If you want to know, see the followin
 
 We can get a callable object of type `std::function` or `luaw::function` 
 to represent the Lua function.
-The latter behaves like the former, but provide more information after it was called,
-such as whether the function call is succeeded, whether the function exists, 
-whether transform result from Lua to C++ successfully, etc.
 
+The latter behaves like the former, but provide more information after it was called,
+and these information is very userful to make sure the function works correctly as
+we want, or to debug where exceptions happen. Such as:
+
+Totally status:
+
+- whether call the Lua function and get result successfully
+
+Detailed status for each step:
+
+- whether the function fails while running in Lua
+- whether the Lua function exists
+- whether converting the Lua function's result to C++ fails
+- whether the Lua function returns result (whether result exists)
+
+
+```C++
+template <typename>
+class luaw::function;
+
+template <typename Return, typename... Args>
+class luaw::function<Return(Args...)> {
+public:
+
+  bool failed() const;
+
+  bool function_failed() const;
+  bool function_exists() const;
+
+  bool result_failed() const;
+  bool result_exists() const;
+
+  // ...
+};
+```
 
 Example:
 
 ```C++
 // Follow the example above
 
-auto f1 = std::get<std::function<int(int, int)>>("f1");
+auto f1 = l.get<std::function<int(int, int)>>("f1");
 assert(f1(1,1) == 2);
 
-auto f2 = std::get<peacalm::luaw::function<int(int, int)>>({"g", "f1"});
+auto f2 = l.get<peacalm::luaw::function<int(int, int)>>({"g", "f1"});
 int c = f2(1,1);
-assert(c == 2);
-assert(!f2.failed());
-// see more details using:
-// f2.function_failed();
-// f2.function_exists();
-// f2.result_failed();
-// f2.result_exists();
+
+if (f2.failed()) {
+  if (!f2.function_exists()) {
+    // The function does not exist in Lua
+  } else if (f2.function_failed()) {
+    // The function body failed to run in Lua
+  } else if (!f2.result_exists()) {
+    // The function does not have any returned results
+  } else if (f2.result_failed()) {
+    // Conversion function's result from Lua to C++ failed
+  } else {
+    // May never happen
+  }
+}
 ```
 
-### 4. Bind C++ functions(also lambda, std::function or callable objects) to Lua
+### 4. Bind C++ functions to Lua (also lambda, std::function or callable objects)
 
-Uses same API as method "set". It supports:
+Uses same API as method "set". 
 
-* C style function
-* C++ lambda
-* C++ std::function
+It supports:
+* C style functions (not variadic)
+* C++ overloaded functions
+* template functions
+* lambda
+* std::function
 * Any callable classes: should provide concrete hint type or luaw::function_tag
 
-#### 4.1 Bind C function
+It doesn't support:
+* C style variadic functions (such as function "printf")
+* Unspecialized template functions
+* Unspecialized generic lambda
+* Unspecialized callable objects
+* Default arguments defined in C++: will be default-initialized if no real parameters given in Lua
 
-* The C function could have arbitary number of arguments
+
+#### 4.1 Bind C/C++ functions
+
+* The functions could have arbitary number of arguments
 * Could use either C function reference or C function pointer
 * Use std::tuple to represent multiple return values.
-* C++ template function should explicitly specialize, or provide function proto type as hint
-* Do not support variadic functions (such as function "printf")
+* C++ template functions should be explicitly specialized, or provide function proto type as hint
+* When binding C++ overloaded funtions: should provide function proto type or its pointer type as hint
 
 Example:
 
 ```C++
 int fadd(int x, int y) { return a + b; }
+int fadd_many(int a, int b, int c, int d, int e, int f, int g 
+              /* define as many as you want */) {
+  return a + b + c + d + e + f + g;
+}
 
 int main {
   peacalm::luaw l;
 
   // These are equivalent:
-  l.set("fadd", fadd);
-  l.set("fadd", &fadd);
+  l.set("fadd", fadd);  // set function directly
+  l.set("fadd", &fadd); // set function address
+  auto pfadd = &fadd;
+  l.set("fadd", pfadd); // set function pointer
   auto& ref = fadd;
-  l.set("fadd", ref);
+  l.set("fadd", ref);   // set function reference
 
-  assert(l.eval<int>("return fadd(1, 2)"), 3);
+  assert(l.eval<int>("return fadd(1, 2)") == 3);
+
+  l.set("fadd_many", fadd_many);
+  // Arguments not given real parameter will be default-initialized to zero,
+  // which do not affect the function's result.
+  assert(l.eval<int>("return fadd_many(1, 2, 3, 4)") == 10);
 }
 ```
 
-Multiple returns:
+Multiple returns: use std::tuple!
 
 ```C++
 std::tuple<int, int> fdiv(int x, int y) { return std::make_tuple(x / y, x % y); }
 
-int main {
+int main() {
   peacalm::luaw l;
   l.set("fdiv", fdiv);
-  l.dostring("q, r = fdiv(7, 3)");
+  int retcode = l.dostring("q, r = fdiv(7, 3)");
+  assert(retcode == LUA_OK);
+  assert(l.get_int("q") == 2);
+  assert(l.get_int("r") == 1);
 }
 ```
 
-C++ template function:
+C++ template functions: should specialize or provide function proto type as hint.
 
 ```C++
 template <typename T>
 T tadd(T a, T b) { return a + b; }
 int main() {
   peacalm::luaw l;
+
   // Explicitly specialize the function
   l.set("tadd", tadd<int>);
+
   // Or provide the function proto type as hint
   l.set<double(double, double)>("tadd", tadd);
 }
 ```
 
+C++ overloaded functions: should provide function proto type or its pointer type as hint.
+
+```C++
+// Overloaded functions f
+int f(int i) { return i * 2; }
+double f(double d) { return d / 2; }
+double f(double a, double b) { return a * b; }
+
+int main() {
+  peacalm::luaw l;
+
+  // Provide the function proto type as hint
+  l.set<int(int)>("f1", f);
+  l.set<double(double)>("f2", f);
+  l.set<double(double, double)>("f3", f);
+
+  // Or could use function pointer proto type as hint
+  l.set<int(*)(int)>("f1", f);
+  l.set<double(*)(double)>("f2", f);
+  l.set<double(*)(double, double)>("f3", f);
+
+  assert(l.eval_bool("return f1(2) == 4"));
+  assert(l.eval_bool("return f2(5) == 2.5"));
+  assert(l.eval_bool("return f3(1.25, 10) == 12.5"));
+  return 0;
+}
+```
 #### 4.2 Bind lambdas
 
 
@@ -1352,7 +1534,7 @@ int main() {
 l.set("add", [](int a, int b) { return a + b; });
 ```
 
-* Lambda with captured variables: should provide concrete hint type or luaw::function_tag.
+* Lambda with captured variables: should provide concrete hint type or use luaw::function_tag as hint.
 
 ```C++
 int x = 1;
@@ -1384,7 +1566,12 @@ std::function has already contained function proto type, so we could set it dire
 
 ```C++
 std::function<int(int, int)> f = [](auto a, auto b) { return a + b; };
-l.set("f", std::move(f)); // or l.set("f", f);
+
+// Set f by copy:
+l.set("f", f);
+
+// Or set f by move:
+l.set("f", std::move(f));
 ```
 
 #### 4.4 Bind callable classes
@@ -1398,8 +1585,10 @@ struct Plus {
 };
 int main() {
   peacalm::luaw l;
+
   // function proto type as hint:
   l.set<int(int, int)>("plus", Plus{});
+
   // Or use function_tag:
   l.set<peacalm::luaw::function_tag>("plus", Plus{});
 }
@@ -1431,11 +1620,20 @@ struct Obj {
 API:
 
 ```C++
-/// Register a global function to Lua who can create object of type `Return`,
-/// where `Return` is the return type of `Ctor`. `Ctor` should be function
-/// type. e.g. register_ctor<Object(int)>("NewObject").
+/**
+ * @brief Register a global function to Lua who can create object.
+ * 
+ * It creates a userdata in Lua, whose C++ type is specified by Return type
+ * of Ctor. e.g. `register_ctor<Object(int)>("NewObject")`. Then can run 
+ * `o = NewObject(1)` in Lua.
+ * 
+ * @tparam Ctor Should be a function type of "Return(Args...)". 
+ * @param fname The global function name registered.
+ */
 template <typename Ctor>
 void register_ctor(const char* fname);
+template <typename Ctor>
+void register_ctor(const std::string& fname);
 ```
 
 Equivalent to setting a global function to Lua who can create an instance of the 
@@ -1444,8 +1642,8 @@ corresponding class using the class's constructor.
 For example:
 ```C++
 peacalm::luaw l;
-l.register_ctor<Obj()>("NewObj");     // default constructor
-l.register_ctor<Obj(int)>("NewObj1"); // constructor with 1 argument
+l.register_ctor<Obj()>("NewObj");          // default constructor
+l.register_ctor<Obj(int)>("NewObj1");      // constructor with 1 argument
 l.register_ctor<Obj(int, int)>("NewObj2"); // constructor with 2 argument
 
 // Then can use ctor as a global function in Lua
@@ -1453,14 +1651,14 @@ l.dostring("a = NewObj(); b = NewObj1(2); c = NewObj2(3, 4)");
 ```
 
 We can register constructors for const instances, then the instance created in Lua
-will be a const variable.
+will be a const variable, and all members registered will be its conster member.
 
 Example:
 ```C++
 // the constructors will generate a const instance of Obj in Lua
 using ConstObj = const Obj;
-l.register_ctor<ConstObj()>("NewConstObj");     // default constructor
-l.register_ctor<ConstObj(int)>("NewConstObj1"); // constructor with 1 argument
+l.register_ctor<ConstObj()>("NewConstObj");          // default constructor
+l.register_ctor<ConstObj(int)>("NewConstObj1");      // constructor with 1 argument
 l.register_ctor<ConstObj(int, int)>("NewConstObj2"); // constructor with 2 argument
 
 // Then can use ctor as a global function in Lua
@@ -1490,8 +1688,9 @@ l.register_member("i", &Obj::i);
 l.register_member("ci", &Obj::ci); // const member
 
 // Assume ctor is registered like that shows in above examples
-l.dostring("a = NewObj(); a.i = 2"); // OK
-l.dostring("a = NewObj(); a.ci = 2"); // Error: Const member cannot be modified: ci
+l.dostring("a = NewObj(); a.i = 2");      // OK
+l.dostring("a = NewObj(); a.ci = 2");     // Error: Const member cannot be modified: ci
+l.dostring("a = NewConstObj(); a.i = 2"); // Error: Const member cannot be modified: i
 ```
 
 #### 5.3 Register member functions

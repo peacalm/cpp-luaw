@@ -1281,8 +1281,8 @@ public:
     __set<Hint>(path.begin(), path.end(), std::forward<T>(value));
   }
 
-  /// Long set. The last argument is value, the rest arguments are indices and
-  /// sub-indices, where could contain luaw::metatable_tag.
+  /// Long set. The last argument is value, the rest arguments are indexes and
+  /// sub-indexes, where could contain luaw::metatable_tag.
   template <typename... Args>
   void lset(Args&&... args) {
     constexpr size_t N = sizeof...(Args);
@@ -1718,9 +1718,16 @@ public:
 
   //////////////////////// register ctor/memeber for class /////////////////////
 
-  /// Register a global function to Lua who can create object of type `Return`,
-  /// where `Return` is the return type of `Ctor`. `Ctor` should be function
-  /// type. e.g. register_ctor<Object(int)>("NewObject").
+  /**
+   * @brief Register a global function to Lua who can create object.
+   *
+   * It creates a userdata in Lua, whose C++ type is specified by Return type
+   * of Ctor. e.g. register_ctor<Object(int)>("NewObject"). Then can run
+   * "o = NewObject(1)" in Lua.
+   *
+   * @tparam Ctor Should be a function type of "Return(Args...)".
+   * @param fname The global function name registered.
+   */
   template <typename Ctor>
   void register_ctor(const char* fname) {
     static_assert(std::is_function<Ctor>::value,
