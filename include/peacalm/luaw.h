@@ -2023,7 +2023,7 @@ public:
 
   ///////////////////////// error log //////////////////////////////////////////
 
-  void log_error(const char* s) const {
+  static void log_error(const char* s) {
     std::cerr << "Lua: " << s << std::endl;
   }
 
@@ -3040,11 +3040,14 @@ class luaw::function<Return(Args...)> {
   // component
   lua_State*                 L_ = nullptr;
   std::shared_ptr<const int> ref_sptr_;
+
   // parameters put in
   bool disable_log_ = false;
+
   // states put out
   mutable bool function_failed_ = false, function_exists_ = false,
                result_failed_ = false, result_exists_ = false;
+  mutable int real_result_size_ = 0;
 
 public:
   function(lua_State* L           = nullptr,
@@ -3082,17 +3085,62 @@ public:
     });
   }
 
+  /// Set log on-off.
+  void set_disable_log(bool v) { disable_log_ = v; }
+
   // states after function call
+  // @{
+
+  /// Whether the whole process failed.
+  /// Any step fails the whole process fails, including running the function in
+  /// Lua and converting results to C++, and whether get enough results.
+  bool failed() const {
+    return function_failed() || !function_exists() || result_failed() ||
+           !result_enough();
+  }
+
+  /// Whether the function failed while running in Lua (not including function
+  /// doesn't exist)
   bool function_failed() const { return function_failed_; }
+
+  /// Whether the function exists in Lua
   bool function_exists() const { return function_exists_; }
+
+  /// Whether converting the Lua function's results to C++ failed
   bool result_failed() const { return result_failed_; }
+
+  /// Whether the Lua function returns results (whether results exist)
   bool result_exists() const { return result_exists_; }
-  bool failed() const { return function_failed_ || result_failed_; }
+
+  /// Result number the Lua function returned
+  int real_result_size() const { return real_result_size_; }
+
+  /// Whether Lua function returns enough results.
+  /// Could return more than expect, but couldn't less.
+  bool result_enough() const {
+    return real_result_size() >= expected_result_size();
+  }
+
+  // @}
+
+  /// Result number we expect the Lua function should return.
+  /// Could return more, couldn't less.
+  constexpr int expected_result_size() const {
+    return luaw::pusher_for_return<std::decay_t<Return>>::size;
+  }
 
   Return operator()(const Args&... args) const {
+    // reset all states first
+    function_failed_  = false;
+    function_exists_  = false;
+    result_failed_    = false;
+    result_exists_    = false;
+    real_result_size_ = 0;
+
     if (!L_) {
-      function_failed_ = true;
+      function_failed_ = false;
       function_exists_ = false;
+      if (!disable_log_) { luaw::log_error("null State"); }
       return Return();
     }
 
@@ -3101,21 +3149,22 @@ public:
     int       sz = l.gettop();
     l.rawgeti(LUA_REGISTRYINDEX, *ref_sptr_);
     if (l.isnoneornil()) {
-      function_failed_ = true;
+      function_failed_ = false;
       function_exists_ = false;
       l.pop();
+      if (!disable_log_) { luaw::log_error("calling an inexistent function"); }
       return Return();
     } else {
       function_exists_ = true;
     }
 
     int narg      = push_args(l, args...);
-    int nret      = luaw::pusher_for_return<std::decay_t<Return>>::size;
-    int pcall_ret = l.pcall(narg, nret, 0);
-
+    int pcall_ret = l.pcall(narg, LUA_MULTRET, 0);
     PEACALM_LUAW_ASSERT(l.gettop() >= sz);
+
     if (pcall_ret == LUA_OK) {
-      function_failed_ = false;
+      function_failed_  = false;
+      real_result_size_ = l.gettop() - sz;
     } else {
       function_failed_ = true;
       if (!disable_log_) { l.log_error_in_stack(); }
