@@ -1054,6 +1054,9 @@ TEST(type_conversions, to_function) {
     EXPECT_TRUE(f.function_exists());
     EXPECT_FALSE(f.result_failed());
     EXPECT_TRUE(f.result_exists());
+    EXPECT_TRUE(f.result_enough());
+    EXPECT_EQ(f.real_result_size(), 1);
+    EXPECT_EQ(f.expected_result_size(), 1);
     EXPECT_FALSE(f.failed());
   }
   {
@@ -1074,9 +1077,13 @@ TEST(type_conversions, to_function) {
     EXPECT_TRUE(f.function_exists());
     EXPECT_FALSE(f.result_failed());
     EXPECT_TRUE(f.result_exists());
+    EXPECT_TRUE(f.result_enough());
+    EXPECT_EQ(f.real_result_size(), 1);
+    EXPECT_EQ(f.expected_result_size(), 1);
     EXPECT_FALSE(f.failed());
   }
   {
+    // convert nil to luaw::function
     bool failed, exists;
     auto f = l.to<luaw::function<int(int, int)>>(2, false, &failed, &exists);
 
@@ -1087,11 +1094,16 @@ TEST(type_conversions, to_function) {
     EXPECT_EQ(f(1, 2), 0);
     EXPECT_EQ(l.gettop(), sz);
 
-    EXPECT_TRUE(f.function_failed());
+    EXPECT_FALSE(f.function_failed());
     EXPECT_FALSE(f.function_exists());
+    EXPECT_TRUE(f.failed());
+
+    // these are meanless if function doesn't exist
     EXPECT_FALSE(f.result_failed());
     EXPECT_FALSE(f.result_exists());
-    EXPECT_TRUE(f.failed());
+    EXPECT_FALSE(f.result_enough());
+    EXPECT_EQ(f.real_result_size(), 0);
+    EXPECT_EQ(f.expected_result_size(), 1);
   }
 
   auto f2 = l.to<luaw::function<void(int, int)>>(1);
@@ -1142,9 +1154,14 @@ TEST(type_conversions, to_function_with_tuple_result) {
     EXPECT_TRUE(f.function_exists());
     EXPECT_FALSE(f.result_failed());
     EXPECT_TRUE(f.result_exists());
+    EXPECT_TRUE(f.result_enough());
+    EXPECT_EQ(f.real_result_size(), 3);
+    EXPECT_EQ(f.expected_result_size(), 3);
     EXPECT_FALSE(f.failed());
   }
   {
+    EXPECT_EQ(l.gettop(), 1);
+
     // const tuple as result
     bool failed, exists;
     auto f = l.to<luaw::function<const std::tuple<int, int, int>(int, int)>>(
@@ -1163,9 +1180,14 @@ TEST(type_conversions, to_function_with_tuple_result) {
     EXPECT_TRUE(f.function_exists());
     EXPECT_FALSE(f.result_failed());
     EXPECT_TRUE(f.result_exists());
+    EXPECT_TRUE(f.result_enough());
+    EXPECT_EQ(f.real_result_size(), 3);
+    EXPECT_EQ(f.expected_result_size(), 3);
     EXPECT_FALSE(f.failed());
   }
   {
+    EXPECT_EQ(l.gettop(), 1);
+
     // result size 3 -> 4
     bool failed, exists;
     auto f = l.to<luaw::function<std::tuple<int, int, int, int>(int, int)>>(
@@ -1184,9 +1206,14 @@ TEST(type_conversions, to_function_with_tuple_result) {
     EXPECT_TRUE(f.function_exists());
     EXPECT_FALSE(f.result_failed());
     EXPECT_TRUE(f.result_exists());
-    EXPECT_FALSE(f.failed());
+    EXPECT_FALSE(f.result_enough());
+    EXPECT_EQ(f.real_result_size(), 3);
+    EXPECT_EQ(f.expected_result_size(), 4);
+    EXPECT_TRUE(f.failed());
   }
   {
+    EXPECT_EQ(l.gettop(), 1);
+
     // result size 3 -> 2
     bool failed, exists;
     auto f = l.to<luaw::function<std::tuple<int, int>(int, int)>>(
@@ -1205,9 +1232,14 @@ TEST(type_conversions, to_function_with_tuple_result) {
     EXPECT_TRUE(f.function_exists());
     EXPECT_FALSE(f.result_failed());
     EXPECT_TRUE(f.result_exists());
+    EXPECT_TRUE(f.result_enough());
+    EXPECT_EQ(f.real_result_size(), 3);
+    EXPECT_EQ(f.expected_result_size(), 2);
     EXPECT_FALSE(f.failed());
   }
   {
+    EXPECT_EQ(l.gettop(), 1);
+
     // result size 3 -> 1
     bool failed, exists;
     auto f = l.to<luaw::function<int(int, int)>>(1, false, &failed, &exists);
@@ -1223,6 +1255,9 @@ TEST(type_conversions, to_function_with_tuple_result) {
     EXPECT_TRUE(f.function_exists());
     EXPECT_FALSE(f.result_failed());
     EXPECT_TRUE(f.result_exists());
+    EXPECT_TRUE(f.result_enough());
+    EXPECT_EQ(f.real_result_size(), 3);
+    EXPECT_EQ(f.expected_result_size(), 1);
     EXPECT_FALSE(f.failed());
   }
 }
