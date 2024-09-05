@@ -101,7 +101,7 @@ auto si = l.get<std::set<int>>("si"); // si == std::set<int>{1, 2}
 </tr>
 
 <tr>
-  <td> <ul><ul><li> Tell whether the target exists or whether the operation fails 
+  <td> <ul><ul><li> Tell whether the target exists or whether the operation failed 
   (we don't regard target's non-existence as fail) </li></ul></ul> </td>
   <td> ✅ </td>
   <td>
@@ -261,7 +261,7 @@ int s = f(1,2);
         <li> Tell whether call the Lua function and get result successfully </li>
         <li> Tell whether the function failed while running in Lua </li>
         <li> Tell whether the Lua function exists </li>
-        <li> Tell whether converting the Lua function's result to C++ fails </li>
+        <li> Tell whether converting the Lua function's result to C++ failed </li>
         <li> Tell whether the Lua function returns result (whether result exists) </li>
         <li> Tell whether got enough results (Lua could return more, couldn't less) </li>
         <li> Tell how many results the Lua function returned </li>
@@ -1325,6 +1325,9 @@ l.dostring("nums.en[3] = 'three'");
 
 In C++ we use std::tuple to represent multiple returns in Lua.
 
+We recommend getting a `luaw::function` object to represent a Lua function first,
+then calling it to implement the call to the Lua function.
+
 #### 3.1 Call a Lua function directly:
 
 API:
@@ -1400,8 +1403,8 @@ Instance of `luaw::function` can be called like `std::function`
 (actually the latter is a simple wrapper of the former), 
 but it provide more information after it was called, 
 and these information are very userful to let us make sure whether the function works correctly as we expect, 
-and we can write right error handlers if there are exceptions, 
-and it can help us to debug where exceptions happen. 
+and we can write error handlers if there are exceptions, 
+and it can help us to debug in which step the exceptions happen. 
 
 
 These informations are:
@@ -1675,6 +1678,7 @@ int main() {
 ### 5. Bind C++ classes to Lua
 
 Suppose here is a C++ class to bind:
+
 ```C++
 // The C++ custom class to register
 struct Obj {
@@ -1747,17 +1751,44 @@ l.dostring("a = NewConstObj(); b = NewConstObj1(1); c = NewConstObj2(1,2)");
 API:
 
 ```C++
-// Register a real member, ether member variable or member function.
-// For overloaded member function, you can explicitly pass in the template
-// parameter `MemberPointer`. e.g.
-// `register_member<Return(Class::*)(Args)>("mf", &Class::mf)`
+/**
+ * @brief Register member variables or member functions
+ *
+ * Register a real member for class, not fake members.
+ * 
+ * To register overloaded member functions, the template parameter
+ * `MemberPointer` must be provided explicitly.
+ * Otherwise, when registering member variables or non-overloaded member
+ * functions, `MemberPointer` can be automatically deduced.
+ *
+ * Example:
+ * 
+ * Register int member "i" for class "Obj":
+ *   `register_member("i", &Obj::i)`
+ * or explicitly provide member type:
+ *   `register_member<int Obj::*>("i", &Obj::i)`
+ * 
+ * Register member function "abs" for class "Obj":
+ *   `register_member("abs", &Obj::abs)`
+ * or explicitly provide member type:
+ *   `register_member<int (Obj::*)()>("abs", &Obj::abs)`
+ *
+ * @tparam MemberPointer Member pointer type.
+ * @param name Member name to be registered.
+ * @param mp Pointer to the member to be registered.
+ * @return void
+ */
 template <typename MemberPointer>
 std::enable_if_t<std::is_member_pointer<MemberPointer>::value>
 register_member(const char* name, MemberPointer mp);
+template <typename MemberPointer>
+std::enable_if_t<std::is_member_pointer<MemberPointer>::value>
+register_member(const std::string& name, MemberPointer mp);
 ```
 
-Const/volatile property is kept in Lua.
-That is you can't modify a const member's value in Lua.
+Member's const/volatile property is kept to Lua.
+That is the const member's value can not be modified in Lua,
+just like it does in C++.
 
 Example:
 ```C++
@@ -1774,11 +1805,11 @@ l.dostring("a = NewConstObj(); a.i = 2"); // Error: Const member cannot be modif
 
 Uses same API as registering member variables.
 
-If a member function is overloaded, then should explicitly provide the member 
+If a member function is overloaded, then must explicitly provide the member 
 function's type as hint.
 
-What's more, the const/volatile property of the member function is kept in Lua.
-That is, you can't call it's non-const member function by a const object.
+Same as member variable, the const/volatile property of member function is also kept to Lua.
+That is, we can't call it's non-const member function by a const object.
 
 Example:
 
@@ -1798,12 +1829,32 @@ l.dostring("b = NewConstObj(); b:plus()"); // Error: Nonconst member function: p
 API:
 
 ```C++
-// Register dynamic members by provide dynamic member getter and setter.
-// getter/setter could be C function or lambda object.
-// getter proto type: Member(const Class*, Key)
-// setter proto type: void(Class*, Key, Member)
-// where Key could be `const std::string&` or 'const char*',
-// Member could be number, string, bool, luaw::luavalueidx, luaw::luavalueref, etc.
+/**
+ * @brief Register dynamic members
+ *
+ * Dynamic members are members whose names (and also values) are dynamically
+ * defined at run time, such as keys of a table in Lua.
+ * So we can't register them in advance.
+ *
+ * To register dynamic members for a C++ class, it should have a place to
+ * store the members first, usually we can define a map in the class to store
+ * the dynamic members.
+ *
+ * Then we should provide two callable objects, getter and setter, which
+ * introduces Lua how to get and set a dynamic member separately.
+ *
+ * The getter's proto type must be: `Value(const Class*, Key)`
+ * The setter's proto type must be: `void(Class*, Key, Value)`
+ *
+ * Where `Key` type could be `const std::string&` or 'const char*', the former
+ * is recommended. `Value` type could be number, string, bool,
+ * luaw::luavalueidx, luaw::luavalueref, etc.
+ *
+ * @tparam Getter Must be a callable type, e.g. C function or lambda.
+ * @tparam Setter Must be a callable type, e.g. C function or lambda.
+ * @param getter A method to get a member by name.
+ * @param setter A method to set a member's value.
+ */
 template <typename Getter, typename Setter>
 void register_dynamic_member(Getter&& getter, Setter&& setter);
 template <typename Getter>
@@ -1814,6 +1865,7 @@ void register_dynamic_member_setter(Setter&& setter);
 
 Dynamic members are members whose name is dynamically defined in Lua script, 
 just like keys of a table, we can't know its name and value in advance.
+
 So we register two functions for a class, dynamic member getter and setter,
 to support this.
 
@@ -1822,18 +1874,21 @@ with string type key, any type of value, then we can use `luaw::luavalueref` as
 value type.
 
 ```C++
-// If types of dynamic members are unknown, use luaw::luavalueref
 struct Foo {
+  // If value types of dynamic members are unknown, use luaw::luavalueref
   std::unordered_map<std::string, peacalm::luaw::luavalueref> m;
 };
+
 peacalm::luaw::luavalueref foo_dm_getter(const Foo* o, const std::string& k) {
   auto entry = o->m.find(k);
   if (entry != o->m.end()) { return entry->second; }
   return peacalm::luaw::luavalueref(); // default value is nil
 }
+
 void foo_dm_setter(Foo* o, const std::string& k, const peacalm::luaw::luavalueref& v) {
   o->m[k] = v;
 }
+
 int main() {
   peacalm::luaw l;
   l.register_dynamic_member(foo_dm_getter, foo_dm_setter);
@@ -1843,21 +1898,25 @@ int main() {
 }
 ```
 
-If we expect the dynamic members' type is float number, then:
+If we expect the dynamic members' value type is float number, then directly 
+use C++ float number type, e.g. `double`, as value type is more efficient:
 
 ```C++
-// If types of dynamic members are unknown, use luaw::luavalueref
 struct Foo {
+  // All the dynamic members' values are float number.
   std::unordered_map<std::string, double> m;
 };
+
 double foo_dm_getter(const Foo* o, const std::string& k) {
   auto entry = o->m.find(k);
   if (entry != o->m.end()) { return entry->second; }
   return 0; // suppose member's default value is 0
 }
+
 void foo_dm_setter(Foo* o, const std::string& k, double v) {
   o->m[k] = v;
 }
+
 int main() {
   peacalm::luaw l;
   l.register_dynamic_member(foo_dm_getter, foo_dm_setter);
@@ -1875,7 +1934,26 @@ API:
 /**
  * @brief Register a fake member variable or fake member function.
  *
- * For example, register a const member "id" with type void* for class Obj:
+ * Fake members are members who are not directly explicitly defined as members
+ * in a C++ class, but used in Lua and by some way they can reach to values or
+ * functions in C++.
+ *
+ * The values reached by fake members could be real members, or temporary
+ * values generated by some method, or even variables outside the calss, e.g.
+ * some global variables.
+ * 
+ * In particular, we can fake members by class's static members.
+ *
+ * To register a fake member, we must provide a Hint type to indicate the
+ * mermber's type to be faked, and a callable object to describe the member's
+ * behavior. The first argument of the callable object must represent the
+ * class which the members faked belong to, usually we use a pointer to the
+ * class.
+ *
+ * For example:
+ *
+ * Register a const member "id" with type void* for class Obj to get its
+ * instance's address:
  *     `register_member<void* const Obj::*>("id", [](const volatile Obj* p) {
  *         return (void*)p; });`
  *
@@ -1890,15 +1968,17 @@ API:
  * @tparam Hint The member type wanted to fake.
  * @tparam F C function type or lambda or std::function or any callable type.
  * @param name The member name.
- * @param f The function whose first parameter is pointer to the class whose
- * member is registered to. If faking a member variable, the first parameter
- * must be pointer of cv-qualified class type, e.g. `const volatile Obj*`.
+ * @param f The function whose first parameter is a pointer to the class. If
+ * faking a member variable, the first parameter must be pointer of
+ * cv-qualified class type, e.g. `const volatile Obj*`.
  * @return void.
  */
 template <typename Hint, typename F>
-std::enable_if_t<std::is_member_pointer<Hint>::value &&
-                  !std::is_same<Hint, F>::value>
+std::enable_if_t<std::is_member_pointer<Hint>::value && !std::is_same<Hint, F>::value>
 register_member(const char* name, F&& f);
+template <typename Hint, typename F>
+std::enable_if_t<std::is_member_pointer<Hint>::value && !std::is_same<Hint, F>::value>
+register_member(const std::string& name, F&& f);
 ```
 
 Except real members of a class, we can also register fake members by some special
@@ -1937,8 +2017,7 @@ l.register_member<const int Obj::*>(
 l.register_member<const double Obj::*>(
   "q", [](const volatile Obj* o) { return double(o->i) / double(o->ci); });
 
-Obj o(3, 2);
-l.set("o", o);
+l.set("o", Obj(3, 2));
 assert(l.eval<int>("return o.sum") == 5);
 assert(l.eval<double>("return o.q") == 1.5);
 ```
@@ -1951,33 +2030,33 @@ int  gi = 100;  // global variable i
 int& getgi(const volatile Obj* o) { return gi; }
 
 int main() {
-    peacalm::luaw l;
-
-    l.set("o", Obj{});
-    l.register_member<int Obj::*>("gi", &getgi);
-
-    EXPECT_EQ(l.eval<int>("return o.gi"), gi);
-    EXPECT_EQ(l.eval<int>("o.gi = 101; return o.gi"), 101);
-    EXPECT_EQ(gi, 101);
-}
-```
-
-Or we can fake member variables using lambda:
-
-```C++
   peacalm::luaw l;
 
   l.set("o", Obj{});
-  int  li    = 100;  // local variable i
-  auto getli = [&](const volatile Obj*) -> int& { return li; };
-  l.register_member<int Obj::*>("li", getli);
+  l.register_member<int Obj::*>("gi", &getgi);
 
-  EXPECT_EQ(l.eval<int>("return o.li"), li);
-  EXPECT_EQ(l.eval<int>("o.li = 101; return o.li"), 101);
-  EXPECT_EQ(li, 101);
+  EXPECT_EQ(l.eval<int>("return o.gi"), gi);
+  EXPECT_EQ(l.eval<int>("o.gi = 101; return o.gi"), 101);
+  EXPECT_EQ(gi, 101);
+}
 ```
 
-Or we can fake member variables by dereference of pointer members of the object:
+Or we can fake member variables using lambda's capture:
+
+```C++
+peacalm::luaw l;
+
+l.set("o", Obj{});
+int  li    = 100;  // local variable i
+auto getli = [&](const volatile Obj*) -> int& { return li; };
+l.register_member<int Obj::*>("li", getli);
+
+EXPECT_EQ(l.eval<int>("return o.li"), li);
+EXPECT_EQ(l.eval<int>("o.li = 101; return o.li"), 101);
+EXPECT_EQ(li, 101);
+```
+
+Or we can fake member variables by dereference of pointer members of the class:
 ```C++
 class Foo {
 public:
@@ -2015,6 +2094,42 @@ int main() {
 }
 ```
 
+Sometimes we want to fake a mutable member variable by real member variable of
+a class, but the first formal parameter is required to be cv-qualified,
+such it will make a compile error when binding reference of non-const variable 
+to const object's member. In this case we should use a `const_cast`.
+Example:
+
+```C++
+struct Foo {
+  std::array<int, 3> a;
+};
+int main() {
+  peacalm::luaw l;
+
+  l.register_member<int Foo::*>("a0", [](const volatile Foo* o) -> int& {
+    // use const_cast to remove const property forcely
+    return const_cast<Foo*>(o)->a[0];
+  });
+  l.register_member<int Foo::*>("a1", [](const volatile Foo* o) -> int& {
+    return const_cast<Foo*>(o)->a[1];
+  });
+  l.register_member<int Foo::*>("a2", [](const volatile Foo* o) -> int& {
+    return const_cast<Foo*>(o)->a[2];
+  });
+
+  auto o = std::make_shared<Foo>();
+  l.set("o", o);
+
+  assert(l.dostring("o.a0 = 1; o.a1 = 2; o.a2 = 3") == LUA_OK);
+  assert(o->a[0] == 1);
+  assert(o->a[1] == 2);
+  assert(o->a[2] == 3);
+
+  return 0;
+}
+```
+
 #### 5.6 Register fake member functions
 
 Uses same API as registering fake member variables.
@@ -2030,61 +2145,199 @@ int  geti(const Obj* p) { return p->i; }
 
 int main() {
   peacalm::luaw l;
-  l.register_member<void (Obj ::*)(int)>("seti", &seti);
+  l.register_member<void (Obj::*)(int)>("seti", &seti);
   l.register_member<int (Obj::*)() const>("geti", geti);
+  // use lambda
+  l.register_member<int (Obj::*)()>("isqr", [](const Obj* p){ return p->i * p->i;});
 
   auto o = std::make_shared<Obj>();
   l.set("o", o);
-  l.dostring("print(o:geti())"); // prints 1
+  o->i = 1;
+  assert(l.eval<int>("return o:geti()") == 1);
   l.dostring("o:seti(5)");
+  assert(l.eval<int>("return o:geti()") == 5);
   assert(o->i == 5);
+  assert(l.eval<int>("return o:isqr()") == 25);
 }
 ```
 
 
-#### 5.7 Set class instance to Lua
+#### 5.7 Set class instances to Lua
 
-Use "set" method, we can set a class instance which is defined in C++ to Lua,
+Use "set" method, we can set a class's instance which is defined in C++ to Lua,
 just like set other type values.
 
-Here are multiple ways to set a class instance to Lua, 
-all the object setted to Lua by these ways 
-can access members that have registered.
+Here are multiple ways to set a class's instance to Lua, 
+all the object setted to Lua by these ways can access members that have been registered.
+
+These 4 ways make a full userdata to Lua:
 
 * Set instance by copy
 * Set instance by move
-* Set raw pointer to instance
 * Set smart pointer to instance by copy
 * Set smart pointer to instance by move
+
+These 2 ways make a lightuserdata to Lua:
+
+* Set raw pointer to instance
 * Set raw pointer to smart pointer to instance
 
 For example:
 
 ```C++
-Obj a, b;
+// ----- set full userdata
+
+Obj a;
 l.set("o1", a);            // by copy
 l.set("o2", std::move(a)); // by move
-l.set("o3", &b);           // by pointer
+l.set("o3", Obj{});        // by move
 
 auto s = std::make_shared<Obj>();
-l.set("o4", s);            // by copy of shared_ptr
-l.set("o5", std::move(s)); // by move of shared_ptr
-auto u = std::make_unique<Obj>();
-l.set("o6", std::move(u)); // by move of unique_ptr
+l.set("o4", s);                       // by copy of shared_ptr
+l.set("o5", std::move(s));            // by move of shared_ptr
+l.set("o6", std::make_shared<Obj>()); // by move of shared_ptr
 
+auto u = std::make_unique<Obj>();
+l.set("o7", std::move(u));            // by move of unique_ptr
+l.set("o8", std::make_unique<Obj>()); // by move of unique_ptr
+
+/* Suppose a deleter has been defined like:
+struct ObjDeleter {
+  void operator()(Obj* p) const { delete p; }
+};
+*/
+
+auto ud = std::unique_ptr<Obj, ObjDeleter>(new Obj, ObjDeleter{});
+// by move of unique_ptr with user defined deleter
+l.set("o9", std::move(ud));
+// by move of unique_ptr with user defined deleter
+l.set("o10", std::unique_ptr<Obj, ObjDeleter>(new Obj, ObjDeleter{}));
+
+// ----- set light userdata
+
+Obj a2;
+l.set("o11", &a2);           // by pointer
 
 auto s2 = std::make_shared<Obj>();
 auto u2 = std::make_unique<Obj>();
-
-l.set("o7", &s2);           // by pointer to shared_ptr
-l.set("o8", &u2);           // by pointer to unique_ptr
+auto ud2 = std::unique_ptr<Obj, ObjDeleter>(new Obj, ObjDeleter{});
+l.set("o12", &s2);   // by raw pointer to shared_ptr
+l.set("o13", &u2);   // by raw pointer to unique_ptr
+l.set("o14", &ud2);  // by raw pointer to unique_ptr with user defined deleter
 
 ```
 
-Then all variables "o1" ~ "o8" can access members of Obj that have registered.
+Then all variables "o1" ~ "o14" setted to Lua can access members of Obj that have been registered.
 
-What's more, `std::unique_ptr` with custom deleter behaves the same as that with 
-default deleter.
+But "o1" ~ "o10" are full userdata, "o11" ~ "o14" are light userdata, 
+their metatables are different, although they have some same meta methods.
+And the biggest difference is that full userdata have per-value metatables,
+but light userdata don't. **All light userdata share the same metatable**, 
+which by default is not set (nil).
+
+So once you set a raw pointer of a class object to Lua, like "o11" ~ "o14", 
+it will generate a metatable which will take effect on all light userdata!
+
+This feature of Lua makes you can call a light userdata's meta methods with wrong metatable, whose behavior is undefined! 
+This might make people very confused! And that's dangerous!
+
+So, be careful if you want to set an object to Lua by light userdata!
+Make sure you won't set objects with different types by light userdata at same time!
+
+
+Example:
+
+```C++
+struct Foo {
+  int v = 1;
+};
+
+struct Bar {
+  const int cv = 2;
+};
+
+int main() {
+  peacalm::luaw l;
+
+  // By default light userdata's metatable is nil
+  assert(!l.lightuserdata_has_metatable());
+  assert(l.get_lightuserdata_metatable_name().empty());
+
+  /* Set light userdata without metatable! Raw pointer to non-class type. */
+  
+  int p = 0;
+  // Set pointer to non-class type, won't generate metatable, 
+  // though it's light user data too.
+  l.set("p", &p);
+  assert(!l.lightuserdata_has_metatable());
+  assert(l.get_lightuserdata_metatable_name().empty());
+
+  // Another way to get metatable of "p", 
+  // this way could be used for full userdata too!
+  l.gseek("p");
+  std::string metaname0 = l.get_metatable_name();
+  // "p" doesn't have metatable
+  assert(metaname0.empty());
+  l.pop();
+
+  /* Set light userdata with metatable! Raw pointer to class type. */
+
+  Foo a;
+  Bar b;
+
+  l.register_member("v", &Foo::v);
+
+  l.set("a", &a);
+  assert(l.lightuserdata_has_metatable());
+  std::string metaname1 = l.get_lightuserdata_metatable_name();
+
+  assert(l.dostring("assert(a.v == 1)") == LUA_OK);
+
+  l.set("b", &b);
+  assert(l.lightuserdata_has_metatable());
+  std::string metaname2 = l.get_lightuserdata_metatable_name();
+ 
+  // Metatable for light userdata is changed!
+  assert(metaname1 != metaname2);
+
+  // metatable of "a" is changed so "a.v" doesn't work now.
+  assert(l.dostring("assert(a.v == nil)") == LUA_OK);
+  assert(l.dostring("assert(b.v == nil)") == LUA_OK);
+
+  // Get metatable of "p"
+  l.gseek("p");
+  std::string metaname3 = l.get_metatable_name();
+  // Now "p" has metatable too!
+  assert(metaname3 == metaname2);
+  l.pop();
+
+  /* How to clear light userdata's metatable */
+
+  l.clear_lightuserdata_metatable();
+  assert(!l.lightuserdata_has_metatable());
+  assert(l.get_lightuserdata_metatable_name().empty());
+
+  /* Set light userdata's metatable by class pointer type */
+
+  l.set_lightuserdata_metatable<Foo*>(); // set same metatable as setting "a"
+  std::string metaname4 = l.get_lightuserdata_metatable_name();
+  assert(metaname4 == metaname1);
+
+  assert(l.dostring("assert(a.v == 1)") == LUA_OK);
+  // Now "b" has a metatable which should belong to "a".
+  // "b.v" is likely to be 2, but this usage is not recommended.
+  // So we don't make assert.
+  l.dostring("print('b.v = ', b.v)");
+
+  l.set_lightuserdata_metatable<Bar*>(); // set same metatable as setting "b"
+  std::string metaname5 = l.get_lightuserdata_metatable_name();
+  assert(metaname5 == metaname2);
+
+  assert(l.dostring("assert(b.v == nil)") == LUA_OK);
+
+  return 0;
+}
+```
 
 
 #### 5.8 Const property
