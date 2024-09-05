@@ -3119,14 +3119,14 @@ public:
   /// Whether the Lua function returns results (whether results exist)
   bool result_exists() const { return result_exists_; }
 
-  /// Result number the Lua function returned
-  int real_result_size() const { return real_result_size_; }
-
   /// Whether Lua function returns enough results.
   /// Could return more than expect, but couldn't less.
   bool result_enough() const {
     return real_result_size() >= expected_result_size();
   }
+
+  /// Result number the Lua function returned
+  int real_result_size() const { return real_result_size_; }
 
   // @}
 

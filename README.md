@@ -256,13 +256,15 @@ int s = f(1,2);
 <tr>
   <td>
     <ul><ul>
-      <li> Get a peacalm::luaw::function object to represent the Lua function, which can: </li>
+      <li> Get a luaw::function object to represent the Lua function, which can: </li>
       <ul>
         <li> Tell whether call the Lua function and get result successfully </li>
-        <li> Tell whether the function fails while running in Lua </li>
+        <li> Tell whether the function failed while running in Lua </li>
         <li> Tell whether the Lua function exists </li>
         <li> Tell whether converting the Lua function's result to C++ fails </li>
-        <li> Tell whether the Lua function returns result </li>
+        <li> Tell whether the Lua function returns result (whether result exists) </li>
+        <li> Tell whether got enough results (Lua could return more, couldn't less) </li>
+        <li> Tell how many results the Lua function returned </li>
       </ul>
     </ul></ul> 
   </td>
@@ -273,14 +275,20 @@ int s = f(1,2);
 ```C++
 auto f = l.get<peacalm::luaw::function<int(int, int)>>("fadd");
 int s = f(1,2);
-// After call, check status:
+// After call, check:
 if (f.failed()) {
-  // error handlers
-  // See more details using:
-  // f.function_failed();
-  // f.function_exists();
-  // f.result_failed();
-  // f.result_exists();
+  if (f.function_failed()) {
+    // ...
+  } else if (!f.function_exists()) {
+    // ...
+  } else if (f.result_failed()) {
+    // ...
+  } else if (!f.result_enough()) {
+    std::cout << "Result number of f " << f.real_result_size()
+              << " less than " << f.expected_result_size() << std::endl;
+  } else {
+    // May never happen
+  }
 }
 ```
   </td>
@@ -1322,11 +1330,13 @@ In C++ we use std::tuple to represent multiple returns in Lua.
 API:
 
 ```C++
-// Call Lua function specified by path using C++ parameters.
-// Should at least provide return type.
+/// Call Lua function specified by path using C++ parameters.
+/// Should at least provide return type.
 template <typename Return, typename... Args>
 Return callf(@PATH_TYPE@ path, const Args&... args);
 ```
+
+`@PATH_TYPE@` could be ether a single string or a list of string.
 
 Example:
 
@@ -1343,27 +1353,74 @@ assert(l.callf<std::tuple<int, int>>({"g", "f2"}, 1, 1) == std::tuple<int, int>(
 In this case we can call a Lua function with C++ arguments directly and conveniently, 
 but can't know whether it works correctly. If you want to know, see the following.
 
-#### 3.2 Get a callable object represents the Lua function
+#### 3.2 Get a callable object to represent the Lua function
 
 We can get a callable object of type `std::function` or `luaw::function` 
-to represent the Lua function.
+to represent the Lua function, then we can call it to implement the calling to 
+the Lua function. But using `luaw::function` is recommended.
 
-The latter behaves like the former, but provide more information after it was called,
-and these information is very userful to make sure the function works correctly as
-we want, or to debug where exceptions happen. Such as:
+Using `std::function` is simple, but it provide nothing information about whether the function works correctly:
 
-Totally status:
+```C++
+peacalm::luaw l;
+int retcode = l.dostring("f = function(a, b) local s = a + b return s end;");
+if (retcode != LUA_OK) { /* error handlers*/ }
+
+// Test 1
+{
+  auto f = l.get<std::function<int(int, int)>>("f");
+  int s = f(1, 1);
+  assert(s == 2);  // works correctly
+}
+
+// Test 2
+{
+  // Typo of function name, getting an inexistent function
+  auto f = l.get<std::function<int(int, int)>>("fnx");
+  int s = f(1, 1);
+  // Log info: Lua: calling an inexistent function
+  assert(s == 0);  // works wrong
+}
+
+// Test 3
+// The function f returns nothing, maybe forget
+retcode = l.dostring("f = function(a, b) local s = a + b end;");
+if (retcode != LUA_OK) { /* error handlers*/ }
+{
+  auto f = l.get<std::function<int(int, int)>>("f");
+  int s = f(1, 1);
+  assert(s == 0);  // works wrong
+  // It returns a wrong result quietly, this is dangerous!
+}
+```
+
+So, using `std::function` is not recommended.
+
+Instance of `luaw::function` can be called like `std::function` 
+(actually the latter is a simple wrapper of the former), 
+but it provide more information after it was called, 
+and these information are very userful to let us make sure whether the function works correctly as we expect, 
+and we can write right error handlers if there are exceptions, 
+and it can help us to debug where exceptions happen. 
+
+
+These informations are:
+
+A total state about the whole process:
 
 - whether call the Lua function and get result successfully
 
-Detailed status for each step:
+Detailed states for each step:
 
-- whether the function fails while running in Lua
+- whether the function failed while running in Lua
 - whether the Lua function exists
-- whether converting the Lua function's result to C++ fails
+- whether converting the Lua function's result to C++ failed
 - whether the Lua function returns result (whether result exists)
+- whether got enough results (Lua could return more, couldn't less)
+- how many results the Lua function returned
+- how many results we expect the Lua function should at least return
 
-
+Part of `luaw::function`'s implementation looks like:
 ```C++
 template <typename>
 class luaw::function;
@@ -1372,13 +1429,34 @@ template <typename Return, typename... Args>
 class luaw::function<Return(Args...)> {
 public:
 
+  /// Whether the whole process failed.
+  /// Any step fails the whole process fails, including running the function in
+  /// Lua and converting results to C++, and whether get enough results.
   bool failed() const;
 
+  /// Whether the function failed while running in Lua (not including function
+  /// doesn't exist)
   bool function_failed() const;
+
+  /// Whether the function exists in Lua
   bool function_exists() const;
 
+  /// Whether converting the Lua function's results to C++ failed
   bool result_failed() const;
+
+  /// Whether the Lua function returns results (whether results exist)
   bool result_exists() const;
+
+  /// Whether Lua function returns enough results.
+  /// Could return more than expect, but couldn't less.
+  bool result_enough() const;
+
+  /// Result number the Lua function returned
+  int real_result_size() const;
+
+  /// Result number we expect the Lua function should return.
+  /// Could return more, couldn't less.
+  constexpr int expected_result_size() const;
 
   // ...
 };
@@ -1387,23 +1465,22 @@ public:
 Example:
 
 ```C++
-// Follow the example above
+peacalm::luaw l;
+int retcode = l.dostring("f = function(a, b) local s = a + b end;");
+if (retcode != LUA_OK) { /* error handlers*/ }
 
-auto f1 = l.get<std::function<int(int, int)>>("f1");
-assert(f1(1,1) == 2);
-
-auto f2 = l.get<peacalm::luaw::function<int(int, int)>>({"g", "f1"});
-int c = f2(1,1);
-
-if (f2.failed()) {
-  if (!f2.function_exists()) {
-    // The function does not exist in Lua
-  } else if (f2.function_failed()) {
-    // The function body failed to run in Lua
-  } else if (!f2.result_exists()) {
-    // The function does not have any returned results
-  } else if (f2.result_failed()) {
-    // Conversion function's result from Lua to C++ failed
+auto f = l.get<peacalm::luaw::function<int(int, int)>>("f");
+int s = f(1, 1);
+if (f.failed()) {
+  if (f.function_failed()) {
+    // ...
+  } else if (!f.function_exists()) {
+    // ...
+  } else if (f.result_failed()) {
+    // ...
+  } else if (!f.result_enough()) {
+    std::cout << "Result number of f " << f.real_result_size()
+              << " less than " << f.expected_result_size() << std::endl;
   } else {
     // May never happen
   }
