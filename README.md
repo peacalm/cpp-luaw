@@ -2244,6 +2244,63 @@ This might make people very confused! And that's dangerous!
 So, be careful if you want to set an object to Lua by light userdata!
 Make sure you won't set objects with different types by light userdata at same time!
 
+##### Light userdata's metatable operations
+
+API:
+
+```C++
+/**
+ * @brief Set lightuserdata's metatable by a pointer type.
+ *
+ * Light userdata (unlike heavy userdata) have no per-value metatables. All
+ * light userdata share the same metatable, which by default is not set (nil).
+ *
+ * This method builds a metatable by a pointer type then set it to all light
+ * userdata.
+ *
+ * Behavior of light userdata with wrong type's metatable is undefined!
+ *
+ * @tparam T A pointer type indicates whose metatable lightuserdata use.
+ */
+template <typename T>
+void set_lightuserdata_metatable();
+
+/// Remove lightuserdata's metatable, i.e. set nil as metatable.
+void clear_lightuserdata_metatable();
+
+/// Tell whether lightuserdata has metatable (not nil).
+bool lightuserdata_has_metatable();
+
+
+/**
+ * @brief Get lightuserdata's metatable name
+ *
+ * @param [in] def Value returned if lightuserdata doesn't have metatable or
+ * "__name" doesn't exist in it's metatable or the value in metatable paired
+ * to "__name" can't convert to string.
+ * @param [out] has_metatable Will be set whether lightuserdata has metatable.
+ * @param [in] disable_log Whether print a log when exception occurs.
+ * @param [out] failed Will be set whether converting the value paired to
+ * "__name" in lightuserdata's metatable to string failed.
+ * @param [out] exists Will be set whether "__name" exists in lightuserdata's
+ * metatable.
+ * @return std::string
+ */
+std::string get_lightuserdata_metatable_name(const std::string& def = "",
+                                             bool* has_metatable    = nullptr,
+                                             bool  disable_log      = false,
+                                             bool* failed           = nullptr,
+                                             bool* exists = nullptr);
+
+/// Get metatable name for value at given index. (not only for light userdata)
+std::string get_metatable_name(int                idx           = -1,
+                               const std::string& def           = "",
+                               bool*              has_metatable = nullptr,
+                               bool               disable_log   = false,
+                               bool*              failed        = nullptr,
+                               bool*              exists        = nullptr);
+```
+
 
 Example:
 
@@ -2340,7 +2397,50 @@ int main() {
 ```
 
 
-#### 5.8 Const property
+#### 5.8 Get instances from Lua
+
+Use "get" method, we can get an instance or a pointer of an instance from Lua.
+
+When getting instances (not pointer), it could only copy the object from Lua 
+to C++, cannot move.
+
+Example:
+
+```C++
+peacalm::luaw l;
+l.register_ctor<Obj()>("NewObj");
+l.register_member("i", &Obj::i);
+
+int retcode = l.dostring("a = NewObj(); a.i = 2;");
+assert(retcode == LUA_OK);
+
+Obj a = l.get<Obj>("a");  // by copy
+assert(a.i == 2);
+assert(a.ci == 1);
+
+Obj* p = l.get<Obj*>("a");  // get a pointer to "a"
+assert(p->i == 2);
+assert(p->ci == 1);
+
+p->i = 3;
+assert(l.dostring("assert(a.i == 3)") == LUA_OK);
+
+// for light userdata
+Obj b;
+l.set("b", &b); // set a light userdata
+b.i = 4;
+assert(l.dostring("assert(b.i == 4)") == LUA_OK);
+Obj* pb = l.get<Obj*>("b");  // get the light userdata and convert to Obj*
+assert(pb == &b);
+
+Obj c = l.get<Obj>("b"); // copy "b" to "c"
+assert(c.i == 4);
+c.i = 5;
+assert(l.dostring("assert(b.i == 4)") == LUA_OK); // no change in "b"
+```
+
+
+#### 5.9 Const property
 
 The const property of class instance or class member behaves same in Lua as that in C++.
 
