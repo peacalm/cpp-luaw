@@ -3132,6 +3132,7 @@ public:
 
     // states about convertion to function,
     // it is states before call the function.
+    function_exists_ = !lua_isnoneornil(L_, idx);
     if (exists) *exists = !lua_isnoneornil(L_, idx);
     // noneornil is not callable, so we regard not-exists as failed for
     // function, which is not as same as usual.
