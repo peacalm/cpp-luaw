@@ -94,8 +94,10 @@ auto d = l.get<std::tuple<bool, int, std::string>>("d");
 
 // About set: only collect keys of a table in Lua into a C++ container set.
 l.dostring("ss={a=true,b=true,c=true}; si={}; si[1]=true si[2]=true;");
-auto ss = l.get<std::set<std::string>>("ss"); // ss == std::set<std::string>{"a", "b", "c"}
-auto si = l.get<std::set<int>>("si"); // si == std::set<int>{1, 2}
+auto ss = l.get<std::set<std::string>>("ss");   // ss == std::set<std::string>{"a", "b", "c"}
+auto si = l.get<std::unordered_set<int>>("si"); // si == std::unordered_set<int>{1, 2}
+assert(ss == (std::set<std::string>{"a", "b", "c"}));
+assert(si == (std::unordered_set<int>{1, 2}));
 ```
   </td>
 </tr>
@@ -136,7 +138,7 @@ auto s = l.get_string("s", "def"); // default value of s is 'def'
 </tr>
 
 <tr>
-  <td> <ul><ul><li> Recursively get element in table by a given path </li></ul></ul> </td>
+  <td> <ul><ul><li> Recursively get element in table by path </li></ul></ul> </td>
   <td> ✅ </td>
   <td>
 
@@ -191,8 +193,11 @@ l.set("s2", std::string("std::string"));
 l.set("a", std::vector<int>{1,2,3});
 l.set("b", std::map<std::string, int>{{"a",1},{"b",2}});
 l.set("c", std::make_pair("s", true)); // c[1] == "s", c[2] == true
+
 // Map set to table whose keys are from C++ set and values are boolean true.
-l.set("s", std::set<int>{1,2,3});
+l.set("si", std::set<int>{1,2,3});
+l.set("ss", std::unordered_set<std::string>{"a", "b", "c"});
+assert(l.dostring("assert(si[1] == true); assert(ss.a == true)") == LUA_OK);
 ```
   </td>
 </tr>
@@ -207,6 +212,58 @@ l.set("s", std::set<int>{1,2,3});
 l.set("x", nullptr);
 // Alternative writing:
 l.set_nil("x");
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Set pointers to Lua (Array will be set as pointer too) </li></ul></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+// All pointers not "const char*" will be set as lightuserdata.
+// Only "const char*" will be set as string.
+
+// ---- Set as lightuserdata
+int a[3] = {1,2,3};
+int *p = a;
+auto t = a;  // t: type int *
+assert((std::is_same<decltype(t), int*>::value) && t == p);
+const int *cp = &a[0];
+void *vp = (void*)(p);
+l.set("a", a);  // setting C array is equivalent to set pointer
+l.set("a0", &a[0]);
+l.set("p", p);
+l.set("cp", cp); // set pointers to lightuserdata by value(address), no matter whether it is const
+l.set("vp", vp);
+// All equal
+assert(l.dostring("assert(a == a0 and a == p and a == cp and a == vp)") == LUA_OK);
+
+// ---- Set as string
+const char sa[6] = "hello";
+const char* sp = sa;
+l.set("sa", sa); // convert to pointer type const char*, so it is a string
+l.set("sp", sp);
+l.set("ss", "hello");
+// All equal
+assert(l.dostring("assert(sa == 'hello' and sa == sp and sa == ss)") == LUA_OK);
+```
+  </td>
+</tr>
+
+
+<tr>
+  <td> <ul><ul><li> Recursively set element by path </li></ul></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+// All name in path except the last one will be touched as a new table if it doesn't exist.
+l.set({"a", "b", "c"}, 1);
+assert(l.dostring("assert(a.b.c == 1)") == LUA_OK);
+l.set({"a", "b", "d", "e"}, 2);
+assert(l.dostring("assert(a.b.c == 1 and a.b.d.e == 2)") == LUA_OK);
 ```
   </td>
 </tr>
@@ -668,6 +725,7 @@ void foo_dm_setter(Foo* o, const std::string& k, const peacalm::luaw::luavaluere
 int main() {
   peacalm::luaw l;
   l.register_dynamic_member(foo_dm_getter, foo_dm_setter);
+  l.set("f", Foo{});
   int retcode = l.dostring("f.a = 1; f.b = true; f.c = 10.5; f.d = 'str'");
   // ...
 }
@@ -2423,6 +2481,7 @@ assert(p->i == 2);
 assert(p->ci == 1);
 
 p->i = 3;
+assert(p->i == 3);
 assert(l.dostring("assert(a.i == 3)") == LUA_OK);
 
 // for light userdata
