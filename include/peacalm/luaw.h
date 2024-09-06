@@ -3154,7 +3154,20 @@ public:
   }
 
   /// Set log on-off.
-  void set_disable_log(bool v) { disable_log_ = v; }
+  void disable_log(bool v) { disable_log_ = v; }
+
+  /// Return a C string text message to indicate current state.
+  const char* state_msg() const {
+    if (!failed()) return "No fail";
+    if (function_failed()) return "Function failed";
+    if (!function_exists()) return "Function not exist";
+    if (result_failed()) return "Result failed";
+    if (!result_enough()) {
+      if (!result_exists()) return "Result not exist";
+      return "Result not enough";
+    }
+    return "Unknown";
+  }
 
   // states after function call
   // @{

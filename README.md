@@ -1489,6 +1489,11 @@ class luaw::function;
 template <typename Return, typename... Args>
 class luaw::function<Return(Args...)> {
 public:
+  /// Set log on-off.
+  void disable_log(bool v);
+
+  /// Return a C string text message to indicate current state.
+  const char* state_msg() const;
 
   /// Whether the whole process failed.
   /// Any step fails the whole process fails, including running the function in
