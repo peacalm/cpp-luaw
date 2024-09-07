@@ -648,8 +648,9 @@ int main() {
 ```C++
 // The C++ custom class to register
 struct Obj {
-  int       i  = 1;
-  const int ci = 1;
+  int        i  = 1;
+  const int  ci = 1;
+  static int si;
 
   Obj() {}
   Obj(int v) : i(v) {}
@@ -659,7 +660,10 @@ struct Obj {
 
   int plus() { return ++i; }
   int plus(int d) { i += d; return i; }
+
+  static int sqr(int x) { return x * x; }
 };
+int Obj::si = 1;
 ```
   </td>
 </tr>
@@ -729,6 +733,37 @@ l.register_member("abs", &Obj::abs);
 ```C++
 l.register_member<int (Obj::*)()>("plus", &Obj::plus);
 l.register_member<int (Obj::*)(int)>("plusby", &Obj::plus);
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Register static member variable </li></ul></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+l.register_static_member<Obj>("si", &Obj::si);
+// or
+l.register_member<int Obj::*>("si", &Obj::si);
+
+// register non-const static member "si" as a const member in Lua
+l.register_member<const int Obj::*>("si", &Obj::si);
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Register static member function </li></ul></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+l.register_static_member<Obj>("sqr", &Obj::sqr);
+// or
+l.register_static_member<Obj>("sqr", Obj::sqr);
+// or
+l.register_member<int (Obj::*)(int) const>("sqr", &Obj::sqr);
 ```
   </td>
 </tr>
@@ -1774,8 +1809,9 @@ Suppose here is a C++ class to bind:
 ```C++
 // The C++ custom class to register
 struct Obj {
-  int       i  = 1;
-  const int ci = 1;
+  int        i  = 1;
+  const int  ci = 1;
+  static int si;
 
   Obj() {}
   Obj(int v) : i(v) {}
@@ -1785,7 +1821,10 @@ struct Obj {
 
   int plus() { return ++i; }
   int plus(int d) { i += d; return i; }
+
+  static int sqr(int x) { return x * x; }
 };
+int Obj::si = 1;
 ```
 
 #### 5.1 Register constructors
@@ -1916,7 +1955,173 @@ l.dostring("a = NewObj(); a:plus()"); // OK
 l.dostring("b = NewConstObj(); b:plus()"); // Error: Nonconst member function: plus
 ```
 
-#### 5.4 Register dynamic member variables
+#### 5.4 Register static member variables
+
+API:
+
+```C++
+/**
+ * @brief Register a static member by providing class type.
+ *
+ * Can register static member variables or functions.
+ * Also can register global functions or global variables or local variables
+ * (should better be static) to be members of an object in Lua.
+ *
+ * When registering a function it will register it as a const member function
+ * of object in Lua.
+ * When registering a variable it will register it as an usual member variable
+ * of object in Lua. In particular, the member can not be modified by a const
+ * object (this is different with that in C++).
+ *
+ * Should register the member by it's name and address.
+ *
+ * For example:
+ *
+ * Register static member `Obj::si` of type `int` to Obj in Lua:
+ * `register_static_member<Obj>("si", &Obj::si)`
+ *
+ * Register static member function `static int sf(int)` to Obj:
+ * `register_static_member<Obj>("sf", &Obj::sf)`
+ * or do not use "&" to get function's address is also ok:
+ * `register_static_member<Obj>("sf", Obj::sf)`
+ *
+ * @tparam Class The class whom the static member will belong to.
+ * @tparam T The static member's type.
+ * @param name The static member's name.
+ * @param m The static member's pointer.
+ * @return void
+ */
+template <typename Class, typename T>
+std::enable_if_t<std::is_class<Class>::value> register_static_member(
+    const char* name, T* m);
+
+
+/**
+ * @brief Register a static member by providing full fake member pointer type.
+ *
+ * This API can add const/volatile property to member, which the origin static
+ * member may not have.
+ *
+ * Others all same as that API providing class.
+ *
+ * For example:
+ *
+ * Register static member `Obj::si` of type `int` to be a const member of Obj
+ * in Lua with type `const int`:
+ * `register_static_member<const int Obj::*>("si", &Obj::si)`
+ *
+ * Register static member function `static int sf(int)` as a const member
+ * function to Obj:
+ * `register_static_member<int(Obj::*)(int) const>("sf", &Obj::sf)`
+ *
+ * @tparam MemberPointer What kind of member type to let the static member
+ * behaves like in Lua.
+ * @tparam T The static member's type.
+ * @param name The static member's name.
+ * @param m The static member's pointer.
+ * @return void
+ */
+template <typename MemberPointer, typename T>
+std::enable_if_t<std::is_member_pointer<MemberPointer>::value>
+register_static_member(const char* name, T* m);
+```
+
+There are two kind of API:
+* Register a static member by providing class type.
+* Register a static member by providing full fake member pointer type.
+
+We register static variables like usual member variables, which can not be 
+modified by const objects. The difference is that the static member will be 
+shared by all objects of same type.
+
+By providing full fake member pointer type, we can add const/volatile property
+for the static member.
+
+
+Example of that by providing class type:
+
+```C++
+peacalm::luaw l;
+l.register_static_member<Obj>("si", &Obj::si);
+l.set("o", Obj{});
+assert(l.eval<int>("return o.si") == 1);
+Obj::si = 2;
+assert(l.eval<int>("return o.si") == 2);
+
+int retcode = l.dostring("o.si = 3");  // modify
+assert(retcode == LUA_OK);
+assert(l.eval<int>("return o.si") == 3);
+assert(Obj::si == 3);
+
+// Const object
+const Obj c;
+l.set("c", c);
+assert(l.eval<int>("return c.si") == 3);
+assert(l.eval<bool>("return o.si == c.si")); // share same si
+
+// Can not modify static member by const object in Lua
+retcode = l.dostring("c.si = 4");
+assert(retcode != LUA_OK);
+l.log_error_out();
+// Lua: [string "c.si = 4"]:1: Const member cannot be modified: si
+assert(l.eval<int>("return c.si") == 3);
+assert(Obj::si == 3);
+
+// But can modify it in C++ by const object
+c.si = 5;
+assert(l.eval<int>("return c.si") == 5);
+```
+
+Example of that by providing full fake member pointer type:
+
+```C++
+peacalm::luaw l;
+// Register non-static si as a const member in Lua
+l.register_static_member<const int Obj::*>("si", &Obj::si);
+
+l.set("o", Obj{});
+Obj::si = 1;
+assert(l.eval<int>("return o.si") == 1);
+
+int retcode = l.dostring("o.si = 2");
+assert(retcode != LUA_OK);
+l.log_error_out();
+// Lua: [string "o.si = 4"]:1: Const member cannot be modified: si
+
+assert(l.eval<int>("return o.si") == 1);
+Obj::si = 2;
+assert(l.eval<int>("return o.si") == 2);
+```
+
+
+#### 5.5 Register static member functions
+
+Uses same API as registering static member variables.
+
+We register static functions as a const member function of an object in Lua,
+so it can be called by const objects.
+
+
+Example:
+
+```C++
+luaw l;
+l.register_static_member<Obj>("sqr", &Obj::sqr);
+
+l.set("o", Obj{});
+assert(l.eval<int>("return o:sqr(2)") == 4);
+
+l.set("c", std::add_const_t<Obj>{});
+assert(l.eval<int>("return c:sqr(3)") == 9);
+
+l.set("s", std::make_shared<Obj>());
+assert(l.eval<int>("return s:sqr(4)") == 16);
+
+l.set("sc", std::make_shared<const Obj>());
+assert(l.eval<int>("return sc:sqr(5)") == 25);
+```
+
+#### 5.6 Register dynamic member variables
 
 API:
 
@@ -2018,7 +2223,7 @@ int main() {
 }
 ```
 
-#### 5.5 Register fake member variables
+#### 5.7 Register fake member variables
 
 API:
 
@@ -2222,7 +2427,7 @@ int main() {
 }
 ```
 
-#### 5.6 Register fake member functions
+#### 5.8 Register fake member functions
 
 Uses same API as registering fake member variables.
 
@@ -2254,7 +2459,7 @@ int main() {
 ```
 
 
-#### 5.7 Set class instances to Lua
+#### 5.9 Set class instances to Lua
 
 Use "set" method, we can set a class's instance which is defined in C++ to Lua,
 just like set other type values.
@@ -2488,8 +2693,31 @@ int main() {
 }
 ```
 
+##### Set const instances to Lua
 
-#### 5.8 Get instances from Lua
+Const property of an instance in C++ will be perfectly transfered to Lua using
+"set" method.
+
+Example:
+
+```C++
+const Obj co;
+l.set("co", co); // set const instance by copy
+// or
+l.set("co", std::move(co)); // set const instance by move
+// or
+l.set("co", std::add_const_t<Obj>{}); // set const instance by move
+// The variable "co" is const in Lua, it can access all registered members variables 
+// and registered const member functins of Obj.
+
+
+// Set underlying const instance using smart pointer
+// "sco" is not const, by it's underlying object is const,
+// so it behaves same as "co"
+l.set("sco", std::make_shared<const Obj>());
+```
+
+#### 5.10 Get instances from Lua
 
 Use "get" method, we can get an instance or a pointer of an instance from Lua.
 
@@ -2530,10 +2758,16 @@ Obj c = l.get<Obj>("b"); // copy "b" to "c"
 assert(c.i == 4);
 c.i = 5;
 assert(l.dostring("assert(b.i == 4)") == LUA_OK); // no change in "b"
+
+// set and get by shared_ptr
+auto s = std::make_shared<Obj>();
+l.set("s", s); // set s by copy
+auto s2 = l.get<std::shared_ptr<Obj>>("s"); // get s by copy
+assert(s.get() == s2.get());
 ```
 
 
-#### 5.9 Const property
+#### 5.11 Const property
 
 The const property of class instance or class member behaves same in Lua as that in C++.
 
