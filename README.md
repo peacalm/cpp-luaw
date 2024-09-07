@@ -499,6 +499,35 @@ int main() {
 </tr>
 
 <tr>
+  <td> <ul><ul><ul><li> Bind C++ variadic template functions to Lua </li></ul></ul></ul> </td>
+  <td> ✅ should specialize or provide hint type</td>
+  <td>
+
+```C++
+template <typename T>
+T add_many(const T& t) { return t; }
+template <typename T, typename... Args>
+T add_many(const T& t, const Args&...args) { return t + add_many(args...); }
+//...
+l.set("add_many", add_many<int, int, int /* as many as you want */>);
+// or
+l.set<int(const int&, const int& /* as many as you want */)>("add_many", add_many);
+
+```
+---
+```C++
+// after C++17
+template <typename... Args>
+auto add_many_cpp17(const Args&... args) { return (... + args); }
+// ...
+l.set("add_many_cpp17", add_many_cpp17<int, int, int /* as many as you want */>);
+// or
+l.set<int(const int&, const int& /* as many as you want */ )>("add_many_cpp17", add_many_cpp17);
+```
+  </td>
+</tr>
+
+<tr>
   <td> <ul><ul><li> Bind C++ lambdas to Lua </li></ul></ul> </td>
   <td> ✅ </td>
   <td>
