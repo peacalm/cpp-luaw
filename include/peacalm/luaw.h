@@ -174,6 +174,29 @@ inline int COUNTER0(lua_State* L) {
 
 }  // namespace luaexf
 
+namespace luaw_detail {
+
+template <typename Class, typename F>
+struct c_function_to_const_member_function {
+  using type = F;
+};
+
+template <typename Class, typename Return, typename... Args>
+struct c_function_to_const_member_function<Class, Return(Args...)> {
+  using type = Return (Class::*)(Args...) const;
+};
+
+template <typename Class, typename Return, typename... Args>
+struct c_function_to_const_member_function<Class, Return(Args..., ...)> {
+  using type = Return (Class::*)(Args..., ...) const;
+};
+
+template <typename Class, typename F>
+using c_function_to_const_member_function_t =
+    typename c_function_to_const_member_function<Class, F>::type;
+
+}  // namespace luaw_detail
+
 /// Basic Lua wrapper class.
 class luaw {
   using self_t = luaw;
@@ -215,7 +238,15 @@ class luaw {
   // (std::shared_ptr and std::unique_ptr) as the first argument to call the
   // origin callable object.
   template <typename T>
-  struct mock_mem_fn;
+  class mock_mem_fn;
+
+  // Mock non-member to be a class's member.
+  // Behaves like std::mem_fn, accepts a first argument representing the class's
+  // instance, but this one would drop it, it's just a placeholder, non-member
+  // variables/functions don't need it after all.
+  // Can accept variable pointer or function pointer.
+  template <typename T, typename = void>
+  class static_mem_fn;
 
   lua_State* L_;
 
@@ -1835,6 +1866,96 @@ public:
                    !std::is_same<Hint, F>::value>
   register_member(const std::string& name, F&& f) {
     register_member<Hint, F>(name.c_str(), std::forward<F>(f));
+  }
+
+  /**
+   * @brief Register a static member by providing class type.
+   *
+   * Can register static member variables or functions.
+   * Also can register global functions or global variables or local variables
+   * (should better be static) to be members of an object in Lua.
+   *
+   * When registering a function it will register it as a const member function
+   * of object in Lua.
+   * When registering a variable it will register it as an usual member variable
+   * of object in Lua. In particular, the member can not be modified by a const
+   * object (this is different with that in C++).
+   *
+   * Should register the member by it's name and address.
+   *
+   * For example:
+   *
+   * Register static member `Obj::si` of type `int` to Obj in Lua:
+   * `register_static_member<Obj>("si", &Obj::si)`
+   *
+   * Register static member function `static int sf(int)` to Obj:
+   * `register_static_member<Obj>("sf", &Obj::sf)`
+   * or do not use "&" to get function's address is also ok:
+   * `register_static_member<Obj>("sf", Obj::sf)`
+   *
+   * @tparam Class The class whom the static member will belong to.
+   * @tparam T The static member's type.
+   * @param name The static member's name.
+   * @param m The static member's pointer.
+   * @return void
+   */
+  template <typename Class, typename T>
+  std::enable_if_t<std::is_class<Class>::value> register_static_member(
+      const char* name, T* m) {
+    static_assert(std::is_same<Class, std::decay_t<Class>>::value,
+                  "Class type should be decayed");
+    PEACALM_LUAW_ASSERT(m);
+
+    // add const member property for function
+    using MemberPointer = std::conditional_t<
+        std::is_member_function_pointer<T Class::*>::value,
+        luaw_detail::c_function_to_const_member_function_t<Class, T>,
+        T Class::*>;
+
+    register_static_member<MemberPointer>(name, m);
+  }
+  template <typename Class, typename T>
+  std::enable_if_t<std::is_class<Class>::value> register_static_member(
+      const std::string& name, T* m) {
+    register_static_member<Class, T>(name.c_str(), m);
+  }
+
+  /**
+   * @brief Register a static member by providing full fake member pointer type.
+   *
+   * This API can add const/volatile property to member, which the origin static
+   * member may not have.
+   *
+   * Others all same as that API providing class.
+   *
+   * For example:
+   *
+   * Register static member `Obj::si` of type `int` to be a const member of Obj
+   * in Lua with type `const int`:
+   * `register_static_member<const int Obj::*>("si", &Obj::si)`
+   *
+   * Register static member function `static int sf(int)` as a const member
+   * function to Obj:
+   * `register_static_member<int(Obj::*)(int) const>("sf", &Obj::sf)`
+   *
+   * @tparam MemberPointer What kind of member type to let the static member
+   * behaves like in Lua.
+   * @tparam T The static member's type.
+   * @param name The static member's name.
+   * @param m The static member's pointer.
+   * @return void
+   */
+  template <typename MemberPointer, typename T>
+  std::enable_if_t<std::is_member_pointer<MemberPointer>::value>
+  register_static_member(const char* name, T* m) {
+    PEACALM_LUAW_ASSERT(m);
+    registrar<MemberPointer>::register_member(
+        *this, name, static_mem_fn<T*>(m));
+  }
+  template <typename MemberPointer, typename T>
+  std::enable_if_t<std::is_member_pointer<MemberPointer>::value>
+  register_static_member(const std::string& name, T* m) {
+    register_static_member<MemberPointer, T>(name.c_str(), m);
   }
 
   /**
@@ -4327,6 +4448,42 @@ public:
   mock_mem_fn(CallableObject&& r) : base_t(std::forward<CallableObject>(r)) {}
 };
 
+//////////////////// static_mem_fn impl ////////////////////////////////////////
+
+// specialize for C function pointer
+template <typename T>
+class luaw::static_mem_fn<T*, std::enable_if_t<std::is_function<T>::value>> {
+  T* f;
+
+public:
+  static_mem_fn(T* t) : f(t) {
+    // Can't be null ptr, since we're required to call the function ptr
+    PEACALM_LUAW_ASSERT(f);
+  }
+
+  template <typename Class, typename... Args>
+  decltype(auto) operator()(Class&&, Args&&... args) const {
+    return f(std::forward<Args>(args)...);
+  }
+};
+
+// specialize for C variable pointer
+template <typename T>
+class luaw::static_mem_fn<T*, std::enable_if_t<!std::is_function<T>::value>> {
+  T* m;
+
+public:
+  static_mem_fn(T* t) : m(t) {
+    // Can't be null ptr, since we're required to dereference the ptr
+    PEACALM_LUAW_ASSERT(m);
+  }
+
+  template <typename Class>
+  T& operator()(Class&&) const {
+    return *m;
+  }
+};
+
 //////////////////// registrar impl ////////////////////////////////////////////
 
 template <typename Getter>
@@ -4348,7 +4505,8 @@ void luaw::register_dynamic_member_setter(Setter&& setter) {
 template <typename T, typename>
 struct luaw::registrar {
   // Let compile fail for unsupported member types,
-  // such as ref- qualified member functions.
+  // such as ref- qualified member functions,
+  // or C style variadic functions.
   static_assert(!std::is_member_pointer<T>::value, "Unsupported member type");
 
   template <typename MemberFunction>
@@ -4628,7 +4786,7 @@ struct luaw::registrar<Return (Class::*)(Args...)> {
     auto f = [mf, &l](ObjectType o, Args... args) -> Return {
       if (!o) {
         luaL_error(l.L(), "Calling member function by null pointer of object");
-        return Return();
+        return Return();  // never runs here
       }
       PEACALM_LUAW_ASSERT(o);
       return mf(*o, std::move(args)...);
