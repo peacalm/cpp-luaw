@@ -2819,7 +2819,9 @@ private:
     auto param = l.to<std::decay_t<FirstArg>>(i, false, &failed, &exists);
     if (failed) {
       luaL_error(l.L(), "The %dth argument conversion failed", counter);
-      return Return();  // never runs here
+      // Never runs here.
+      // Do not return Return() to enable functions with reference results.
+      // return Return();
     }
     bind<Callee, FirstArg, RestArgs...> b(std::forward<Callee>(c),
                                           std::move(param));
@@ -4786,7 +4788,9 @@ struct luaw::registrar<Return (Class::*)(Args...)> {
     auto f = [mf, &l](ObjectType o, Args... args) -> Return {
       if (!o) {
         luaL_error(l.L(), "Calling member function by null pointer of object");
-        return Return();  // never runs here
+        // Never runs here.
+        // Do not return Return() to enable functions with reference results.
+        // return Return();
       }
       PEACALM_LUAW_ASSERT(o);
       return mf(*o, std::move(args)...);
