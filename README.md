@@ -2707,14 +2707,25 @@ l.set("co", co); // set const instance by copy
 l.set("co", std::move(co)); // set const instance by move
 // or
 l.set("co", std::add_const_t<Obj>{}); // set const instance by move
-// The variable "co" is const in Lua, it can access all registered members variables 
-// and registered const member functins of Obj.
+// or
+const Obj co2;
+// set low-level const pointer to be a lightuserdata which is also const
+l.set("co", &co2); 
+// The variable "co" (set by any method above) is const in Lua, 
+// it can access all registered member variables (but can't modify) and 
+// registered const member functins of Obj.
 
 
-// Set underlying const instance using smart pointer
+// Set underlying const instance using smart pointer.
 // "sco" is not const, by it's underlying object is const,
-// so it behaves same as "co"
-l.set("sco", std::make_shared<const Obj>());
+// so it behaves same as "co":
+auto sco = std::make_shared<const Obj>();
+l.set("sco", sco); // by copy
+l.set("sco", std::move(sco)); // by move
+l.set("sco", std::make_shared<const Obj>()); // by move
+// or
+auto sco2 = std::make_shared<const Obj>();
+l.set("sco", &sco2); // set as lightuserdata, also underlying const
 ```
 
 #### 5.10 Get instances from Lua
