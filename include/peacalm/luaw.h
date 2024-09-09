@@ -4442,11 +4442,10 @@ public:
 }  // namespace luaw_detail
 
 template <typename CallableObject>
-struct luaw::mock_mem_fn
+class luaw::mock_mem_fn
     : public luaw_detail::mock_mem_fn_impl<
           CallableObject,
           luaw_detail::detect_callable_cfunction_t<CallableObject>> {
-private:
   using base_t = luaw_detail::mock_mem_fn_impl<
       CallableObject,
       luaw_detail::detect_callable_cfunction_t<CallableObject>>;
@@ -4489,7 +4488,7 @@ auto retrieve_underlying_ptr(T&& t) {
 }  // namespace luaw_detail
 
 template <typename CallableObject>
-struct luaw::mock_mem_fn {
+class luaw::mock_mem_fn {
   CallableObject o;
 
 public:
