@@ -993,6 +993,18 @@ TEST(register_member, fake_member_variable_by_lambda) {
   {
     luaw       l;
     const auto o = std::make_shared<Obj>();
+    l.set("o", o);
+    int  li    = 100;  // local i
+    auto getli = [&](const volatile Obj*) -> int& { return li; };
+    l.register_member<int Obj::*>("li", getli);
+
+    EXPECT_EQ(l.eval<int>("return o.li"), li);
+    EXPECT_EQ(l.eval<int>("o.li = 101; return o.li"), 101);
+    EXPECT_EQ(li, 101);
+  }
+  {
+    luaw       l;
+    const auto o = std::make_shared<Obj>();
     l.set("o", &o);
     int  li    = 100;  // local i
     auto getli = [&](const volatile Obj*) -> int& { return li; };
@@ -1024,6 +1036,20 @@ TEST(register_member, fake_member_variable_by_lambda) {
     EXPECT_EQ(l.eval<int>("return o.li"), li);
     EXPECT_EQ(l.eval<int>("o.li = 101; return o.li"), 101);
     EXPECT_EQ(li, 101);
+  }
+
+  // by Const obj
+  {
+    luaw l;
+    l.set("o", std::add_const_t<Obj>{});
+    int  li    = 100;  // local i
+    auto getli = [&](const volatile Obj*) -> int& { return li; };
+    l.register_member<int Obj::*>("li", getli);
+
+    EXPECT_EQ(l.eval<int>("return o.li"), 100);
+    EXPECT_NE(l.dostring("o.li = 101"), LUA_OK);
+    EXPECT_EQ(l.eval<int>("return o.li"), 100);
+    EXPECT_EQ(li, 100);
   }
 
   {
