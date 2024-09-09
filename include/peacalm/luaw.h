@@ -4229,6 +4229,11 @@ struct luaw::register_ctor_impl<Return (*)(Args...)> {
 
 //////////////////// mock_mem_fn impl //////////////////////////////////////////
 
+#if true
+// First implementation of mock_mem_fn.
+// The first argument of CallableObject could be pointer or reference,
+// but couldn't use `auto`.
+
 namespace luaw_detail {
 
 template <typename CallableObject, typename>
@@ -4449,6 +4454,55 @@ private:
 public:
   mock_mem_fn(CallableObject&& r) : base_t(std::forward<CallableObject>(r)) {}
 };
+
+#else
+// Second implementatiion of mock_mem_fn.
+// The first argument of CallableObject must be pointer, and could be `auto*`.
+
+namespace luaw_detail {
+
+template <typename T>
+struct __retrieve_underlying_ptr {
+  template <typename U>
+  auto operator()(U&& t) {
+    return &t;
+  }
+};
+template <typename T>
+struct __retrieve_underlying_ptr<T*> {
+  auto operator()(T* t) { return t; }
+};
+template <typename T>
+struct __retrieve_underlying_ptr<std::shared_ptr<T>> {
+  auto operator()(const std::shared_ptr<T>& t) { return t.get(); }
+};
+template <typename T, typename D>
+struct __retrieve_underlying_ptr<std::unique_ptr<T, D>> {
+  auto operator()(const std::unique_ptr<T, D>& t) { return t.get(); }
+};
+
+template <typename T>
+auto retrieve_underlying_ptr(T&& t) {
+  return __retrieve_underlying_ptr<std::decay_t<T>>{}(std::forward<T>(t));
+}
+
+}  // namespace luaw_detail
+
+template <typename CallableObject>
+struct luaw::mock_mem_fn {
+  CallableObject o;
+
+public:
+  mock_mem_fn(CallableObject&& r) : o(std::forward<CallableObject>(r)) {}
+
+  template <typename FirstArg, typename... Args>
+  decltype(auto) operator()(FirstArg&& f, Args&&... args) const {
+    return o(luaw_detail::retrieve_underlying_ptr(std::forward<FirstArg>(f)),
+             std::forward<Args>(args)...);
+  }
+};
+
+#endif
 
 //////////////////// static_mem_fn impl ////////////////////////////////////////
 
