@@ -4464,21 +4464,21 @@ namespace luaw_detail {
 template <typename T>
 struct __retrieve_underlying_ptr {
   template <typename U>
-  auto operator()(U&& t) {
+  auto operator()(U&& t) const {
     return &t;
   }
 };
 template <typename T>
 struct __retrieve_underlying_ptr<T*> {
-  auto operator()(T* t) { return t; }
+  auto operator()(T* t) const { return t; }
 };
 template <typename T>
 struct __retrieve_underlying_ptr<std::shared_ptr<T>> {
-  auto operator()(const std::shared_ptr<T>& t) { return t.get(); }
+  auto operator()(const std::shared_ptr<T>& t) const { return t.get(); }
 };
 template <typename T, typename D>
 struct __retrieve_underlying_ptr<std::unique_ptr<T, D>> {
-  auto operator()(const std::unique_ptr<T, D>& t) { return t.get(); }
+  auto operator()(const std::unique_ptr<T, D>& t) const { return t.get(); }
 };
 
 template <typename T>
