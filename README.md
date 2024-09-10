@@ -2040,7 +2040,7 @@ for the static member.
 Actually, except for registering real static members of a class,
 these API can also register C++ global variables/functions or local variables
 (should better be static) to be static members in Lua. 
-They'll behave identically to real static members.
+They'll behave equivalently to real static members.
 
 Example of that by providing class type:
 
