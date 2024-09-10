@@ -1848,9 +1848,7 @@ public:
    * @tparam Hint The member type wanted to fake.
    * @tparam F C function type or lambda or std::function or any callable type.
    * @param name The member name.
-   * @param f The function whose first parameter is a pointer to the class. If
-   * faking a member variable, the first parameter must be pointer of
-   * cv-qualified class type, e.g. `const volatile Obj*`.
+   * @param f The function whose first parameter is a pointer to the class.
    * @return void.
    */
   template <typename Hint, typename F>
@@ -4229,7 +4227,7 @@ struct luaw::register_ctor_impl<Return (*)(Args...)> {
 
 //////////////////// mock_mem_fn impl //////////////////////////////////////////
 
-#if true
+#if false
 // First implementation of mock_mem_fn.
 // The first argument of CallableObject could be pointer or reference,
 // but couldn't use `auto`.

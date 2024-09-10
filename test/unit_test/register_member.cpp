@@ -1127,6 +1127,8 @@ TEST(register_member, fake_member_variable_by_lambda) {
   }
 }
 
+#if false
+
 TEST(register_member, fake_member_variable_by_lambda_first_arg_ref) {
   {
     // the first argument is ref
@@ -1162,6 +1164,218 @@ TEST(register_member, fake_member_variable_by_lambda_first_arg_ref) {
     EXPECT_EQ(li, 200);
   }
 }
+
+#else
+
+TEST(register_member, fake_member_variable_by_lambda_with_first_arg_auto_star) {
+  {
+    luaw l;
+    l.set("o", Obj{});
+    int  li    = 100;  // local i
+    auto getli = [&](auto*) -> int& { return li; };
+    l.register_member<int Obj::*>("li", getli);
+
+    EXPECT_EQ(l.eval<int>("return o.li"), li);
+    EXPECT_EQ(l.eval<int>("o.li = 101; return o.li"), 101);
+    EXPECT_EQ(li, 101);
+  }
+  {
+    luaw l;
+    Obj  o;
+    l.set("o", &o);
+    int  li    = 100;  // local i
+    auto getli = [&](auto*) -> int& { return li; };
+    l.register_member<int Obj::*>("li", getli);
+
+    EXPECT_EQ(l.eval<int>("return o.li"), li);
+    EXPECT_EQ(l.eval<int>("o.li = 101; return o.li"), 101);
+    EXPECT_EQ(li, 101);
+  }
+  {
+    luaw l;
+    l.set("o", std::make_shared<Obj>());
+    int  li    = 100;  // local i
+    auto getli = [&](auto*) -> int& { return li; };
+    l.register_member<int Obj::*>("li", getli);
+
+    EXPECT_EQ(l.eval<int>("return o.li"), li);
+    EXPECT_EQ(l.eval<int>("o.li = 101; return o.li"), 101);
+    EXPECT_EQ(li, 101);
+  }
+  {
+    luaw       l;
+    const auto o = std::make_shared<Obj>();
+    l.set("o", o);
+    int  li    = 100;  // local i
+    auto getli = [&](auto*) -> int& { return li; };
+    l.register_member<int Obj::*>("li", getli);
+
+    EXPECT_EQ(l.eval<int>("return o.li"), li);
+    EXPECT_EQ(l.eval<int>("o.li = 101; return o.li"), 101);
+    EXPECT_EQ(li, 101);
+  }
+  {
+    luaw       l;
+    const auto o = std::make_shared<Obj>();
+    l.set("o", &o);
+    int  li    = 100;  // local i
+    auto getli = [&](auto*) -> int& { return li; };
+    l.register_member<int Obj::*>("li", getli);
+
+    EXPECT_EQ(l.eval<int>("return o.li"), li);
+    EXPECT_EQ(l.eval<int>("o.li = 101; return o.li"), 101);
+    EXPECT_EQ(li, 101);
+  }
+  {
+    luaw l;
+    l.set("o", std::make_unique<Obj>());
+    int  li    = 100;  // local i
+    auto getli = [&](auto*) -> int& { return li; };
+    l.register_member<int Obj::*>("li", getli);
+
+    EXPECT_EQ(l.eval<int>("return o.li"), li);
+    EXPECT_EQ(l.eval<int>("o.li = 101; return o.li"), 101);
+    EXPECT_EQ(li, 101);
+  }
+  {
+    luaw       l;
+    const auto o = std::make_unique<Obj>();
+    l.set("o", &o);
+    int  li    = 100;  // local i
+    auto getli = [&](auto*) -> int& { return li; };
+    l.register_member<int Obj::*>("li", getli);
+
+    EXPECT_EQ(l.eval<int>("return o.li"), li);
+    EXPECT_EQ(l.eval<int>("o.li = 101; return o.li"), 101);
+    EXPECT_EQ(li, 101);
+  }
+
+  // by Const obj
+  {
+    luaw l;
+    l.set("o", std::add_const_t<Obj>{});
+    int  li    = 100;  // local i
+    auto getli = [&](auto*) -> int& { return li; };
+    l.register_member<int Obj::*>("li", getli);
+
+    EXPECT_EQ(l.eval<int>("return o.li"), 100);
+    EXPECT_NE(l.dostring("o.li = 101"), LUA_OK);
+    EXPECT_EQ(l.eval<int>("return o.li"), 100);
+    EXPECT_EQ(li, 100);
+  }
+
+  // fake const member
+  {
+    luaw l;
+    l.set("o", Obj{});
+    int  li    = 100;
+    auto getli = [&](auto*) -> int& { return li; };
+    l.register_member<const int Obj::*>("li", getli);
+
+    EXPECT_EQ(l.eval<int>("return o.li"), li);
+    bool failed;
+    EXPECT_EQ(l.eval<int>("o.li = 102; return o.li", false, &failed), 0);
+    EXPECT_TRUE(failed);
+    EXPECT_EQ(li, 100);
+
+    li = 200;
+    EXPECT_EQ(l.eval<int>("return o.li"), li);
+    EXPECT_EQ(l.eval<int>("return o.li"), 200);
+  }
+
+  // fake const member, use copy captured value in lambda
+  {
+    luaw l;
+    l.set("o", Obj{});
+    int  li    = 100;
+    auto getli = [=](auto*) -> const int& { return li; };
+    l.register_member<const int Obj::*>("li", getli);
+
+    EXPECT_EQ(l.eval<int>("return o.li"), li);
+    bool failed;
+    EXPECT_EQ(l.eval<int>("o.li = 103; return o.li", false, &failed), 0);
+    EXPECT_TRUE(failed);
+    EXPECT_EQ(li, 100);
+  }
+
+  // fake member by real member
+  {
+    luaw       l;
+    const auto o = std::make_shared<Obj>();
+    o->i         = 100;
+    l.set("o", o);
+    auto getli = [](auto* o) -> int& { return const_cast<Obj*>(o)->i; };
+    l.register_member<int Obj::*>("fi", getli);
+
+    EXPECT_EQ(o->i, 100);
+    EXPECT_EQ(l.eval<int>("return o.fi"), 100);
+
+    EXPECT_EQ(l.eval<int>("o.fi = 101; return o.fi"), 101);
+    EXPECT_EQ(o->i, 101);
+
+    o->i = 102;
+    EXPECT_EQ(l.eval<int>("return o.fi"), 102);
+  }
+  {
+    luaw       l;
+    const auto o = std::make_shared<Obj>();
+    o->i         = 100;
+    l.set("o", o);
+    // return: auto&
+    auto getli = [](auto* o) -> auto& {
+      return o->i;  // could not use const_cast
+      // return const_cast<Obj*>(o)->i;
+    };
+    l.register_member<int Obj::*>("fi", getli);
+
+    EXPECT_EQ(o->i, 100);
+    EXPECT_EQ(l.eval<int>("return o.fi"), 100);
+
+    EXPECT_EQ(l.eval<int>("o.fi = 101; return o.fi"), 101);
+    EXPECT_EQ(o->i, 101);
+
+    o->i = 102;
+    EXPECT_EQ(l.eval<int>("return o.fi"), 102);
+  }
+
+  // fake const member by real member
+  {
+    luaw       l;
+    const auto o = std::make_shared<Obj>();
+    o->i         = 100;
+    l.set("o", o);
+    auto getli = [](auto* o) -> int { return o->i; };
+    l.register_member<const int Obj::*>("fi", getli);
+
+    EXPECT_EQ(o->i, 100);
+    EXPECT_EQ(l.eval<int>("return o.fi"), 100);
+
+    EXPECT_NE(l.dostring("o.fi = 101"), LUA_OK);
+    EXPECT_EQ(o->i, 100);
+
+    o->i = 102;
+    EXPECT_EQ(l.eval<int>("return o.fi"), 102);
+  }
+  {
+    luaw       l;
+    const auto o = std::make_shared<Obj>();
+    o->i         = 100;
+    l.set("o", o);
+    auto getli = [](auto* o) -> auto& { return o->i; };
+    l.register_member<const int Obj::*>("fi", getli);
+
+    EXPECT_EQ(o->i, 100);
+    EXPECT_EQ(l.eval<int>("return o.fi"), 100);
+
+    EXPECT_NE(l.dostring("o.fi = 101"), LUA_OK);
+    EXPECT_EQ(o->i, 100);
+
+    o->i = 102;
+    EXPECT_EQ(l.eval<int>("return o.fi"), 102);
+  }
+}
+
+#endif
 
 TEST(register_member, fake_const_member_variable_by_returned_rvalue) {
   luaw l;
