@@ -2449,7 +2449,7 @@ int main() {
 
   // 1. use const_cast
   l.register_member<int Foo::*>("a0", [](const volatile Foo* o) -> int& {
-    // use const_cast to remove const property forcely
+    // use const_cast to remove const and volatile property forcely
     return const_cast<Foo*>(o)->a[0];
   });
   // 2. use `auto*` in argument, use `auto&` in return
