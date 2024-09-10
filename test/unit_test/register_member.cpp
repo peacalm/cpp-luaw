@@ -1052,9 +1052,8 @@ TEST(register_member, fake_member_variable_by_lambda) {
     EXPECT_EQ(li, 100);
   }
 
+  // fake const member
   {
-    // fake const member
-
     luaw l;
     l.set("o", Obj{});
     int  li    = 100;
@@ -1072,9 +1071,8 @@ TEST(register_member, fake_member_variable_by_lambda) {
     EXPECT_EQ(l.eval<int>("return o.li"), 200);
   }
 
+  // fake const member, use copy captured value in lambda
   {
-    // fake const member, use copy captured value in lambda
-
     luaw l;
     l.set("o", Obj{});
     int  li    = 100;
@@ -1088,6 +1086,48 @@ TEST(register_member, fake_member_variable_by_lambda) {
     EXPECT_EQ(li, 100);
   }
 
+  // fake member by real member
+  {
+    luaw       l;
+    const auto o = std::make_shared<Obj>();
+    o->i         = 100;
+    l.set("o", o);
+    auto getli = [](const volatile Obj* o) -> int& {
+      return const_cast<Obj*>(o)->i;
+    };
+    l.register_member<int Obj::*>("fi", getli);
+
+    EXPECT_EQ(o->i, 100);
+    EXPECT_EQ(l.eval<int>("return o.fi"), 100);
+
+    EXPECT_EQ(l.eval<int>("o.fi = 101; return o.fi"), 101);
+    EXPECT_EQ(o->i, 101);
+
+    o->i = 102;
+    EXPECT_EQ(l.eval<int>("return o.fi"), 102);
+  }
+
+  // fake const member by real member
+  {
+    luaw       l;
+    const auto o = std::make_shared<Obj>();
+    o->i         = 100;
+    l.set("o", o);
+    auto getli = [](const volatile Obj* o) -> int { return o->i; };
+    l.register_member<const int Obj::*>("fi", getli);
+
+    EXPECT_EQ(o->i, 100);
+    EXPECT_EQ(l.eval<int>("return o.fi"), 100);
+
+    EXPECT_NE(l.dostring("o.fi = 101"), LUA_OK);
+    EXPECT_EQ(o->i, 100);
+
+    o->i = 102;
+    EXPECT_EQ(l.eval<int>("return o.fi"), 102);
+  }
+}
+
+TEST(register_member, fake_member_variable_by_lambda_first_arg_ref) {
   {
     // the first argument is ref
 
