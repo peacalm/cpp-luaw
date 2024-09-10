@@ -2109,7 +2109,7 @@ so it can be called by const objects.
 Example:
 
 ```C++
-luaw l;
+peacalm::luaw l;
 // By providing class type
 l.register_static_member<Obj>("sqr", &Obj::sqr);
 
@@ -2135,7 +2135,7 @@ it cannot be called by a const object.
 Example:
 
 ```C++
-luaw l;
+peacalm::luaw l;
 // By providing full fake member pointer type
 l.register_static_member<int (Obj::*)(int) const>("sqr", &Obj::sqr);
 
