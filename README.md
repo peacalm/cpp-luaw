@@ -2037,6 +2037,10 @@ shared by all objects of same type.
 By providing full fake member pointer type, we can add const/volatile property
 for the static member.
 
+Actually, except for registering real static members of a class,
+these API can also register C++ global variables/functions or local variables
+(should better be static) to be static members in Lua. 
+They'll behave identically to real static members.
 
 Example of that by providing class type:
 
@@ -2106,6 +2110,7 @@ Example:
 
 ```C++
 luaw l;
+// By providing class type
 l.register_static_member<Obj>("sqr", &Obj::sqr);
 
 l.set("o", Obj{});
@@ -2119,6 +2124,22 @@ assert(l.eval<int>("return s:sqr(4)") == 16);
 
 l.set("sc", std::make_shared<const Obj>());
 assert(l.eval<int>("return sc:sqr(5)") == 25);
+```
+
+Or, in the last example, we can register the static function "sqr" 
+by providing full fake member pointer. 
+But remember to add "const" for the member function pointer type. Otherwise
+it cannot be called by a const object.
+
+
+Example:
+
+```C++
+luaw l;
+// By providing full fake member pointer type
+l.register_static_member<int (Obj::*)(int) const>("sqr", &Obj::sqr);
+
+// ... (Same as previous example)
 ```
 
 #### 5.6 Register dynamic member variables
