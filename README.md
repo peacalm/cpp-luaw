@@ -603,7 +603,7 @@ l.set("f", std::move(f));
 </tr>
 
 <tr>
-  <td> <ul><ul><li> Support C++ function with multiple returns </li></ul></ul> </td>
+  <td> <ul><ul><li> Support C++ functions with multiple returns </li></ul></ul> </td>
   <td> ✅ use std::tuple </td>
   <td>
 
@@ -612,6 +612,32 @@ std::tuple<int, int> fdiv(int a, int b) { return std::make_tuple(a / b, a % b); 
 
 l.set("fdiv", fdiv);
 l.dostring("q, r = fdiv(7, 3)"); // q == 2, r == 1
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Support C++ functions whose return is reference </li></ul></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+int g = 1;
+int& getg() { return g; }
+
+int main() {
+  peacalm::luaw l;
+  l.set("getg", &getg);
+  assert(l.eval_int("return getg()") == 1);
+  // Can set the variable referenced by function's return in C++.
+  getg() = 2;
+  assert(l.eval_int("return getg()") == 2);
+
+  // But can't set the variable referenced by function's return in Lua.
+  retcode = l.dostring("getg() = 3");
+  assert(retcode != LUA_OK);
+  l.log_error_out(); // error log: syntax error near '='
+}
 ```
   </td>
 </tr>
