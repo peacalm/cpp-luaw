@@ -632,11 +632,13 @@ int main() {
   // Can set the variable referenced by function's return in C++.
   getg() = 2;
   assert(l.eval_int("return getg()") == 2);
+  assert(g == 2);
 
   // But can't set the variable referenced by function's return in Lua.
   retcode = l.dostring("getg() = 3");
   assert(retcode != LUA_OK);
   l.log_error_out(); // error log: syntax error near '='
+  assert(g == 2);
 }
 ```
   </td>
