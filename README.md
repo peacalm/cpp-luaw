@@ -1099,7 +1099,19 @@ auto ret = l.eval<std::tuple<int, int, int>>("return 1,2,3");
 </tr>
 
 <tr>
-  <td> <ul><ul><li> Return void </li></ul></ul> </td>
+  <td> <ul><ul><ul><li> Return 0 value (no return) by std::tuple<> </li></ul></ul></ul> </td>
+  <td> ✅ </td>
+  <td>
+
+```C++
+// No return: equivalent to l.eval<void>
+l.eval<std::tuple<>>("a=1 b=2");
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Return void (no return) </li></ul></ul> </td>
   <td> ✅ </td>
   <td>
 
