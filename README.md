@@ -598,6 +598,33 @@ l.set("f", f);
 
 // Or set f by move:
 l.set("f", std::move(f));
+
+// Or provide hint type explicitly, these are equivalent:
+l.set<int(int, int)>("f", f);
+l.set<int(*)(int, int)>("f", f);
+l.set<peacalm::luaw::function_tag>("f", f);
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Set user defined callable objects as function to Lua </li></ul></ul> </td>
+  <td> ✅ should provide hint type </td>
+  <td>
+
+```C++
+struct Add {
+    int operator()(int a, int b) const { return a + b; }
+};
+int main() {
+  peacalm::luaw l;
+
+  // Must provide hint type to clearly point out that set the object as a function.
+  // These are equivalent:
+  l.set<int(int, int)>("add", Add{});
+  l.set<int(*)(int, int)>("add", Add{});
+  l.set<peacalm::luaw::function_tag>("add", Add{});
+}
 ```
   </td>
 </tr>
