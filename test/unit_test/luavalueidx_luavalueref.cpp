@@ -73,14 +73,14 @@ TEST(luavalueidx, as_func_arg) {
   l.dostring("g = {a=8,b=8}");
 
   auto getter = [](const luaw::luavalueidx& t, const std::string& k) {
-    luaw_fake l(t.L());
+    fakeluaw l(t.L());
     l.gseek("g").seek(k);
     return luaw::luavalueref(t.L());
   };
   auto setter = [](const luaw::luavalueidx& t,
                    const std::string&       k,
                    const luaw::luavalueidx& v) {
-    luaw_fake l(t.L());
+    fakeluaw l(t.L());
     l.gseek("g").setkv(k, v);
   };
 

@@ -2256,13 +2256,13 @@ public:
 };
 
 // This wrapper won't close state when destruct.
-class luaw_fake : public luaw {
+class fakeluaw : public luaw {
   using base_t = luaw;
 
 public:
-  luaw_fake(lua_State* L) : base_t(L) {}
+  fakeluaw(lua_State* L) : base_t(L) {}
 
-  ~luaw_fake() { base_t::release(); }
+  ~fakeluaw() { base_t::release(); }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3262,7 +3262,7 @@ public:
         *failed = true;
       } else {
         // check more whether it's callable
-        luaw_fake l(L);
+        fakeluaw l(L);
         *failed = !l.callable(idx);
       }
     }
@@ -3347,9 +3347,9 @@ public:
       return Return();
     }
 
-    luaw_fake l(L_);
-    auto      _g = l.make_guarder();
-    int       sz = l.gettop();
+    fakeluaw l(L_);
+    auto     _g = l.make_guarder();
+    int      sz = l.gettop();
     l.rawgeti(LUA_REGISTRYINDEX, *ref_sptr_);
     if (l.isnoneornil()) {
       function_failed_ = false;
@@ -4002,7 +4002,7 @@ struct luaw::metatable_factory<T*>
   }
 
   static int __index(lua_State* L) {
-    luaw_fake l(L);
+    fakeluaw l(L);
     PEACALM_LUAW_ASSERT(l.gettop() == 2);
     void* ti =
         reinterpret_cast<void*>(const_cast<std::type_info*>(&typeid(T*)));
@@ -4112,7 +4112,7 @@ struct luaw::metatable_factory<T*>
   }
 
   static int __newindex(lua_State* L) {
-    luaw_fake l(L);
+    fakeluaw l(L);
     PEACALM_LUAW_ASSERT(l.gettop() == 3);
     void* ti =
         reinterpret_cast<void*>(const_cast<std::type_info*>(&typeid(T*)));
@@ -4206,7 +4206,7 @@ struct luaw::metatable_factory
   }
 
   static int __gc(lua_State* L) {
-    luaw_fake l(L);
+    fakeluaw l(L);
     PEACALM_LUAW_ASSERT(l.gettop() == 1);
     T* p = l.to<T*>(1);
     PEACALM_LUAW_ASSERT(p);
@@ -5100,7 +5100,7 @@ public:
 
 private:
   bool provide(lua_State* L, const char* var_name) {
-    luaw_fake l(L);
+    fakeluaw l(L);
     return provider() && provider()->provide(l, var_name);
   }
 
