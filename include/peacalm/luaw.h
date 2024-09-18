@@ -2792,14 +2792,14 @@ private:
     }
   };
 
-  // Return is void
+  // For type Return is void.
   template <typename Callee>
   static int callback(luaw& l, Callee&& c, int start_idx, std::true_type) {
     do_call(l, std::forward<Callee>(c), start_idx, 1, wrap<Args>{}...);
     return 0;
   }
 
-  // Return is not void
+  // For type Return is not void. Return the number of result.
   template <typename Callee>
   static int callback(luaw& l, Callee&& c, int start_idx, std::false_type) {
     return luaw::pusher_for_return<std::decay_t<Return>>::push(
