@@ -2320,32 +2320,52 @@ struct get_element_type<T, void_t<typename T::element_type>> {
 // Get a C function pointer type by a member function pointer type
 
 template <typename T>
-struct get_cfptr_by_member_fptr {
+struct get_cfptr_by_memfptr {
   using type = void;
 };
 
 template <typename Object, typename Return, typename... Args>
-struct get_cfptr_by_member_fptr<Return (Object::*)(Args...)> {
+struct get_cfptr_by_memfptr<Return (Object::*)(Args...)> {
   using type = Return (*)(Args...);
 };
 
 template <typename Object, typename Return, typename... Args>
-struct get_cfptr_by_member_fptr<Return (Object::*)(Args...) const> {
+struct get_cfptr_by_memfptr<Return (Object::*)(Args...) const> {
   using type = Return (*)(Args...);
 };
 
 template <typename Object, typename Return, typename... Args>
-struct get_cfptr_by_member_fptr<Return (Object::*)(Args..., ...)> {
+struct get_cfptr_by_memfptr<Return (Object::*)(Args...) volatile> {
+  using type = Return (*)(Args...);
+};
+
+template <typename Object, typename Return, typename... Args>
+struct get_cfptr_by_memfptr<Return (Object::*)(Args...) const volatile> {
+  using type = Return (*)(Args...);
+};
+
+template <typename Object, typename Return, typename... Args>
+struct get_cfptr_by_memfptr<Return (Object::*)(Args..., ...)> {
   using type = Return (*)(Args..., ...);
 };
 
 template <typename Object, typename Return, typename... Args>
-struct get_cfptr_by_member_fptr<Return (Object::*)(Args..., ...) const> {
+struct get_cfptr_by_memfptr<Return (Object::*)(Args..., ...) const> {
+  using type = Return (*)(Args..., ...);
+};
+
+template <typename Object, typename Return, typename... Args>
+struct get_cfptr_by_memfptr<Return (Object::*)(Args..., ...) volatile> {
+  using type = Return (*)(Args..., ...);
+};
+
+template <typename Object, typename Return, typename... Args>
+struct get_cfptr_by_memfptr<Return (Object::*)(Args..., ...) const volatile> {
   using type = Return (*)(Args..., ...);
 };
 
 template <typename T>
-using get_cfptr_by_member_fptr_t = typename get_cfptr_by_member_fptr<T>::type;
+using get_cfptr_by_memfptr_t = typename get_cfptr_by_memfptr<T>::type;
 
 // Detect type of callee, which is a pointer to member function operator()
 
@@ -2365,7 +2385,7 @@ using detect_callee_t = typename detect_callee<T>::type;
 // Detect C function style callee type
 
 template <typename T>
-using detect_c_callee_t = get_cfptr_by_member_fptr_t<detect_callee_t<T>>;
+using detect_c_callee_t = get_cfptr_by_memfptr_t<detect_callee_t<T>>;
 
 // Detect whether T maybe a captureless and non-generic lambda
 
