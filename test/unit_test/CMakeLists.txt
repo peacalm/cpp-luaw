@@ -19,10 +19,10 @@ endif()
 
 function(build_target TARGET)
     target_include_directories(${TARGET} PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../include
-        ${LUA_INCLUDE_DIR}
-        ${MyOStream_INCLUDE_DIR})
+            ${CMAKE_CURRENT_SOURCE_DIR}/
+            ${CMAKE_CURRENT_SOURCE_DIR}/../../include
+            ${LUA_INCLUDE_DIR}
+            ${MyOStream_INCLUDE_DIR})
     target_link_libraries(${TARGET} PUBLIC ${GTEST_LIBRARIES} ${LUA_LIBRARIES})
     add_test(NAME ${TARGET} COMMAND ${TARGET})
     include(GoogleTest)
