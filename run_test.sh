@@ -21,6 +21,7 @@ MYOSTREAM=FALSE
 REBUILD=0
 CLEAR=0
 SEPARATE=FALSE
+NEED_VOLATILE=FALSE
 while [ "$#" -gt 0 ]; do
   case $1 in
     -ru)
@@ -52,8 +53,12 @@ while [ "$#" -gt 0 ]; do
       SEPARATE=TRUE
       shift
       ;;
+    --volatile)
+      NEED_VOLATILE=TRUE
+      shift
+      ;;
     -h)
-      echo "run_test.sh [-o] [-r|-ru|-rp] [--rebuild] [--clear] [--separate]"
+      echo "run_test.sh [-o] [-r|-ru|-rp] [--rebuild] [--clear] [--separate] [--volatile]"
       exit 0
       ;;
     *)
@@ -69,7 +74,10 @@ if [ ${REBUILD} -eq 1 ]; then
 fi
 mkdir -p build
 cd build
-cmake .. -DBUILD_TEST=TRUE -DENABLE_MYOSTREAM_WATCH=${MYOSTREAM} -DUNIT_TEST_SEPARATE=${SEPARATE}
+cmake .. -DBUILD_TEST=TRUE \
+         -DENABLE_MYOSTREAM_WATCH=${MYOSTREAM} \
+         -DUNIT_TEST_SEPARATE=${SEPARATE} \
+         -DNEED_VOLATILE=${NEED_VOLATILE}
 make
 
 if [ $? -eq 0 ]; then

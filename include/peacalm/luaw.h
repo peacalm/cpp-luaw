@@ -51,6 +51,19 @@ static_assert(LUA_VERSION_NUM >= 504, "Lua version at least 5.4");
 #define PEACALM_LUAW_INDEXABLE_ASSERT(x) assert(x)
 #endif
 
+/// Macro switch: Whether support calling members by a volatile object.
+#ifndef PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT
+#ifdef PEACALM_LUAW_NEED_VOLATILE
+#define PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT true
+#else
+#define PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT false
+#endif
+#endif
+
+static_assert(
+    std::is_integral<decltype(PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT)>::value,
+    "PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT should be bool or int");
+
 namespace peacalm {
 
 namespace luaexf {  // Useful extended functions for Lua
@@ -4600,9 +4613,9 @@ struct luaw::registrar<Member (*)(Class*, Key)> {
   static_assert(std::is_class<Class>::value && std::is_const<Class>::value,
                 "First argument should be pointer of const class");
   using DecayClass = std::remove_cv_t<Class>;
+  static_assert(std::is_same<DecayClass, std::decay_t<Class>>::value,
+                "Never happen");
 
-  template <typename Getter>
-  static void register_dynamic_member_getter(luaw& l, Getter&& getter) {
 #define REGISTER_GETTER(ObjectType)                          \
   l.touchtb((void*)(&typeid(ObjectType)), LUA_REGISTRYINDEX) \
       .setkv<Member (*)(Class*, Key)>(                       \
@@ -4617,20 +4630,24 @@ struct luaw::registrar<Member (*)(Class*, Key)> {
             return getter(*o, k);                            \
           });
 
+  template <typename Getter>
+  static void register_dynamic_member_getter(luaw& l, Getter&& getter) {
     auto _g = l.make_guarder();
 
-    {
-      REGISTER_GETTER(DecayClass*);
-      REGISTER_GETTER(const DecayClass*);
+    REGISTER_GETTER(DecayClass*);
+    REGISTER_GETTER(const DecayClass*);
 
-      if (std::is_volatile<Class>::value) {
-        REGISTER_GETTER(volatile DecayClass*);
-        REGISTER_GETTER(const volatile DecayClass*);
-      }
+#if PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT
+
+    if (std::is_volatile<Class>::value) {
+      REGISTER_GETTER(volatile DecayClass*);
+      REGISTER_GETTER(const volatile DecayClass*);
     }
 
+#endif
+
     // Do not support nested smart pointers, which is meaningless!
-    // Currently DO NOT support volatile for smart pointers!
+    // DO NOT support top-level volatile for smart pointers!
     if (!luaw_detail::is_std_shared_ptr<DecayClass>::value &&
         !luaw_detail::is_std_unique_ptr<DecayClass>::value) {
       REGISTER_SMART_GETTER(std::shared_ptr<DecayClass>*);
@@ -4642,11 +4659,41 @@ struct luaw::registrar<Member (*)(Class*, Key)> {
       REGISTER_SMART_GETTER(const std::unique_ptr<DecayClass>*);
       REGISTER_SMART_GETTER(std::unique_ptr<const DecayClass>*);
       REGISTER_SMART_GETTER(const std::unique_ptr<const DecayClass>*);
+
+#if PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT
+
+      // for low-level volatile:
+      __register_dynamic_member_getter_for_volatile(
+          l, std::forward<Getter>(getter), std::is_volatile<Class>{});
+
+#endif
     }
+  }
+
+  template <typename Getter>
+  static void __register_dynamic_member_getter_for_volatile(luaw&    l,
+                                                            Getter&& getter,
+                                                            std::true_type) {
+    auto _g = l.make_guarder();
+
+    REGISTER_SMART_GETTER(std::shared_ptr<volatile DecayClass>*);
+    REGISTER_SMART_GETTER(const std::shared_ptr<volatile DecayClass>*);
+    REGISTER_SMART_GETTER(std::shared_ptr<const volatile DecayClass>*);
+    REGISTER_SMART_GETTER(const std::shared_ptr<const volatile DecayClass>*);
+
+    REGISTER_SMART_GETTER(std::unique_ptr<volatile DecayClass>*);
+    REGISTER_SMART_GETTER(const std::unique_ptr<volatile DecayClass>*);
+    REGISTER_SMART_GETTER(std::unique_ptr<const volatile DecayClass>*);
+    REGISTER_SMART_GETTER(const std::unique_ptr<const volatile DecayClass>*);
+  }
+
+  template <typename Getter>
+  static void __register_dynamic_member_getter_for_volatile(luaw&    l,
+                                                            Getter&& getter,
+                                                            std::false_type) {}
 
 #undef REGISTER_SMART_GETTER
 #undef REGISTER_GETTER
-  }
 };
 
 // Specialization for dynamic member setter
@@ -4655,9 +4702,9 @@ struct luaw::registrar<void (*)(Class*, Key, Member)> {
   static_assert(std::is_class<Class>::value && !std::is_const<Class>::value,
                 "First argument should be pointer of non-const class");
   using DecayClass = std::remove_cv_t<Class>;
+  static_assert(std::is_same<DecayClass, std::decay_t<Class>>::value,
+                "Never happen");
 
-  template <typename Setter>
-  static void register_dynamic_member_setter(luaw& l, Setter&& setter) {
 #define REGISTER_SETTER(ObjectType)                          \
   l.touchtb((void*)(&typeid(ObjectType)), LUA_REGISTRYINDEX) \
       .setkv<void (*)(Class*, Key, Member)>(                 \
@@ -4676,20 +4723,24 @@ struct luaw::registrar<void (*)(Class*, Key, Member)> {
   l.touchtb((void*)(&typeid(ObjectType)), LUA_REGISTRYINDEX) \
       .setkv(luaw::member_info_fields::dynamic_member_setter, false);
 
+  template <typename Setter>
+  static void register_dynamic_member_setter(luaw& l, Setter&& setter) {
     auto _g = l.make_guarder();
 
-    {
-      REGISTER_SETTER(DecayClass*);
-      REGISTER_SETTER_OF_CONST(const DecayClass*);
+    REGISTER_SETTER(DecayClass*);
+    REGISTER_SETTER_OF_CONST(const DecayClass*);
 
-      if (std::is_volatile<Class>::value) {
-        REGISTER_SETTER(volatile DecayClass*);
-        REGISTER_SETTER_OF_CONST(const volatile DecayClass*);
-      }
+#if PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT
+
+    if (std::is_volatile<Class>::value) {
+      REGISTER_SETTER(volatile DecayClass*);
+      REGISTER_SETTER_OF_CONST(const volatile DecayClass*);
     }
 
+#endif
+
     // Do not support nested smart pointers, which is meaningless!
-    // Currently DO NOT support volatile for smart pointers!
+    // DO NOT support top-level volatile for smart pointers!
     if (!luaw_detail::is_std_shared_ptr<Class>::value &&
         !luaw_detail::is_std_unique_ptr<Class>::value) {
       REGISTER_SMART_SETTER(std::shared_ptr<DecayClass>*);
@@ -4703,12 +4754,45 @@ struct luaw::registrar<void (*)(Class*, Key, Member)> {
 
       REGISTER_SETTER_OF_CONST(std::unique_ptr<const DecayClass>*);
       REGISTER_SETTER_OF_CONST(const std::unique_ptr<const DecayClass>*);
+
+#if PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT
+
+      // for low-level volatile:
+      __register_dynamic_member_setter_for_volatile(
+          l, std::forward<Setter>(setter), std::is_volatile<Class>{});
+
+#endif
     }
+  }
+
+  template <typename Setter>
+  static void __register_dynamic_member_setter_for_volatile(luaw&    l,
+                                                            Setter&& setter,
+                                                            std::true_type) {
+    auto _g = l.make_guarder();
+
+    REGISTER_SMART_SETTER(std::shared_ptr<volatile DecayClass>*);
+    REGISTER_SMART_SETTER(const std::shared_ptr<volatile DecayClass>*);
+
+    REGISTER_SETTER_OF_CONST(std::shared_ptr<const volatile DecayClass>*);
+    REGISTER_SETTER_OF_CONST(const std::shared_ptr<const volatile DecayClass>*);
+
+    REGISTER_SMART_SETTER(std::unique_ptr<volatile DecayClass>*);
+    REGISTER_SMART_SETTER(const std::unique_ptr<volatile DecayClass>*);
+
+    REGISTER_SETTER_OF_CONST(std::unique_ptr<const volatile DecayClass>*);
+    REGISTER_SETTER_OF_CONST(const std::unique_ptr<const volatile DecayClass>*);
+  }
+
+  // do nothing
+  template <typename Setter>
+  static void __register_dynamic_member_setter_for_volatile(luaw&    l,
+                                                            Setter&& setter,
+                                                            std::false_type) {}
 
 #undef REGISTER_SETTER_OF_CONST
 #undef REGISTER_SMART_SETTER
 #undef REGISTER_SETTER
-  }
 };
 
 // register member variable
@@ -4719,29 +4803,37 @@ struct luaw::registrar<
   // register a specific member
   template <typename F>
   static void register_member(luaw& l, const char* mname, F&& f) {
-#define DEFINE_GETTER(ObjectType)                          \
-  {                                                        \
-    auto getter = [=](ObjectType o) -> Member {            \
-      PEACALM_LUAW_ASSERT(o);                              \
-      return f(*o);                                        \
-    };                                                     \
-    void* p = reinterpret_cast<void*>(                     \
-        const_cast<std::type_info*>(&typeid(ObjectType))); \
-    l.touchtb(p, LUA_REGISTRYINDEX)                        \
-        .touchtb(luaw::member_info_fields::member_getter)  \
-        .setkv<luaw::function_tag>(mname, getter);         \
-    l.pop(2);                                              \
+    // The getter will return a copy of the member with registered type,
+    // not reference.
+#define DEFINE_GETTER(ObjectType)                             \
+  {                                                           \
+    auto getter = [=](ObjectType o) -> Member {               \
+      PEACALM_LUAW_ASSERT(o);                                 \
+      auto p      = luaw_detail::retrieve_underlying_ptr(*o); \
+      using rmp_t = std::remove_pointer_t<decltype(p)>;       \
+      using rmv_t = std::remove_volatile_t<rmp_t>;            \
+      return f(*const_cast<rmv_t*>(p));                       \
+    };                                                        \
+    void* p = reinterpret_cast<void*>(                        \
+        const_cast<std::type_info*>(&typeid(ObjectType)));    \
+    l.touchtb(p, LUA_REGISTRYINDEX)                           \
+        .touchtb(luaw::member_info_fields::member_getter)     \
+        .setkv<luaw::function_tag>(mname, getter);            \
+    l.pop(2);                                                 \
   }
 
-    {
-      DEFINE_GETTER(Class*);
-      DEFINE_GETTER(const Class*);
-      DEFINE_GETTER(volatile Class*);
-      DEFINE_GETTER(const volatile Class*);
-    }
+    DEFINE_GETTER(Class*);
+    DEFINE_GETTER(const Class*);
+
+#if PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT
+
+    DEFINE_GETTER(volatile Class*);
+    DEFINE_GETTER(const volatile Class*);
+
+#endif
 
     // Do not support nested smart pointers, which is meaningless!
-    // Currently DO NOT support volatile for smart pointers!
+    // DO NOT support top-level volatile for smart pointers!
     if (!luaw_detail::is_std_shared_ptr<Class>::value &&
         !luaw_detail::is_std_unique_ptr<Class>::value) {
       DEFINE_GETTER(std::shared_ptr<Class>*);
@@ -4753,6 +4845,21 @@ struct luaw::registrar<
       DEFINE_GETTER(std::unique_ptr<const Class>*);
       DEFINE_GETTER(const std::unique_ptr<Class>*);
       DEFINE_GETTER(const std::unique_ptr<const Class>*);
+
+#if PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT
+      // for low-level volatile
+
+      DEFINE_GETTER(std::shared_ptr<volatile Class>*);
+      DEFINE_GETTER(std::shared_ptr<const volatile Class>*);
+      DEFINE_GETTER(const std::shared_ptr<volatile Class>*);
+      DEFINE_GETTER(const std::shared_ptr<const volatile Class>*);
+
+      DEFINE_GETTER(std::unique_ptr<volatile Class>*);
+      DEFINE_GETTER(std::unique_ptr<const volatile Class>*);
+      DEFINE_GETTER(const std::unique_ptr<volatile Class>*);
+      DEFINE_GETTER(const std::unique_ptr<const volatile Class>*);
+
+#endif
     }
 
 #undef DEFINE_GETTER
@@ -4776,15 +4883,18 @@ private:
                                  const char* mname,
                                  F&&         f,
                                  std::true_type) {
-    {
-      __register_const_member<Class*>(l, mname);
-      __register_const_member<const Class*>(l, mname);
-      __register_const_member<volatile Class*>(l, mname);
-      __register_const_member<const volatile Class*>(l, mname);
-    }
+    __register_const_member<Class*>(l, mname);
+    __register_const_member<const Class*>(l, mname);
+
+#if PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT
+
+    __register_const_member<volatile Class*>(l, mname);
+    __register_const_member<const volatile Class*>(l, mname);
+
+#endif
 
     // Do not support nested smart pointers, which is meaningless!
-    // Currently DO NOT support volatile for smart pointers!
+    // DO NOT support top-level volatile for smart pointers!
     if (!luaw_detail::is_std_shared_ptr<Class>::value &&
         !luaw_detail::is_std_unique_ptr<Class>::value) {
       __register_const_member<std::shared_ptr<Class>*>(l, mname);
@@ -4796,6 +4906,23 @@ private:
       __register_const_member<std::unique_ptr<const Class>*>(l, mname);
       __register_const_member<const std::unique_ptr<Class>*>(l, mname);
       __register_const_member<const std::unique_ptr<const Class>*>(l, mname);
+
+#if PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT
+      // for low-level volatile:
+
+      __register_const_member<std::shared_ptr<volatile Class>*>(l, mname);
+      __register_const_member<std::shared_ptr<const volatile Class>*>(l, mname);
+      __register_const_member<const std::shared_ptr<volatile Class>*>(l, mname);
+      __register_const_member<const std::shared_ptr<const volatile Class>*>(
+          l, mname);
+
+      __register_const_member<std::unique_ptr<volatile Class>*>(l, mname);
+      __register_const_member<std::unique_ptr<const volatile Class>*>(l, mname);
+      __register_const_member<const std::unique_ptr<volatile Class>*>(l, mname);
+      __register_const_member<const std::unique_ptr<const volatile Class>*>(
+          l, mname);
+
+#endif
     }
   }
 
@@ -4804,30 +4931,36 @@ private:
                                  const char* mname,
                                  F&&         f,
                                  std::false_type) {
-#define DEFINE_SETTER(ObjectType)                          \
-  {                                                        \
-    auto setter = [=](ObjectType o, Member v) {            \
-      PEACALM_LUAW_ASSERT(o);                              \
-      f(*o) = std::move(v);                                \
-    };                                                     \
-    void* p = reinterpret_cast<void*>(                     \
-        const_cast<std::type_info*>(&typeid(ObjectType))); \
-    l.touchtb(p, LUA_REGISTRYINDEX)                        \
-        .touchtb(luaw::member_info_fields::member_setter)  \
-        .setkv<luaw::function_tag>(mname, setter);         \
-    l.pop(2);                                              \
+#define DEFINE_SETTER(ObjectType)                                           \
+  {                                                                         \
+    auto setter = [=](ObjectType o, Member v) {                             \
+      PEACALM_LUAW_ASSERT(o);                                               \
+      auto p                    = luaw_detail::retrieve_underlying_ptr(*o); \
+      using rmp_t               = std::remove_pointer_t<decltype(p)>;       \
+      using rmv_t               = std::remove_volatile_t<rmp_t>;            \
+      f(*const_cast<rmv_t*>(p)) = std::move(v);                             \
+    };                                                                      \
+    void* p = reinterpret_cast<void*>(                                      \
+        const_cast<std::type_info*>(&typeid(ObjectType)));                  \
+    l.touchtb(p, LUA_REGISTRYINDEX)                                         \
+        .touchtb(luaw::member_info_fields::member_setter)                   \
+        .setkv<luaw::function_tag>(mname, setter);                          \
+    l.pop(2);                                                               \
   }
 
-    {
-      DEFINE_SETTER(Class*);
-      DEFINE_SETTER(volatile Class*);
-      // the object is const, so member is const
-      __register_const_member<const Class*>(l, mname);
-      __register_const_member<const volatile Class*>(l, mname);
-    }
+    DEFINE_SETTER(Class*);
+    // the object is const, so member is const
+    __register_const_member<const Class*>(l, mname);
+
+#if PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT
+
+    DEFINE_SETTER(volatile Class*);
+    __register_const_member<const volatile Class*>(l, mname);
+
+#endif
 
     // Do not support nested smart pointers, which is meaningless!
-    // Currently DO NOT support volatile for smart pointers!
+    // DO NOT support top-level volatile for smart pointers!
     if (!luaw_detail::is_std_shared_ptr<Class>::value &&
         !luaw_detail::is_std_unique_ptr<Class>::value) {
       DEFINE_SETTER(std::shared_ptr<Class>*);
@@ -4839,6 +4972,23 @@ private:
       DEFINE_SETTER(const std::unique_ptr<Class>*);
       __register_const_member<std::unique_ptr<const Class>*>(l, mname);
       __register_const_member<const std::unique_ptr<const Class>*>(l, mname);
+
+#if PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT
+      // for low-level volatile
+
+      DEFINE_SETTER(std::shared_ptr<volatile Class>*);
+      DEFINE_SETTER(const std::shared_ptr<volatile Class>*);
+      __register_const_member<std::shared_ptr<const volatile Class>*>(l, mname);
+      __register_const_member<const std::shared_ptr<const volatile Class>*>(
+          l, mname);
+
+      DEFINE_SETTER(std::unique_ptr<volatile Class>*);
+      DEFINE_SETTER(const std::unique_ptr<volatile Class>*);
+      __register_const_member<std::unique_ptr<const volatile Class>*>(l, mname);
+      __register_const_member<const std::unique_ptr<const volatile Class>*>(
+          l, mname);
+
+#endif
     }
 
 #undef DEFINE_SETTER
@@ -4898,16 +5048,19 @@ struct luaw::registrar<Return (Class::*)(Args...)> {
   // no cv- member functions
   template <typename MemberFunction>
   static void register_member(luaw& l, const char* fname, MemberFunction mf) {
-    {
-      register_member_function<Class*>(l, fname, mf);
-      register_nonconst_member_function<const Class*>(l, fname);
-      register_nonconst_member_function<const volatile Class*>(l, fname);
-      register_nonvolatile_member_function<volatile Class*>(l, fname);
-      register_nonvolatile_member_function<const volatile Class*>(l, fname);
-    }
+    register_member_function<Class*>(l, fname, mf);
+    register_nonconst_member_function<const Class*>(l, fname);
+
+#if PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT
+
+    register_nonvolatile_member_function<volatile Class*>(l, fname);
+    register_nonconst_member_function<const volatile Class*>(l, fname);
+    register_nonvolatile_member_function<const volatile Class*>(l, fname);
+
+#endif
 
     // Do not support nested smart pointers, which is meaningless!
-    // Currently DO NOT support volatile for smart pointers!
+    // DO NOT support top-level volatile for smart pointers!
     if (!luaw_detail::is_std_shared_ptr<Class>::value &&
         !luaw_detail::is_std_unique_ptr<Class>::value) {
       register_member_function<std::shared_ptr<Class>*>(l, fname, mf);
@@ -4925,6 +5078,41 @@ struct luaw::registrar<Return (Class::*)(Args...)> {
                                                                        fname);
       register_nonconst_member_function<const std::unique_ptr<const Class>*>(
           l, fname);
+
+#if PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT
+      // for low-level volatile
+
+      register_nonvolatile_member_function<std::shared_ptr<volatile Class>*>(
+          l, fname);
+      register_nonvolatile_member_function<
+          const std::shared_ptr<volatile Class>*>(l, fname);
+
+      register_nonconst_member_function<std::shared_ptr<const volatile Class>*>(
+          l, fname);
+      register_nonconst_member_function<
+          const std::shared_ptr<const volatile Class>*>(l, fname);
+
+      register_nonvolatile_member_function<
+          std::shared_ptr<const volatile Class>*>(l, fname);
+      register_nonvolatile_member_function<
+          const std::shared_ptr<const volatile Class>*>(l, fname);
+
+      register_nonvolatile_member_function<std::unique_ptr<volatile Class>*>(
+          l, fname);
+      register_nonvolatile_member_function<
+          const std::unique_ptr<volatile Class>*>(l, fname);
+
+      register_nonconst_member_function<std::unique_ptr<const volatile Class>*>(
+          l, fname);
+      register_nonconst_member_function<
+          const std::unique_ptr<const volatile Class>*>(l, fname);
+
+      register_nonvolatile_member_function<
+          std::unique_ptr<const volatile Class>*>(l, fname);
+      register_nonvolatile_member_function<
+          const std::unique_ptr<const volatile Class>*>(l, fname);
+
+#endif
     }
   }
 };
@@ -4934,17 +5122,21 @@ struct luaw::registrar<Return (Class::*)(Args...) const> {
   template <typename MemberFunction>
   static void register_member(luaw& l, const char* fname, MemberFunction mf) {
     using Basic = luaw::registrar<Return (Class::*)(Args...)>;
-    {
-      Basic::template register_member_function<Class*>(l, fname, mf);
-      Basic::template register_member_function<const Class*>(l, fname, mf);
-      Basic::template register_nonvolatile_member_function<volatile Class*>(
-          l, fname);
-      Basic::template register_nonvolatile_member_function<
-          const volatile Class*>(l, fname);
-    }
+
+    Basic::template register_member_function<Class*>(l, fname, mf);
+    Basic::template register_member_function<const Class*>(l, fname, mf);
+
+#if PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT
+
+    Basic::template register_nonvolatile_member_function<volatile Class*>(
+        l, fname);
+    Basic::template register_nonvolatile_member_function<const volatile Class*>(
+        l, fname);
+
+#endif
 
     // Do not support nested smart pointers, which is meaningless!
-    // Currently DO NOT support volatile for smart pointers!
+    // DO NOT support top-level volatile for smart pointers!
     if (!luaw_detail::is_std_shared_ptr<Class>::value &&
         !luaw_detail::is_std_unique_ptr<Class>::value) {
       Basic::template register_member_function<std::shared_ptr<Class>*>(
@@ -4964,6 +5156,29 @@ struct luaw::registrar<Return (Class::*)(Args...) const> {
           l, fname, mf);
       Basic::template register_member_function<
           const std::unique_ptr<const Class>*>(l, fname, mf);
+
+#if PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT
+      // for low-level volatile
+
+      Basic::template register_nonvolatile_member_function<
+          std::shared_ptr<volatile Class>*>(l, fname);
+      Basic::template register_nonvolatile_member_function<
+          const std::shared_ptr<volatile Class>*>(l, fname);
+      Basic::template register_nonvolatile_member_function<
+          std::shared_ptr<const volatile Class>*>(l, fname);
+      Basic::template register_nonvolatile_member_function<
+          const std::shared_ptr<const volatile Class>*>(l, fname);
+
+      Basic::template register_nonvolatile_member_function<
+          std::unique_ptr<volatile Class>*>(l, fname);
+      Basic::template register_nonvolatile_member_function<
+          const std::unique_ptr<volatile Class>*>(l, fname);
+      Basic::template register_nonvolatile_member_function<
+          std::unique_ptr<const volatile Class>*>(l, fname);
+      Basic::template register_nonvolatile_member_function<
+          const std::unique_ptr<const volatile Class>*>(l, fname);
+
+#endif
     }
   }
 };
@@ -4973,16 +5188,20 @@ struct luaw::registrar<Return (Class::*)(Args...) volatile> {
   template <typename MemberFunction>
   static void register_member(luaw& l, const char* fname, MemberFunction mf) {
     using Basic = luaw::registrar<Return (Class::*)(Args...)>;
-    {
-      Basic::template register_member_function<Class*>(l, fname, mf);
-      Basic::template register_member_function<volatile Class*>(l, fname, mf);
-      Basic::template register_nonconst_member_function<const Class*>(l, fname);
-      Basic::template register_nonconst_member_function<const volatile Class*>(
-          l, fname);
-    }
+
+    Basic::template register_member_function<Class*>(l, fname, mf);
+    Basic::template register_nonconst_member_function<const Class*>(l, fname);
+
+#if PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT
+
+    Basic::template register_member_function<volatile Class*>(l, fname, mf);
+    Basic::template register_nonconst_member_function<const volatile Class*>(
+        l, fname);
+
+#endif
 
     // Do not support nested smart pointers, which is meaningless!
-    // Currently DO NOT support volatile for smart pointers!
+    // DO NOT support top-level volatile for smart pointers!
     if (!luaw_detail::is_std_shared_ptr<Class>::value &&
         !luaw_detail::is_std_unique_ptr<Class>::value) {
       Basic::template register_member_function<std::shared_ptr<Class>*>(
@@ -5004,6 +5223,31 @@ struct luaw::registrar<Return (Class::*)(Args...) volatile> {
           std::unique_ptr<const Class>*>(l, fname);
       Basic::template register_nonconst_member_function<
           const std::unique_ptr<const Class>*>(l, fname);
+
+#if PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT
+      // for low-level volatile
+
+      Basic::template register_member_function<
+          std::shared_ptr<volatile Class>*>(l, fname, mf);
+      Basic::template register_member_function<
+          const std::shared_ptr<volatile Class>*>(l, fname, mf);
+
+      Basic::template register_nonconst_member_function<
+          std::shared_ptr<const volatile Class>*>(l, fname);
+      Basic::template register_nonconst_member_function<
+          const std::shared_ptr<const volatile Class>*>(l, fname);
+
+      Basic::template register_member_function<
+          std::unique_ptr<volatile Class>*>(l, fname, mf);
+      Basic::template register_member_function<
+          const std::unique_ptr<volatile Class>*>(l, fname, mf);
+
+      Basic::template register_nonconst_member_function<
+          std::unique_ptr<const volatile Class>*>(l, fname);
+      Basic::template register_nonconst_member_function<
+          const std::unique_ptr<const volatile Class>*>(l, fname);
+
+#endif
     }
   }
 };
@@ -5013,16 +5257,20 @@ struct luaw::registrar<Return (Class::*)(Args...) const volatile> {
   template <typename MemberFunction>
   static void register_member(luaw& l, const char* fname, MemberFunction mf) {
     using Basic = luaw::registrar<Return (Class::*)(Args...)>;
-    {
-      Basic::template register_member_function<Class*>(l, fname, mf);
-      Basic::template register_member_function<const Class*>(l, fname, mf);
-      Basic::template register_member_function<volatile Class*>(l, fname, mf);
-      Basic::template register_member_function<const volatile Class*>(
-          l, fname, mf);
-    }
+
+    Basic::template register_member_function<Class*>(l, fname, mf);
+    Basic::template register_member_function<const Class*>(l, fname, mf);
+
+#if PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT
+
+    Basic::template register_member_function<volatile Class*>(l, fname, mf);
+    Basic::template register_member_function<const volatile Class*>(
+        l, fname, mf);
+
+#endif
 
     // Do not support nested smart pointers, which is meaningless!
-    // Currently DO NOT support volatile for smart pointers!
+    // DO NOT support top-level volatile for smart pointers!
     if (!luaw_detail::is_std_shared_ptr<Class>::value &&
         !luaw_detail::is_std_unique_ptr<Class>::value) {
       Basic::template register_member_function<std::shared_ptr<Class>*>(
@@ -5042,6 +5290,29 @@ struct luaw::registrar<Return (Class::*)(Args...) const volatile> {
           l, fname, mf);
       Basic::template register_member_function<
           const std::unique_ptr<const Class>*>(l, fname, mf);
+
+#if PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT
+      // for low-level volatile
+
+      Basic::template register_member_function<
+          std::shared_ptr<volatile Class>*>(l, fname, mf);
+      Basic::template register_member_function<
+          const std::shared_ptr<volatile Class>*>(l, fname, mf);
+      Basic::template register_member_function<
+          std::shared_ptr<const volatile Class>*>(l, fname, mf);
+      Basic::template register_member_function<
+          const std::shared_ptr<const volatile Class>*>(l, fname, mf);
+
+      Basic::template register_member_function<
+          std::unique_ptr<volatile Class>*>(l, fname, mf);
+      Basic::template register_member_function<
+          const std::unique_ptr<volatile Class>*>(l, fname, mf);
+      Basic::template register_member_function<
+          std::unique_ptr<const volatile Class>*>(l, fname, mf);
+      Basic::template register_member_function<
+          const std::unique_ptr<const volatile Class>*>(l, fname, mf);
+
+#endif
     }
   }
 };
