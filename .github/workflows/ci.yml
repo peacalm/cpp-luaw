@@ -54,7 +54,7 @@ jobs:
       run: >
         cmake -B ${{github.workspace}}/build
         -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
-        -DBUILD_TEST=TRUE
+        -DBUILD_TEST=ON
         -DENABLE_MYOSTREAM_WATCH=$${{matrix.enable_watch}}
         -DNEED_VOLATILE=${{matrix.need_volatile}}
         -DUNIT_TEST_SEPARATE=${{matrix.build_unit_test_separately}}
