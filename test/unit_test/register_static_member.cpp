@@ -27,8 +27,6 @@ struct Obj {
 int       Obj::si  = 1;
 const int Obj::sci = 1;
 
-}  // namespace
-
 TEST(register_static_member, variable_by_class) {
   Obj::si = 1;
   luaw l;
@@ -271,12 +269,8 @@ TEST(register_static_member, function_nonconst_by_full_type) {
   EXPECT_EQ(l.eval_int("return sc:sqr(4)", -1), -1);
 }
 
-namespace {
-
 int g = 1;
 int fmul(int a, int b) { return a * b; }
-
-}  // namespace
 
 TEST(register_static_member, fake_static_by_global_variable) {
   luaw l;
@@ -332,3 +326,5 @@ TEST(register_static_member, fake_static_by_global_function) {
   l.set("d", d);
   EXPECT_EQ(l.eval_int("return d:fmul(3,5)", -1), 15);
 }
+
+}  // namespace

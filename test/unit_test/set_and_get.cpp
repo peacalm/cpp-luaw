@@ -14,6 +14,8 @@
 
 #include "main.h"
 
+namespace {
+
 TEST(set_and_get, simple_types) {
   luaw l;
 
@@ -516,8 +518,6 @@ TEST(set_and_get, template_set) {
   }
 }
 
-namespace {
-
 int echo(int i) {
   printf("echo %d\n", i);
   return i;
@@ -551,8 +551,6 @@ template <typename T>
 T tadd(T a, T b) {
   return a + b;
 }
-
-}  // namespace
 
 TEST(set_and_get, set_function) {
   luaw l;
@@ -802,3 +800,5 @@ TEST(set_and_get, set_lua_cfunction) {
   EXPECT_EQ(l.eval_int("return g.f()"), 0);
   EXPECT_EQ(l.eval_int("return g.f(1, 2)"), 2);
 }
+
+}  // namespace

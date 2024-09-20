@@ -15,6 +15,7 @@
 #include "main.h"
 
 namespace {
+
 struct Foo {
   Foo(int i) : v(i) {}
   int v;
@@ -23,7 +24,6 @@ struct Foo {
 struct Bar {
   const int cv = 123;
 };
-}  // namespace
 
 TEST(lightuserdata_metatable, set_addr_like_number) {
   luaw l;
@@ -144,3 +144,5 @@ TEST(lightuserdata_metatable, two_types) {
 
   EXPECT_EQ(metatablename4, metatablename1);
 }
+
+}  // namespace

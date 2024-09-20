@@ -30,8 +30,6 @@ struct ObjDeleter {
 };
 std::atomic_int ObjDeleter::cnt{0};
 
-}  // namespace
-
 TEST(unique_ptr_with_deleter, custom_deleter) {
   {
     EXPECT_EQ(ObjDeleter::cnt, 0);
@@ -198,3 +196,5 @@ TEST(unique_ptr_with_deleter, mix_use_custom_and_default_deleter) {
   }
   EXPECT_EQ(ObjDeleter::cnt, 1);
 }
+
+}  // namespace

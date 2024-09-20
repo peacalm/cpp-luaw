@@ -47,8 +47,6 @@ struct bad_provider3 {
   }
 };
 
-}  // namespace
-
 TEST(custom_luaw, eval) {
   custom_luaw<std::unique_ptr<dummy_provider>> l;
   l.provider(std::make_unique<dummy_provider>());
@@ -163,3 +161,5 @@ TEST(custom_luaw, move_ctor) {
     delete p;
   }
 }
+
+}  // namespace
