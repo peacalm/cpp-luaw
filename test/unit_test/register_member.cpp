@@ -27,6 +27,7 @@ struct Obj {
   std::map<std::string, double> dm;
 
   int geti() const { return i; }
+  int v_geti() volatile { return i; }
   int cv_geti() const volatile { return i; }
 
   int plus() { return ++i; }
@@ -112,6 +113,14 @@ TEST(register_member, register_member_functions) {
       "getmember3", std::function<decltype(getmember)>(getmember));
   l.register_member<int (Obj::*)(const char*)>(
       "getmember4", [](const Obj* o, const char* mname) { return 123; });
+
+  EXPECT_EQ(l.gettop(), 0);
+
+  l.set("o", Obj{});
+  EXPECT_EQ(l.eval_int("return o:getmember1()"), 123);
+  EXPECT_EQ(l.eval_int("return o:getmember2()"), 123);
+  EXPECT_EQ(l.eval_int("return o:getmember3()"), 123);
+  EXPECT_EQ(l.eval_int("return o:getmember4()"), 123);
 
   // unsupported
   // l.register_member("referenced_fl", &Obj::referenced_fl);  // error
@@ -434,6 +443,9 @@ TEST(register_member, member_no_setter) {
   luaw l;
   l.set("o", Obj{});
 
+  EXPECT_NE(l.dostring("o.i = 2"), LUA_OK);
+  l.log_error_out();
+
   bool failed;
   l.eval<void>("o.i = 2", false, &failed);
   EXPECT_TRUE(failed);
@@ -441,44 +453,223 @@ TEST(register_member, member_no_setter) {
   EXPECT_DEATH(l.lset("o", "i", 2), ".*Not found setter.*");
 }
 
-TEST(register_member, nonconst_nonvolatile) {
+TEST(register_member, nonconst_member) {
   luaw l;
-  l.register_member("plus", &Obj::plus);
-  l.register_member("geti", &Obj::geti);
-  l.register_member("cv_geti", &Obj::cv_geti);
+
+  l.register_member("i", &Obj::i);
+  l.register_member("ci", &Obj::ci);
+  l.register_member("vi", &Obj::vi);
+
+  l.register_member("plus", &Obj::plus);        // nonconst nonvolatile
+  l.register_member("geti", &Obj::geti);        // const
+  l.register_member("v_geti", &Obj::v_geti);    // volatile
+  l.register_member("cv_geti", &Obj::cv_geti);  // cv
+
   {
     const Obj o;
     l.set("o", &o);
+
+    EXPECT_EQ(l.eval_int("return o.i"), o.i);
+    EXPECT_EQ(l.eval_int("return o.ci"), o.ci);
+    EXPECT_EQ(l.eval_int("return o.vi"), o.vi);
+
     EXPECT_NE(l.dostring("o:plus()"), LUA_OK);
     l.log_error_out();
+
     bool failed;
+
     EXPECT_EQ(l.eval<int>("return o:geti()", false, &failed), 1);
     EXPECT_FALSE(failed);
+
+    EXPECT_NE(l.eval<int>("return o:v_geti()", false, &failed), 1);
+    EXPECT_TRUE(failed);
+
     EXPECT_EQ(l.eval<int>("return o:cv_geti()", false, &failed), 1);
     EXPECT_FALSE(failed);
   }
+  {
+    const Obj o;
+    l.set("o", o);
+
+    EXPECT_EQ(l.eval_int("return o.i"), o.i);
+    EXPECT_EQ(l.eval_int("return o.ci"), o.ci);
+    EXPECT_EQ(l.eval_int("return o.vi"), o.vi);
+
+    EXPECT_NE(l.dostring("o:plus()"), LUA_OK);
+    l.log_error_out();
+
+    bool failed;
+
+    EXPECT_EQ(l.eval<int>("return o:geti()", false, &failed), 1);
+    EXPECT_FALSE(failed);
+
+    EXPECT_NE(l.eval<int>("return o:v_geti()", false, &failed), 1);
+    EXPECT_TRUE(failed);
+
+    EXPECT_EQ(l.eval<int>("return o:cv_geti()", false, &failed), 1);
+    EXPECT_FALSE(failed);
+  }
+  {
+    auto o = std::make_shared<const Obj>();
+    l.set("o", o);
+
+    EXPECT_EQ(l.eval_int("return o.i"), o->i);
+    EXPECT_EQ(l.eval_int("return o.ci"), o->ci);
+    EXPECT_EQ(l.eval_int("return o.vi"), o->vi);
+
+    EXPECT_NE(l.dostring("o:plus()"), LUA_OK);
+    l.log_error_out();
+
+    bool failed;
+
+    EXPECT_EQ(l.eval<int>("return o:geti()", false, &failed), 1);
+    EXPECT_FALSE(failed);
+
+    EXPECT_NE(l.eval<int>("return o:v_geti()", false, &failed), 1);
+    EXPECT_TRUE(failed);
+
+    EXPECT_EQ(l.eval<int>("return o:cv_geti()", false, &failed), 1);
+    EXPECT_FALSE(failed);
+  }
+
+  //
+  {
+    Obj o;
+    l.set("o", o);
+
+    EXPECT_EQ(l.eval_int("return o.i"), o.i);
+    EXPECT_EQ(l.eval_int("return o.ci"), o.ci);
+    EXPECT_EQ(l.eval_int("return o.vi"), o.vi);
+
+    EXPECT_EQ(l.dostring("o:plus()"), LUA_OK);
+
+    bool failed;
+
+    EXPECT_EQ(l.eval<int>("return o:geti()", false, &failed), 2);
+    EXPECT_FALSE(failed);
+
+    EXPECT_EQ(l.eval<int>("return o:v_geti()", false, &failed), 2);
+    EXPECT_FALSE(failed);
+
+    EXPECT_EQ(l.eval<int>("return o:cv_geti()", false, &failed), 2);
+    EXPECT_FALSE(failed);
+  }
+}
+
+TEST(register_member, nonvolatile_member) {
+  luaw l;
+
+  l.register_member("i", &Obj::i);
+  l.register_member("ci", &Obj::ci);
+  l.register_member("vi", &Obj::vi);
+
+  l.register_member("plus", &Obj::plus);        // nonconst nonvolatile
+  l.register_member("geti", &Obj::geti);        // const
+  l.register_member("v_geti", &Obj::v_geti);    // volatile
+  l.register_member("cv_geti", &Obj::cv_geti);  // cv
+
+  const bool SupportV = PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT;
+
   {
     volatile Obj o;
     l.set("o", &o);
+
+    EXPECT_EQ(l.eval_int("return o.i") == o.i, SupportV);
+    EXPECT_EQ(l.eval_int("return o.ci") == o.ci, SupportV);
+    EXPECT_EQ(l.eval_int("return o.vi") == o.vi, SupportV);
+
     EXPECT_NE(l.dostring("o:plus()"), LUA_OK);
     l.log_error_out();
+
     bool failed;
-    EXPECT_EQ(l.eval<int>("return o:geti()", false, &failed), 0);
+
+    EXPECT_NE(l.eval<int>("return o:geti()", false, &failed), o.i);
     EXPECT_TRUE(failed);
-    EXPECT_EQ(l.eval<int>("return o:cv_geti()", false, &failed), 1);
-    EXPECT_FALSE(failed);
+
+    EXPECT_EQ(l.eval<int>("return o:v_geti()", false, &failed) == o.i,
+              SupportV);
+    EXPECT_EQ(failed, !SupportV);
+
+    EXPECT_EQ(l.eval<int>("return o:cv_geti()", false, &failed) == o.i,
+              SupportV);
+    EXPECT_EQ(failed, !SupportV);
   }
+
   {
     const volatile Obj o;
     l.set("o", &o);
+
+    EXPECT_EQ(l.eval_int("return o.i") == o.i, SupportV);
+    EXPECT_EQ(l.eval_int("return o.ci") == o.ci, SupportV);
+    EXPECT_EQ(l.eval_int("return o.vi") == o.vi, SupportV);
+
     EXPECT_NE(l.dostring("o:plus()"), LUA_OK);
     l.log_error_out();
+
     bool failed;
-    EXPECT_EQ(l.eval<int>("return o:geti()", false, &failed), 0);
+
+    EXPECT_NE(l.eval<int>("return o:geti()", false, &failed), o.i);
     EXPECT_TRUE(failed);
-    EXPECT_EQ(l.eval<int>("return o:cv_geti()", false, &failed), 1);
-    EXPECT_FALSE(failed);
+
+    EXPECT_NE(l.eval<int>("return o:v_geti()", false, &failed), o.i);
+    EXPECT_TRUE(failed);
+
+    EXPECT_EQ(l.eval<int>("return o:cv_geti()", false, &failed) == o.i,
+              SupportV);
+    EXPECT_EQ(failed, !SupportV);
   }
+
+#if false
+// std::allocator does not support volatile types since C++17
+  {
+    auto o = std::make_shared<volatile Obj>();
+    l.set("o", o);
+
+    EXPECT_EQ(l.eval_int("return o.i") == o->i, SupportV);
+    EXPECT_EQ(l.eval_int("return o.ci") == o->ci, SupportV);
+    EXPECT_EQ(l.eval_int("return o.vi") == o->vi, SupportV);
+
+    EXPECT_NE(l.dostring("o:plus()"), LUA_OK);
+    l.log_error_out();
+
+    bool failed;
+
+    EXPECT_NE(l.eval<int>("return o:geti()", false, &failed), o->i);
+    EXPECT_TRUE(failed);
+
+    EXPECT_EQ(l.eval<int>("return o:v_geti()", false, &failed) == o->i,
+              SupportV);
+    EXPECT_EQ(failed, !SupportV);
+
+    EXPECT_EQ(l.eval<int>("return o:cv_geti()", false, &failed) == o->i,
+              SupportV);
+    EXPECT_EQ(failed, !SupportV);
+  }
+
+  {
+    auto o = std::make_shared<const volatile Obj>();
+    l.set("o", o);
+
+    EXPECT_EQ(l.eval_int("return o.i") == o->i, SupportV);
+    EXPECT_EQ(l.eval_int("return o.ci") == o->ci, SupportV);
+    EXPECT_EQ(l.eval_int("return o.vi") == o->vi, SupportV);
+
+    EXPECT_NE(l.dostring("o:plus()"), LUA_OK);
+    l.log_error_out();
+
+    bool failed;
+
+    EXPECT_NE(l.eval<int>("return o:geti()", false, &failed), o->i);
+    EXPECT_TRUE(failed);
+
+    EXPECT_NE(l.eval<int>("return o:v_geti()", false, &failed), o->i);
+    EXPECT_TRUE(failed);
+
+    EXPECT_EQ(l.eval<int>("return o:cv_geti()", false, &failed) == o->i,
+              SupportV);
+    EXPECT_EQ(failed, !SupportV);
+  }
+#endif
 }
 
 TEST(register_member, shared_ptr_member_variable) {
