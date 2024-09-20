@@ -16,20 +16,30 @@ if (ENABLE_MYOSTREAM_WATCH)
     add_definitions(-DENABLE_MYOSTREAM_WATCH)
 endif()
 
-file(GLOB SOURCE_FILES "*.cpp")
-SET(TARGET "unit_test")
 
-add_executable(${TARGET} ${SOURCE_FILES})
-
-target_include_directories(${TARGET} PUBLIC
+function(build_target TARGET)
+    target_include_directories(${TARGET} PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/
         ${CMAKE_CURRENT_SOURCE_DIR}/../../include
         ${LUA_INCLUDE_DIR}
         ${MyOStream_INCLUDE_DIR})
+    target_link_libraries(${TARGET} PUBLIC ${GTEST_LIBRARIES} ${LUA_LIBRARIES})
+    add_test(NAME ${TARGET} COMMAND ${TARGET})
+    include(GoogleTest)
+    gtest_discover_tests(${TARGET})
+endfunction()
 
-target_link_libraries(${TARGET} PUBLIC ${GTEST_LIBRARIES} ${LUA_LIBRARIES})
+file(GLOB SOURCE_FILES "*.cpp")
 
-add_test(NAME ${TARGET} COMMAND ${TARGET})
-
-include(GoogleTest)
-gtest_discover_tests(${TARGET})
+if (UNIT_TEST_SEPARATE)
+    foreach(FILE ${SOURCE_FILES})
+        get_filename_component(NAME ${FILE} NAME_WE)
+        SET(TARGET ${NAME})
+        add_executable(${TARGET} ${FILE} "main.cpp")
+        build_target(${TARGET})
+    endforeach()
+else()
+    SET(TARGET "unit_test")
+    add_executable(${TARGET} ${SOURCE_FILES})
+    build_target(${TARGET})
+endif()
