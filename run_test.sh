@@ -15,15 +15,24 @@
 
 cd $(dirname "$0") || exit
 
-RUN_UNIT_TEST=0
-RUN_PERFORMANCE_TEST=0
+TEST=ON
 MYOSTREAM=OFF
-REBUILD=0
-CLEAR=0
 SEPARATE=OFF
 NEED_VOLATILE=OFF
+UTONLY=""
+
+RUN_UNIT_TEST=0
+RUN_PERFORMANCE_TEST=0
+REBUILD=0
+CLEAR=0
+
 while [ "$#" -gt 0 ]; do
   case $1 in
+    -t)
+      TEST=$2
+      shift
+      shift
+      ;;
     -ru)
       RUN_UNIT_TEST=1
       shift
@@ -57,8 +66,14 @@ while [ "$#" -gt 0 ]; do
       NEED_VOLATILE=ON
       shift
       ;;
+    -utonly)
+      UTONLY=$2
+      shift
+      shift
+      ;;
     -h)
-      echo "run_test.sh [-o] [-r|-ru|-rp] [--rebuild] [--clear] [--separate] [--volatile]"
+      echo "run_test.sh [-t UNIT/PERF] [-o] [-r|-ru|-rp] [--rebuild] [--clear]"\
+           "[--separate] [--volatile] [-utonly <file>]"
       exit 0
       ;;
     *)
@@ -74,16 +89,21 @@ if [ ${REBUILD} -eq 1 ]; then
 fi
 mkdir -p build
 cd build
-cmake .. -DBUILD_TEST=TRUE \
+cmake .. -DBUILD_TEST=${TEST} \
          -DENABLE_MYOSTREAM_WATCH=${MYOSTREAM} \
          -DUNIT_TEST_SEPARATE=${SEPARATE} \
-         -DNEED_VOLATILE=${NEED_VOLATILE}
+         -DNEED_VOLATILE=${NEED_VOLATILE} \
+         -DUTONLY=${UTONLY}
 make
 
 if [ $? -eq 0 ]; then
   ctest --output-on-failure
   if [ ${RUN_UNIT_TEST} -eq 1 ]; then
-    ./test/unit_test/unit_test
+    if [ -n "${UTONLY}" ]; then
+      ./test/unit_test/${UTONLY}
+    else
+      ./test/unit_test/unit_test
+    fi
   fi
   if [ ${RUN_PERFORMANCE_TEST} -eq 1 ]; then
     ./test/perf_test/perf_test

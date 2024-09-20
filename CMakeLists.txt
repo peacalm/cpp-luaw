@@ -15,6 +15,7 @@ SET(CMAKECONFIG_INSTALL_DIR "${LIB_INSTALL_DIR}/cmake/${PROJECT_NAME}")
 
 find_package(Lua REQUIRED)
 
+# BUILD_TEST could be: True/False constant like ON/OFF, or UNIT/PERF
 option(BUILD_TEST "Build test." OFF)
 option(NEED_VOLATILE "Support calling members by volatile objects." OFF)
 
@@ -32,8 +33,12 @@ target_link_libraries(${PROJECT_NAME} INTERFACE ${LUA_LIBRARIES})
 
 if (BUILD_TEST)
     enable_testing()
-    add_subdirectory(test/unit_test)
-    add_subdirectory(test/perf_test)
+    if (${BUILD_TEST} OR (${BUILD_TEST} STREQUAL "UNIT"))
+        add_subdirectory(test/unit_test)
+    endif()
+    if (${BUILD_TEST} OR (${BUILD_TEST} STREQUAL "PERF"))
+        add_subdirectory(test/perf_test)
+    endif()
 endif()
 
 configure_file("${PROJECT_NAME}Config.cmake.in" "${PROJECT_NAME}Config.cmake"
