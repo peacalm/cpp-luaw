@@ -1314,46 +1314,6 @@ TEST(register_member, fake_member_variable_by_lambda) {
   }
 }
 
-#if false
-
-TEST(register_member, fake_member_variable_by_lambda_first_arg_ref) {
-  {
-    // the first argument is ref
-
-    luaw l;
-    l.set("o", Obj{});
-    int  li    = 100;  // local i
-    auto getli = [&](const volatile Obj&) -> int& { return li; };
-    l.register_member<int Obj::*>("li", getli);
-
-    EXPECT_EQ(l.eval<int>("return o.li"), li);
-    EXPECT_EQ(l.eval<int>("o.li = 104; return o.li"), 104);
-    EXPECT_EQ(li, 104);
-  }
-
-  {
-    // fake const member, copy capture,
-
-    luaw l;
-    l.set("o", Obj{});
-    int  li    = 100;
-    auto getli = [=](const volatile Obj&) { return li; };
-    l.register_member<const int Obj::*>("li", getli);
-
-    EXPECT_EQ(l.eval<int>("return o.li"), li);
-    bool failed;
-    EXPECT_EQ(l.eval<int>("o.li = 105; return o.li", false, &failed), 0);
-    EXPECT_TRUE(failed);
-    EXPECT_EQ(li, 100);
-
-    li = 200;
-    EXPECT_EQ(l.eval<int>("return o.li"), 100);
-    EXPECT_EQ(li, 200);
-  }
-}
-
-#else
-
 TEST(register_member, fake_member_variable_by_lambda_with_first_arg_auto_star) {
   {
     luaw l;
@@ -1561,8 +1521,6 @@ TEST(register_member, fake_member_variable_by_lambda_with_first_arg_auto_star) {
     EXPECT_EQ(l.eval<int>("return o.fi"), 102);
   }
 }
-
-#endif
 
 TEST(register_member, fake_const_member_variable_by_returned_rvalue) {
   luaw l;
