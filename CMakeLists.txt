@@ -15,7 +15,12 @@ SET(CMAKECONFIG_INSTALL_DIR "${LIB_INSTALL_DIR}/cmake/${PROJECT_NAME}")
 
 find_package(Lua REQUIRED)
 
-option(BUILD_TEST "Build test." FALSE)
+option(BUILD_TEST "Build test." OFF)
+option(NEED_VOLATILE "Support calling members by volatile objects." OFF)
+
+if (NEED_VOLATILE)
+    add_definitions(-DPEACALM_LUAW_NEED_VOLATILE)
+endif()
 
 add_library(${PROJECT_NAME} INTERFACE)
 

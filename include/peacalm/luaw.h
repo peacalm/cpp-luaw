@@ -51,7 +51,8 @@ static_assert(LUA_VERSION_NUM >= 504, "Lua version at least 5.4");
 #define PEACALM_LUAW_INDEXABLE_ASSERT(x) assert(x)
 #endif
 
-/// Macro switch: Whether support calling members by a volatile object.
+// Macro switch: Whether support calling members by volatile objects.
+// Do not support by default.
 #ifndef PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT
 #ifdef PEACALM_LUAW_NEED_VOLATILE
 #define PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT true

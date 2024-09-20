@@ -17,11 +17,11 @@ cd $(dirname "$0") || exit
 
 RUN_UNIT_TEST=0
 RUN_PERFORMANCE_TEST=0
-MYOSTREAM=FALSE
+MYOSTREAM=OFF
 REBUILD=0
 CLEAR=0
-SEPARATE=FALSE
-NEED_VOLATILE=FALSE
+SEPARATE=OFF
+NEED_VOLATILE=OFF
 while [ "$#" -gt 0 ]; do
   case $1 in
     -ru)
@@ -38,7 +38,7 @@ while [ "$#" -gt 0 ]; do
       shift
       ;;
     -o)
-      MYOSTREAM=TRUE
+      MYOSTREAM=ON
       shift
       ;;
     --rebuild)
@@ -50,11 +50,11 @@ while [ "$#" -gt 0 ]; do
       shift
       ;;
     --separate)
-      SEPARATE=TRUE
+      SEPARATE=ON
       shift
       ;;
     --volatile)
-      NEED_VOLATILE=TRUE
+      NEED_VOLATILE=ON
       shift
       ;;
     -h)

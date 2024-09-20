@@ -10,7 +10,7 @@ enable_testing()
 find_package(Lua REQUIRED)
 find_package(GTest REQUIRED)
 
-option(ENABLE_MYOSTREAM_WATCH "Use lib myostream to print variables to console." FALSE)
+option(ENABLE_MYOSTREAM_WATCH "Use lib myostream to print variables to console." OFF)
 if (ENABLE_MYOSTREAM_WATCH)
     find_package(MyOStream REQUIRED)
     add_definitions(-DENABLE_MYOSTREAM_WATCH)
