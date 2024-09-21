@@ -14,7 +14,6 @@
 
 #include "main.h"
 
-#if 1
 namespace {
 
 struct A {
@@ -233,6 +232,8 @@ TEST(nested_objects, register_member_by_fake_shared_ptr) {
     EXPECT_EQ(l.eval<int>("return b.aref.i"), 3);
   }
 }
+
+#if PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT
 
 struct BVolatileCompleted {
   BVolatileCompleted() {}
@@ -459,5 +460,6 @@ TEST(nested_objects, member_volatile) {
   watch(the_PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT);
 }
 
-}  // namespace
 #endif
+
+}  // namespace
