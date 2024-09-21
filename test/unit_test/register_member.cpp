@@ -1861,4 +1861,30 @@ TEST(register_member, get_object_created_by_lua) {
   EXPECT_EQ(a.ci, 1);
 }
 
+TEST(register_member, nonconst_as_const_member) {
+  luaw l;
+  l.register_member<const int Obj::*>("i", &Obj::i);
+  l.register_member("i2", &Obj::i);
+
+  l.set("o", Obj{});
+  EXPECT_EQ(l.eval<int>("return o.i"), 1);
+  EXPECT_EQ(l.eval<int>("return o.i2"), 1);
+
+  EXPECT_EQ(l.dostring("o.i2 = 2"), LUA_OK);
+  EXPECT_NE(l.dostring("o.i = 2"), LUA_OK);
+  l.log_error_out();
+}
+
+TEST(register_member, change_member_function_type) {
+  luaw l;
+  l.register_member("i", &Obj::i);
+  l.register_member("geti", &Obj::geti);
+  l.register_member<bool (Obj::*)() const>("getb", &Obj::geti);
+
+  l.set("o", Obj(123));
+  EXPECT_EQ(l.eval<int>("return o.i"), 123);
+  EXPECT_EQ(l.eval<int>("return o:geti()"), 123);
+  EXPECT_EQ(l.eval<int>("return o:getb()"), 1);
+}
+
 }  // namespace

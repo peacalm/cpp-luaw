@@ -246,12 +246,12 @@ class luaw {
   template <typename T, typename = void>
   struct registrar;
 
-  // A callable object adapter, which bahaves like the result of std::mem_fn.
-  // The origin first argument should be reference or raw pointer,
-  // then this object can accept reference, raw pointer, and also smart pointers
-  // (std::shared_ptr and std::unique_ptr) as the first argument to call the
-  // origin callable object.
-  template <typename T>
+  // Mock std::mem_fn by a function or callable object whose first argument
+  // must be a raw pointer of a class.
+  // Then can call this class by reference, raw pointer or smart pointers
+  // (std::shared_ptr and std::unique_ptr) of the class.
+  // Also can accept a real member pointer, then it is just like std::mem_fn.
+  template <typename T, typename = void>
   class mock_mem_fn;
 
   // Mock non-member to be a class's member.
@@ -4290,9 +4290,12 @@ auto retrieve_underlying_ptr(T&& t) {
 
 }  // namespace luaw_detail
 
-// The first argument of CallableObject must be pointer, and could be `auto*`.
+// The first argument of CallableObject must be raw pointer, and could be
+// `auto*` (in lambda).
 template <typename CallableObject>
-class luaw::mock_mem_fn {
+class luaw::mock_mem_fn<
+    CallableObject,
+    std::enable_if_t<!std::is_member_pointer<CallableObject>::value>> {
   CallableObject o;
 
 public:
@@ -4303,6 +4306,22 @@ public:
     return o(luaw_detail::retrieve_underlying_ptr(std::forward<FirstArg>(f)),
              std::forward<Args>(args)...);
   }
+};
+
+template <typename MemberPointer>
+class luaw::mock_mem_fn<
+    MemberPointer,
+    std::enable_if_t<std::is_member_pointer<MemberPointer>::value>> {
+  decltype(std::mem_fn(static_cast<MemberPointer>(nullptr))) o;
+
+public:
+  mock_mem_fn(MemberPointer p) : o(std::mem_fn(p)) {}
+
+  template <typename FirstArg, typename... Args>
+  decltype(auto) operator()(FirstArg&& f, Args&&... args) const {
+    return o(luaw_detail::retrieve_underlying_ptr(std::forward<FirstArg>(f)),
+             std::forward<Args>(args)...);
+  };
 };
 
 //////////////////// static_mem_fn impl ////////////////////////////////////////
