@@ -236,10 +236,20 @@ TEST(nested_objects, register_member_by_fake_shared_ptr) {
 
 struct BVolatileCompleted {
   BVolatileCompleted() {}
+
+  // copy ctor
   BVolatileCompleted(const volatile BVolatileCompleted& r) {
     i   = r.i;
     a.i = r.a.i;
   }
+
+  // move ctor
+  BVolatileCompleted(volatile BVolatileCompleted&& r) {
+    i   = r.i;
+    a.i = r.a.i;
+  }
+
+  // copy by const rvalue ref ???
   BVolatileCompleted(const volatile BVolatileCompleted&& r) {
     i   = r.i;
     a.i = r.a.i;
@@ -252,6 +262,13 @@ struct BVolatileCompleted {
     a.i = r.a.i;
     return *this;
   }
+
+  auto& operator=(volatile BVolatileCompleted&& r) volatile {
+    i   = r.i;
+    a.i = r.a.i;
+    return *this;
+  }
+
   auto& operator=(const volatile BVolatileCompleted&& r) volatile {
     i   = r.i;
     a.i = r.a.i;
