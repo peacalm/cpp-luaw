@@ -1,4 +1,4 @@
-// Copyright (c) 2023 Li Shuangquan. All Rights Reserved.
+// Copyright (c) 2023-2024 Li Shuangquan. All Rights Reserved.
 //
 // Licensed under the MIT License (the "License"); you may not use this file
 // except in compliance with the License. You may obtain a copy of the License
@@ -51,7 +51,7 @@ static_assert(LUA_VERSION_NUM >= 504, "Lua version at least 5.4");
 #define PEACALM_LUAW_INDEXABLE_ASSERT(x) assert(x)
 #endif
 
-// Macro switch: Whether support calling members by volatile objects.
+// Macro switch: Whether support accessing members by volatile objects.
 // Do not support by default.
 #ifndef PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT
 #ifdef PEACALM_LUAW_NEED_VOLATILE

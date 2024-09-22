@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
-        need_volatile: [ON, OFF]
+        need_volatile: [OFF, ON]
         build_unit_test_separately: [OFF]
         enable_watch: [OFF]
 
