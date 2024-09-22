@@ -1848,7 +1848,7 @@ public:
    *
    * Register a const member "id" with type void* for class Obj to get its
    * instance's address:
-   *     `register_member<void* const Obj::*>("id", [](const volatile Obj* p) {
+   *     `register_member<void* const Obj::*>("id", [](const Obj* p) {
    *         return (void*)p; });`
    *
    * Register a member function "plus" for class Obj:
