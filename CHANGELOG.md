@@ -3,6 +3,9 @@
 
 ## Currently Unreleased - TBD
 
+
+## v1.1.2 - 2024.9.22
+
 * Add a macro switch for user to determine whether support volatile class objects 
 (access members by a volatile qualified class object, pointer or smart pointer). 
 * * Do not support this by default.
