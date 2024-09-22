@@ -3144,9 +3144,6 @@ l.settop(0);
 
 #### 7.3 touchtb: touch table
 
-Ensure a subfield of a table is a table.
-If the subfield doesn't exist or is not a table, make a new table then overwrite it.
-
 API:
 
 ```C++
@@ -3183,6 +3180,10 @@ self_t& touchtb(metatable_tag m, int idx = -1);
 template <typename T, typename... Ts>
 self_t& ltouchtb(const T& t, const Ts&... ts);
 ```
+
+Ensure a subfield of a table is a table.
+If the subfield doesn't exist or is not a table, make a new table then overwrite it.
+
 
 #### 7.4 setkv
 
@@ -3229,6 +3230,13 @@ std::enable_if_t<!std::is_same<Hint, T>::value> setkv(metatable_tag,
                                                       int idx = -1);
 ```
 
+To set a pair of key-value member for the value at given index.
+
+Using "push" API to push value, "Hint" is used for value in "push".
+
+`luaw::metatable_tag` could be used as key to set a value's metatable.
+
+
 #### 7.5 push
 
 API:
@@ -3242,6 +3250,12 @@ int push(T&& value);
 template <typename Hint, typename T>
 std::enable_if_t<!std::is_same<Hint, T>::value, int> push(T&& value);
 ```
+
+The const/volatile property of the value is also pushed into Lua.
+
+Pushing `nullptr` means pushing `nil`.
+
+`luaw::function_tag`, `luaw::class_tag`, `luaw::newtable_tag` can be used as hint type.
 
 
 ### 8. Execute Lua Scripts (File or String)
