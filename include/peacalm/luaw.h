@@ -293,6 +293,8 @@ public:
 
   /// Used as a key for seek/touchtb/setkv/lset, indicate that we're
   /// getting/setting a value's metatable.
+  /// "tname" is used for touchtb to create a new metatable with this given name
+  /// if the value doesn't have a metatable.
   struct metatable_tag {
     const char* tname;
     metatable_tag(const char* name = nullptr) : tname(name) {}
