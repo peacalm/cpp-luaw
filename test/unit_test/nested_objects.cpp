@@ -235,42 +235,64 @@ TEST(nested_objects, register_member_by_fake_shared_ptr) {
 
 #if PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT
 
-struct BVolatileCompleted {
-  BVolatileCompleted() {}
+struct Bval {
+  Bval() {}
 
   // copy ctor
-  BVolatileCompleted(const volatile BVolatileCompleted& r) {
+  Bval(const volatile Bval& r) {
     i   = r.i;
     a.i = r.a.i;
   }
 
   // move ctor
-  BVolatileCompleted(volatile BVolatileCompleted&& r) {
+  Bval(volatile Bval&& r) {
     i   = r.i;
     a.i = r.a.i;
   }
 
   // copy by const rvalue ref ???
-  BVolatileCompleted(const volatile BVolatileCompleted&& r) {
+  Bval(const volatile Bval&& r) {
     i   = r.i;
     a.i = r.a.i;
   }
 
-  ~BVolatileCompleted() {}
+  ~Bval() {}
 
-  auto& operator=(const volatile BVolatileCompleted& r) volatile {
-    i   = r.i;
-    a.i = r.a.i;
-    return *this;
-  }
+  // volatile operator=
 
-  auto& operator=(volatile BVolatileCompleted&& r) volatile {
+  volatile auto& operator=(const volatile Bval& r) volatile {
     i   = r.i;
     a.i = r.a.i;
     return *this;
   }
 
-  auto& operator=(const volatile BVolatileCompleted&& r) volatile {
+  volatile auto& operator=(volatile Bval&& r) volatile {
+    i   = r.i;
+    a.i = r.a.i;
+    return *this;
+  }
+
+  volatile auto& operator=(const volatile Bval&& r) volatile {
+    i   = r.i;
+    a.i = r.a.i;
+    return *this;
+  }
+
+  // non volatile operator=
+
+  auto& operator=(const volatile Bval& r) {
+    i   = r.i;
+    a.i = r.a.i;
+    return *this;
+  }
+
+  auto& operator=(volatile Bval&& r) {
+    i   = r.i;
+    a.i = r.a.i;
+    return *this;
+  }
+
+  auto& operator=(const volatile Bval&& r) {
     i   = r.i;
     a.i = r.a.i;
     return *this;
@@ -280,7 +302,7 @@ struct BVolatileCompleted {
   A   a;
 };
 
-static void test_BVolatileCompleted() {
+static void test_Bval() {
 #define TEST_VOLATILE_CTORS(ATYPE, OTYPE, ASSIGN) \
   {                                               \
     ATYPE a;                                      \
@@ -297,7 +319,7 @@ static void test_BVolatileCompleted() {
 
 #define NO_TEST_ASSIGN
 
-  using B   = BVolatileCompleted;
+  using B   = Bval;
   using CB  = const B;
   using VB  = volatile B;
   using CVB = const volatile B;
@@ -330,7 +352,7 @@ static void test_BVolatileCompleted() {
 TEST(nested_objects, volatile_outer) {
   peacalm::luaw l;
 
-  using B = BVolatileCompleted;
+  using B = Bval;
 
   l.register_member("i", &A::i);
   l.register_member("i", &B::i);
@@ -403,20 +425,20 @@ TEST(nested_objects, volatile_outer) {
 }
 
 struct C {
-  volatile BVolatileCompleted b;
+  volatile Bval b;
 };
 
 TEST(nested_objects, member_volatile) {
   peacalm::luaw l;
   l.register_member("i", &A::i);
-  l.register_member("a", &BVolatileCompleted::a);
-  l.register_member("i", &BVolatileCompleted::i);
+  l.register_member("a", &Bval::a);
+  l.register_member("i", &Bval::i);
   l.register_member("b", &C::b);
 
-  l.register_member<A* const BVolatileCompleted::*>(
-      "aptr", [](auto* p) { return &(const_cast<BVolatileCompleted*>(p)->a); });
+  l.register_member<A* const Bval::*>(
+      "aptr", [](auto* p) { return &(const_cast<Bval*>(p)->a); });
 
-  l.register_member<volatile BVolatileCompleted* const C::*>(
+  l.register_member<volatile Bval* const C::*>(
       "bptr", [](auto* p) { return &(const_cast<C*>(p)->b); });
 
   auto c = std::make_shared<C>();
