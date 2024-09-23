@@ -260,19 +260,19 @@ struct Bval {
 
   // volatile operator=
 
-  volatile auto& operator=(const volatile Bval& r) volatile {
+  auto& operator=(const volatile Bval& r) volatile {
     i   = r.i;
     a.i = r.a.i;
     return *this;
   }
 
-  volatile auto& operator=(volatile Bval&& r) volatile {
+  auto& operator=(volatile Bval&& r) volatile {
     i   = r.i;
     a.i = r.a.i;
     return *this;
   }
 
-  volatile auto& operator=(const volatile Bval&& r) volatile {
+  auto& operator=(const volatile Bval&& r) volatile {
     i   = r.i;
     a.i = r.a.i;
     return *this;
