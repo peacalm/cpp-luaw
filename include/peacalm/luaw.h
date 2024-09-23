@@ -1963,7 +1963,10 @@ public:
   std::enable_if_t<std::is_member_pointer<MemberPointer>::value>
   register_static_member(const char* name, T* m) {
     PEACALM_LUAW_ASSERT(m);
-    registrar<MemberPointer>::register_member(
+    static_assert(
+        std::is_same<MemberPointer, std::decay_t<MemberPointer>>::value,
+        "MemberPointer should be decayed");
+    registrar<std::decay_t<MemberPointer>>::register_member(
         *this, name, static_mem_fn<T*>(m));
   }
   template <typename MemberPointer, typename T>
