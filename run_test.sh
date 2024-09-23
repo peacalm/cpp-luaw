@@ -20,6 +20,7 @@ MYOSTREAM=OFF
 SEPARATE=OFF
 NEED_VOLATILE=OFF
 UTONLY=""
+CPP_VERSION=14
 
 RUN_UNIT_TEST=0
 RUN_PERFORMANCE_TEST=0
@@ -71,9 +72,14 @@ while [ "$#" -gt 0 ]; do
       shift
       shift
       ;;
+    -cpp)
+      CPP_VERSION=$2
+      shift
+      shift
+      ;;
     -h)
       echo "run_test.sh [-t UNIT/PERF] [-o] [-r|-ru|-rp] [--rebuild] [--clear]"\
-           "[--separate|-s] [--volatile|-v] [-utonly <file>]"
+           "[--separate|-s] [--volatile|-v] [-utonly <file>] [-cpp 14/17/20]"
       exit 0
       ;;
     *)
@@ -93,7 +99,8 @@ cmake .. -DBUILD_TEST=${TEST} \
          -DENABLE_MYOSTREAM_WATCH=${MYOSTREAM} \
          -DUNIT_TEST_SEPARATE=${SEPARATE} \
          -DNEED_VOLATILE=${NEED_VOLATILE} \
-         -DUTONLY=${UTONLY}
+         -DUTONLY=${UTONLY} \
+         -DCMAKE_CXX_STANDARD=${CPP_VERSION}
 make
 
 if [ $? -eq 0 ]; then

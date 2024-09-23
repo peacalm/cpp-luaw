@@ -6,7 +6,10 @@ project(Luaw
         HOMEPAGE_URL "https://github.com/peacalm/cpp-luaw"
         LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 14)
+if(NOT CMAKE_CXX_STANDARD)
+    # At least cpp14
+    set(CMAKE_CXX_STANDARD 14)
+endif()
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 SET(INCLUDE_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/include")

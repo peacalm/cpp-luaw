@@ -17,6 +17,7 @@
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
 
+  std::cout << ">>> Cplusplus version " << __cplusplus << std::endl;
   std::cout << ">>> Running Luaw unit test." << std::endl;
 
   int ret = RUN_ALL_TESTS();
