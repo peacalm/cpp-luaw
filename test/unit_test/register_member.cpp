@@ -1850,6 +1850,19 @@ TEST(register_member, luavalueref) {
   EXPECT_EQ(l.eval<int>("return foo.a.x"), 1);
 }
 
+TEST(register_member, access_dynamic_member_by_nullptr) {
+  luaw l;
+  l.register_dynamic_member(foo_dm_getter, foo_dm_setter);
+
+  std::shared_ptr<Foo> s(nullptr);
+  l.set("s", s);
+  EXPECT_NE(l.dostring("print(s.x)"), LUA_OK);
+  l.log_error_out();
+
+  EXPECT_NE(l.dostring("s.x=1"), LUA_OK);
+  l.log_error_out();
+}
+
 TEST(register_member, get_object_created_by_lua) {
   luaw l;
   l.register_member("i", &Obj::i);
