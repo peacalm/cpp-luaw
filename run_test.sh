@@ -58,11 +58,11 @@ while [ "$#" -gt 0 ]; do
       CLEAR=1
       shift
       ;;
-    --separate)
+    --separate|-s)
       SEPARATE=ON
       shift
       ;;
-    --volatile)
+    --volatile|-v)
       NEED_VOLATILE=ON
       shift
       ;;
@@ -73,7 +73,7 @@ while [ "$#" -gt 0 ]; do
       ;;
     -h)
       echo "run_test.sh [-t UNIT/PERF] [-o] [-r|-ru|-rp] [--rebuild] [--clear]"\
-           "[--separate] [--volatile] [-utonly <file>]"
+           "[--separate|-s] [--volatile|-v] [-utonly <file>]"
       exit 0
       ;;
     *)
