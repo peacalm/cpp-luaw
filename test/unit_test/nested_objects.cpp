@@ -259,43 +259,23 @@ struct Bval {
   ~Bval() {}
 
   // volatile operator=
+  // return void to mute warning:
+  // implicit dereference will not access object of type
+  // ‘volatile {anonymous}::Bval’ in statement
 
-  auto& operator=(const volatile Bval& r) volatile {
+  void operator=(const volatile Bval& r) volatile {
     i   = r.i;
     a.i = r.a.i;
-    return *this;
   }
 
-  auto& operator=(volatile Bval&& r) volatile {
+  void operator=(volatile Bval&& r) volatile {
     i   = r.i;
     a.i = r.a.i;
-    return *this;
   }
 
-  auto& operator=(const volatile Bval&& r) volatile {
+  void operator=(const volatile Bval&& r) volatile {
     i   = r.i;
     a.i = r.a.i;
-    return *this;
-  }
-
-  // non volatile operator=
-
-  auto& operator=(const volatile Bval& r) {
-    i   = r.i;
-    a.i = r.a.i;
-    return *this;
-  }
-
-  auto& operator=(volatile Bval&& r) {
-    i   = r.i;
-    a.i = r.a.i;
-    return *this;
-  }
-
-  auto& operator=(const volatile Bval&& r) {
-    i   = r.i;
-    a.i = r.a.i;
-    return *this;
   }
 
   int i = 2;
