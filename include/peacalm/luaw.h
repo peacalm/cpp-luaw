@@ -4416,13 +4416,19 @@ struct luaw::registrar<Member (*)(Class*, Key)> {
       .setkv<Member (*)(Class*, Key)>(                       \
           luaw::member_info_fields::dynamic_member_getter, getter);
 
-#define REGISTER_SMART_GETTER(ObjectType)                    \
-  l.touchtb((void*)(&typeid(ObjectType)), LUA_REGISTRYINDEX) \
-      .setkv<Member (*)(ObjectType, Key)>(                   \
-          luaw::member_info_fields::dynamic_member_getter,   \
-          [=](ObjectType o, Key k) -> Member {               \
-            PEACALM_LUAW_ASSERT(o);                          \
-            return getter(*o, k);                            \
+#define REGISTER_SMART_GETTER(ObjectType)                                \
+  l.touchtb((void*)(&typeid(ObjectType)), LUA_REGISTRYINDEX)             \
+      .setkv<Member (*)(ObjectType, Key)>(                               \
+          luaw::member_info_fields::dynamic_member_getter,               \
+          [=, &l](ObjectType o, Key k) -> Member {                       \
+            PEACALM_LUAW_ASSERT(o);                                      \
+            auto p = luaw_detail::retrieve_underlying_ptr(*o);           \
+            if (!p) {                                                    \
+              luaL_error(l.L(),                                          \
+                         "Getting dynamic member by nullptr of object"); \
+              /* Never runs here */                                      \
+            }                                                            \
+            return getter(*p, k);                                        \
           });
 
   template <typename Getter>
@@ -4485,7 +4491,11 @@ struct luaw::registrar<Member (*)(Class*, Key)> {
   template <typename Getter>
   static void __register_dynamic_member_getter_for_volatile(luaw&    l,
                                                             Getter&& getter,
-                                                            std::false_type) {}
+                                                            std::false_type) {
+    // Do nothing.
+    // Since the getter user provided cannot be used for volatile objects.
+    // We donot make unnecessary troubles.
+  }
 
 #undef REGISTER_SMART_GETTER
 #undef REGISTER_GETTER
@@ -4505,13 +4515,19 @@ struct luaw::registrar<void (*)(Class*, Key, Member)> {
       .setkv<void (*)(Class*, Key, Member)>(                 \
           luaw::member_info_fields::dynamic_member_setter, setter);
 
-#define REGISTER_SMART_SETTER(ObjectType)                    \
-  l.touchtb((void*)(&typeid(ObjectType)), LUA_REGISTRYINDEX) \
-      .setkv<void (*)(ObjectType, Key, Member)>(             \
-          luaw::member_info_fields::dynamic_member_setter,   \
-          [=](ObjectType o, Key k, Member v) {               \
-            PEACALM_LUAW_ASSERT(o);                          \
-            setter(*o, k, v);                                \
+#define REGISTER_SMART_SETTER(ObjectType)                                \
+  l.touchtb((void*)(&typeid(ObjectType)), LUA_REGISTRYINDEX)             \
+      .setkv<void (*)(ObjectType, Key, Member)>(                         \
+          luaw::member_info_fields::dynamic_member_setter,               \
+          [=, &l](ObjectType o, Key k, Member v) {                       \
+            PEACALM_LUAW_ASSERT(o);                                      \
+            auto p = luaw_detail::retrieve_underlying_ptr(*o);           \
+            if (!p) {                                                    \
+              luaL_error(l.L(),                                          \
+                         "Setting dynamic member by nullptr of object"); \
+              /* Never runs here */                                      \
+            }                                                            \
+            setter(*p, k, v);                                            \
           });
 
 #define REGISTER_SETTER_OF_CONST(ObjectType)                 \
@@ -4579,11 +4595,14 @@ struct luaw::registrar<void (*)(Class*, Key, Member)> {
     REGISTER_SETTER_OF_CONST(const std::unique_ptr<const volatile DecayClass>*);
   }
 
-  // do nothing
   template <typename Setter>
   static void __register_dynamic_member_setter_for_volatile(luaw&    l,
                                                             Setter&& setter,
-                                                            std::false_type) {}
+                                                            std::false_type) {
+    // Do nothing.
+    // Since the setter user provided cannot be used for volatile objects.
+    // We donot make unnecessary troubles.
+  }
 
 #undef REGISTER_SETTER_OF_CONST
 #undef REGISTER_SMART_SETTER
