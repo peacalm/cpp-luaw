@@ -1880,6 +1880,36 @@ TEST(register_member, access_dynamic_member_by_nullptr) {
   }
 }
 
+TEST(register_member, access_member_by_nullptr) {
+  luaw l;
+  l.register_member("i", &Obj::i);
+
+  {
+    std::shared_ptr<Obj> s(nullptr);
+    l.set("s", s);
+
+    EXPECT_NE(l.dostring("print(s.i)"), LUA_OK);
+    l.log_error_out();
+
+    EXPECT_NE(l.dostring("s.i=1"), LUA_OK);
+    l.log_error_out();
+  }
+  {
+    auto s = std::make_shared<Obj>();
+    EXPECT_TRUE(s);
+    l.set("p", &s);
+
+    s.reset();
+    EXPECT_FALSE(s);
+
+    EXPECT_NE(l.dostring("print(p.i)"), LUA_OK);
+    l.log_error_out();
+
+    EXPECT_NE(l.dostring("p.i=1"), LUA_OK);
+    l.log_error_out();
+  }
+}
+
 TEST(register_member, get_object_created_by_lua) {
   luaw l;
   l.register_member("i", &Obj::i);

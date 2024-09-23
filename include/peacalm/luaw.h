@@ -4416,19 +4416,18 @@ struct luaw::registrar<Member (*)(Class*, Key)> {
       .setkv<Member (*)(Class*, Key)>(                       \
           luaw::member_info_fields::dynamic_member_getter, getter);
 
-#define REGISTER_SMART_GETTER(ObjectType)                                \
-  l.touchtb((void*)(&typeid(ObjectType)), LUA_REGISTRYINDEX)             \
-      .setkv<Member (*)(ObjectType, Key)>(                               \
-          luaw::member_info_fields::dynamic_member_getter,               \
-          [=, &l](ObjectType o, Key k) -> Member {                       \
-            PEACALM_LUAW_ASSERT(o);                                      \
-            auto p = luaw_detail::retrieve_underlying_ptr(*o);           \
-            if (!p) {                                                    \
-              luaL_error(l.L(),                                          \
-                         "Getting dynamic member by nullptr of object"); \
-              /* Never runs here */                                      \
-            }                                                            \
-            return getter(*p, k);                                        \
+#define REGISTER_SMART_GETTER(ObjectType)                                   \
+  l.touchtb((void*)(&typeid(ObjectType)), LUA_REGISTRYINDEX)                \
+      .setkv<Member (*)(ObjectType, Key)>(                                  \
+          luaw::member_info_fields::dynamic_member_getter,                  \
+          [=, &l](ObjectType o, Key k) -> Member {                          \
+            PEACALM_LUAW_ASSERT(o);                                         \
+            auto p = luaw_detail::retrieve_underlying_ptr(*o);              \
+            if (!p) {                                                       \
+              luaL_error(l.L(), "Getting dynamic member by null pointer."); \
+              /* Never runs here */                                         \
+            }                                                               \
+            return getter(*p, k);                                           \
           });
 
   template <typename Getter>
@@ -4515,19 +4514,18 @@ struct luaw::registrar<void (*)(Class*, Key, Member)> {
       .setkv<void (*)(Class*, Key, Member)>(                 \
           luaw::member_info_fields::dynamic_member_setter, setter);
 
-#define REGISTER_SMART_SETTER(ObjectType)                                \
-  l.touchtb((void*)(&typeid(ObjectType)), LUA_REGISTRYINDEX)             \
-      .setkv<void (*)(ObjectType, Key, Member)>(                         \
-          luaw::member_info_fields::dynamic_member_setter,               \
-          [=, &l](ObjectType o, Key k, Member v) {                       \
-            PEACALM_LUAW_ASSERT(o);                                      \
-            auto p = luaw_detail::retrieve_underlying_ptr(*o);           \
-            if (!p) {                                                    \
-              luaL_error(l.L(),                                          \
-                         "Setting dynamic member by nullptr of object"); \
-              /* Never runs here */                                      \
-            }                                                            \
-            setter(*p, k, v);                                            \
+#define REGISTER_SMART_SETTER(ObjectType)                                   \
+  l.touchtb((void*)(&typeid(ObjectType)), LUA_REGISTRYINDEX)                \
+      .setkv<void (*)(ObjectType, Key, Member)>(                            \
+          luaw::member_info_fields::dynamic_member_setter,                  \
+          [=, &l](ObjectType o, Key k, Member v) {                          \
+            PEACALM_LUAW_ASSERT(o);                                         \
+            auto p = luaw_detail::retrieve_underlying_ptr(*o);              \
+            if (!p) {                                                       \
+              luaL_error(l.L(), "Setting dynamic member by null pointer."); \
+              /* Never runs here */                                         \
+            }                                                               \
+            setter(*p, k, v);                                               \
           });
 
 #define REGISTER_SETTER_OF_CONST(ObjectType)                 \
@@ -4621,9 +4619,13 @@ struct luaw::registrar<
     // not reference.
 #define DEFINE_GETTER(ObjectType)                             \
   {                                                           \
-    auto getter = [=](ObjectType o) -> Member {               \
+    auto getter = [=, &l](ObjectType o) -> Member {           \
       PEACALM_LUAW_ASSERT(o);                                 \
-      auto p      = luaw_detail::retrieve_underlying_ptr(*o); \
+      auto p = luaw_detail::retrieve_underlying_ptr(*o);      \
+      if (!p) {                                               \
+        luaL_error(l.L(), "Getting member by null pointer."); \
+        /* Never runs here */                                 \
+      }                                                       \
       using rmp_t = std::remove_pointer_t<decltype(p)>;       \
       using rmv_t = std::remove_volatile_t<rmp_t>;            \
       return f(*const_cast<rmv_t*>(p));                       \
@@ -4745,21 +4747,25 @@ private:
                                  const char* mname,
                                  F&&         f,
                                  std::false_type) {
-#define DEFINE_SETTER(ObjectType)                                           \
-  {                                                                         \
-    auto setter = [=](ObjectType o, Member v) {                             \
-      PEACALM_LUAW_ASSERT(o);                                               \
-      auto p                    = luaw_detail::retrieve_underlying_ptr(*o); \
-      using rmp_t               = std::remove_pointer_t<decltype(p)>;       \
-      using rmv_t               = std::remove_volatile_t<rmp_t>;            \
-      f(*const_cast<rmv_t*>(p)) = std::move(v);                             \
-    };                                                                      \
-    void* p = reinterpret_cast<void*>(                                      \
-        const_cast<std::type_info*>(&typeid(ObjectType)));                  \
-    l.touchtb(p, LUA_REGISTRYINDEX)                                         \
-        .touchtb(luaw::member_info_fields::member_setter)                   \
-        .setkv<luaw::function_tag>(mname, setter);                          \
-    l.pop(2);                                                               \
+#define DEFINE_SETTER(ObjectType)                                     \
+  {                                                                   \
+    auto setter = [=, &l](ObjectType o, Member v) {                   \
+      PEACALM_LUAW_ASSERT(o);                                         \
+      auto p = luaw_detail::retrieve_underlying_ptr(*o);              \
+      if (!p) {                                                       \
+        luaL_error(l.L(), "Setting member by null pointer.");         \
+        /* Never runs here */                                         \
+      }                                                               \
+      using rmp_t               = std::remove_pointer_t<decltype(p)>; \
+      using rmv_t               = std::remove_volatile_t<rmp_t>;      \
+      f(*const_cast<rmv_t*>(p)) = std::move(v);                       \
+    };                                                                \
+    void* p = reinterpret_cast<void*>(                                \
+        const_cast<std::type_info*>(&typeid(ObjectType)));            \
+    l.touchtb(p, LUA_REGISTRYINDEX)                                   \
+        .touchtb(luaw::member_info_fields::member_setter)             \
+        .setkv<luaw::function_tag>(mname, setter);                    \
+    l.pop(2);                                                         \
   }
 
     DEFINE_SETTER(Class*);
@@ -4822,7 +4828,7 @@ struct luaw::registrar<Return (Class::*)(Args...)> {
                                        MemberFunction&& mf) {
     auto f = [mf, &l](ObjectType o, Args... args) -> Return {
       if (!o) {
-        luaL_error(l.L(), "Calling member function by null pointer of object");
+        luaL_error(l.L(), "Calling member function by null pointer.");
         // Never runs here.
         // Do not return Return() to enable functions with reference results.
         // return Return();
