@@ -2479,6 +2479,15 @@ using detect_callable_cfunction_t = std::conditional_t<
                        std::decay_t<T>>,
     void>;
 
+// remove_ptr_or_smart_ptr
+
+template <typename T>
+using remove_ptr_or_smart_ptr_t =
+    std::conditional_t<is_std_shared_ptr<std::decay_t<T>>::value ||
+                           is_std_unique_ptr<std::decay_t<T>>::value,
+                       typename get_element_type<T>::type,
+                       typename std::remove_pointer<T>::type>;
+
 }  // namespace luaw_detail
 
 //////////////////// pusher impl ///////////////////////////////////////////////
@@ -4683,16 +4692,40 @@ struct luaw::registrar<
     __register_setters(l, mname, std::forward<F>(f), std::is_const<Member>{});
   }
 
-  // Register a member getter for `ObjectPointer`
+  // Register a member getter for `ObjectPointer`, the member's type is same cv-
+  // qualifed with object on `Member`.
   template <typename ObjectPointer, typename F>
   static void register_one_getter(luaw& l, const char* mname, F&& f) {
     static_assert(std::is_pointer<ObjectPointer>::value,
                   "ObjectPointer should be a pointer type");
-    // The getter will return a copy of the member with type `Member`, which
-    // could be sepcified by `Hint`, it could be different with the member's
-    // real type, but it must be convertible from the real member type to this
-    // target member type.
-    auto getter = [f, &l](ObjectPointer o) -> Member {
+
+    // To add same cv- property on Member as Object
+    using O = luaw_detail::remove_ptr_or_smart_ptr_t<
+        std::remove_pointer_t<ObjectPointer>>;
+    using M0 = Member;
+    using M1 = std::conditional_t<std::is_volatile<O>::value, volatile M0, M0>;
+    using M2 = std::conditional_t<std::is_const<O>::value, const M1, M1>;
+
+    do_register_one_getter<ObjectPointer, M2, F>(l, mname, std::forward<F>(f));
+  }
+
+  // Register a member getter for `ObjectPointer`, the member's type is
+  // `CVPossibleMember`.
+  template <typename ObjectPointer, typename CVPossibleMember, typename F>
+  static void do_register_one_getter(luaw& l, const char* mname, F&& f) {
+    static_assert(std::is_pointer<ObjectPointer>::value,
+                  "ObjectPointer should be a pointer type");
+    // The getter will return a copy of the member with type `CVPossibleMember`
+    // which is a type maybe possibly cv- qualified on `Member`. And it should
+    // have same cv- property with `ObjectPointer`'s low-level cv- property.
+    //
+    // The type `Member` maybe the member's real type, or could be sepcified by
+    // `Hint` and it could be different with the member's real type, but it must
+    // be convertible from the real type to this target member type.
+    // Thus, it enables us to register a member to another type in Lua, e.g.
+    // register a non-const member as a const member in Lua, or register a
+    // integer member as a boolean member in Lua, etc.
+    auto getter = [f, &l](ObjectPointer o) -> CVPossibleMember {
       PEACALM_LUAW_ASSERT(o);
       auto p = luaw_detail::retrieve_underlying_ptr(*o);
       if (!p) {
