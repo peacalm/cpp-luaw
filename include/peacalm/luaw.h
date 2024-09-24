@@ -4269,6 +4269,8 @@ struct luaw::register_ctor_impl<Return (*)(Args...)> {
 
 namespace luaw_detail {
 
+// retrieve_underlying_ptr
+
 template <typename T>
 struct __retrieve_underlying_ptr {
   template <typename U>
@@ -4618,37 +4620,13 @@ struct luaw::registrar<
   // register a specific member
   template <typename F>
   static void register_member(luaw& l, const char* mname, F&& f) {
-    // The getter will return a copy of the member with registered type,
-    // not reference.
-#define DEFINE_GETTER(ObjectType)                                \
-  {                                                              \
-    auto getter = [=, &l](ObjectType o) -> Member {              \
-      PEACALM_LUAW_ASSERT(o);                                    \
-      auto p = luaw_detail::retrieve_underlying_ptr(*o);         \
-      if (!p) {                                                  \
-        luaL_error(l.L(), "Getting member by empty smart ptr."); \
-        /* Never runs here */                                    \
-        PEACALM_LUAW_ASSERT(false);                              \
-      }                                                          \
-      using rmp_t = std::remove_pointer_t<decltype(p)>;          \
-      using rmv_t = std::remove_volatile_t<rmp_t>;               \
-      return f(*const_cast<rmv_t*>(p));                          \
-    };                                                           \
-    void* p = reinterpret_cast<void*>(                           \
-        const_cast<std::type_info*>(&typeid(ObjectType)));       \
-    l.touchtb(p, LUA_REGISTRYINDEX)                              \
-        .touchtb(luaw::member_info_fields::member_getter)        \
-        .setkv<luaw::function_tag>(mname, getter);               \
-    l.pop(2);                                                    \
-  }
-
-    DEFINE_GETTER(Class*);
-    DEFINE_GETTER(const Class*);
+    register_one_getter<Class*>(l, mname, std::forward<F>(f));
+    register_one_getter<const Class*>(l, mname, std::forward<F>(f));
 
 #if PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT
 
-    DEFINE_GETTER(volatile Class*);
-    DEFINE_GETTER(const volatile Class*);
+    register_one_getter<volatile Class*>(l, mname, std::forward<F>(f));
+    register_one_getter<const volatile Class*>(l, mname, std::forward<F>(f));
 
 #endif
 
@@ -4656,35 +4634,82 @@ struct luaw::registrar<
     // DO NOT support top-level volatile for smart pointers!
     if (!luaw_detail::is_std_shared_ptr<Class>::value &&
         !luaw_detail::is_std_unique_ptr<Class>::value) {
-      DEFINE_GETTER(std::shared_ptr<Class>*);
-      DEFINE_GETTER(std::shared_ptr<const Class>*);
-      DEFINE_GETTER(const std::shared_ptr<Class>*);
-      DEFINE_GETTER(const std::shared_ptr<const Class>*);
+      register_one_getter<std::shared_ptr<Class>*>(
+          l, mname, std::forward<F>(f));
+      register_one_getter<std::shared_ptr<const Class>*>(
+          l, mname, std::forward<F>(f));
 
-      DEFINE_GETTER(std::unique_ptr<Class>*);
-      DEFINE_GETTER(std::unique_ptr<const Class>*);
-      DEFINE_GETTER(const std::unique_ptr<Class>*);
-      DEFINE_GETTER(const std::unique_ptr<const Class>*);
+      register_one_getter<const std::shared_ptr<Class>*>(
+          l, mname, std::forward<F>(f));
+      register_one_getter<const std::shared_ptr<const Class>*>(
+          l, mname, std::forward<F>(f));
+
+      register_one_getter<std::unique_ptr<Class>*>(
+          l, mname, std::forward<F>(f));
+      register_one_getter<std::unique_ptr<const Class>*>(
+          l, mname, std::forward<F>(f));
+
+      register_one_getter<const std::unique_ptr<Class>*>(
+          l, mname, std::forward<F>(f));
+      register_one_getter<const std::unique_ptr<const Class>*>(
+          l, mname, std::forward<F>(f));
 
 #if PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT
       // for low-level volatile
 
-      DEFINE_GETTER(std::shared_ptr<volatile Class>*);
-      DEFINE_GETTER(std::shared_ptr<const volatile Class>*);
-      DEFINE_GETTER(const std::shared_ptr<volatile Class>*);
-      DEFINE_GETTER(const std::shared_ptr<const volatile Class>*);
+      register_one_getter<std::shared_ptr<volatile Class>*>(
+          l, mname, std::forward<F>(f));
+      register_one_getter<std::shared_ptr<const volatile Class>*>(
+          l, mname, std::forward<F>(f));
 
-      DEFINE_GETTER(std::unique_ptr<volatile Class>*);
-      DEFINE_GETTER(std::unique_ptr<const volatile Class>*);
-      DEFINE_GETTER(const std::unique_ptr<volatile Class>*);
-      DEFINE_GETTER(const std::unique_ptr<const volatile Class>*);
+      register_one_getter<const std::shared_ptr<volatile Class>*>(
+          l, mname, std::forward<F>(f));
+      register_one_getter<const std::shared_ptr<const volatile Class>*>(
+          l, mname, std::forward<F>(f));
+
+      register_one_getter<std::unique_ptr<volatile Class>*>(
+          l, mname, std::forward<F>(f));
+      register_one_getter<std::unique_ptr<const volatile Class>*>(
+          l, mname, std::forward<F>(f));
+
+      register_one_getter<const std::unique_ptr<volatile Class>*>(
+          l, mname, std::forward<F>(f));
+      register_one_getter<const std::unique_ptr<const volatile Class>*>(
+          l, mname, std::forward<F>(f));
 
 #endif
     }
 
-#undef DEFINE_GETTER
-
     __register_setters(l, mname, std::forward<F>(f), std::is_const<Member>{});
+  }
+
+  // Register a member getter for `ObjectPointer`
+  template <typename ObjectPointer, typename F>
+  static void register_one_getter(luaw& l, const char* mname, F&& f) {
+    static_assert(std::is_pointer<ObjectPointer>::value,
+                  "ObjectPointer should be a pointer type");
+    // The getter will return a copy of the member with type `Member`, which
+    // could be sepcified by `Hint`, it could be different with the member's
+    // real type, but it must be convertible from the real member type to this
+    // target member type.
+    auto getter = [f, &l](ObjectPointer o) -> Member {
+      PEACALM_LUAW_ASSERT(o);
+      auto p = luaw_detail::retrieve_underlying_ptr(*o);
+      if (!p) {
+        luaL_error(l.L(), "Getting member by empty smart ptr.");
+        // Never runs here
+        PEACALM_LUAW_ASSERT(false);
+      }
+      using rmp_t = std::remove_pointer_t<decltype(p)>;
+      using rmv_t = std::remove_volatile_t<rmp_t>;
+      return f(*const_cast<rmv_t*>(p));
+    };
+    void* p = reinterpret_cast<void*>(
+        const_cast<std::type_info*>(&typeid(ObjectPointer)));
+    l.touchtb(p, LUA_REGISTRYINDEX)
+        .touchtb(luaw::member_info_fields::member_getter)
+        .setkv<luaw::function_tag>(mname, getter);
+    l.pop(2);
   }
 
 private:
