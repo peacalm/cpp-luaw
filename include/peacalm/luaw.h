@@ -2011,6 +2011,52 @@ public:
   template <typename Setter>
   void register_dynamic_member_setter(Setter&& setter);
 
+  /**
+   * @brief Register a member's pointer into Lua.
+   *
+   * Register a fake member into Lua, the fake member is a pointer of a class's
+   * real member.
+   *
+   * Since when getting a member, it will return a copy of the member. So we
+   * can't modify or access efficiently members of the member.
+   *
+   * This feature is used to modify or access efficiently members'
+   * members by getting a member's pointer first then modify or access members
+   * of the member by the pointer.
+   *
+   * @tparam Class Should be decayed class type.
+   * @tparam Member Can't be raw pointer or smart pointer type.
+   * @param name The member's pointer name used in Lua.
+   * @param mp Member pointer value.
+   */
+  template <typename Class, typename Member>
+  void register_member_ptr(const char* name, Member Class::*mp);
+  template <typename Class, typename Member>
+  void register_member_ptr(const std::string& name, Member Class::*mp) {
+    register_member_ptr<Class, Member>(name.c_str(), mp);
+  }
+
+  /**
+   * @brief Register a member's low-level const pointer into Lua.
+   *
+   * No matter whether the member is already const, it always can register a
+   * low-level const pointer of the member into Lua.
+   *
+   * This feature is used to access member of member, can't modify.
+   * Others are similar to "register_member_ptr"
+   *
+   * @sa "register_member_ptr"
+   */
+  template <typename Class, typename Member>
+  void register_member_cptr(const char* name, Member Class::*mp) {
+    PEACALM_LUAW_ASSERT(name);
+    register_member_ptr<Class, const Member>(name, mp);
+  }
+  template <typename Class, typename Member>
+  void register_member_cptr(const std::string& name, Member Class::*mp) {
+    register_member_cptr<Class, Member>(name.c_str(), mp);
+  }
+
   //////////////////////// evaluate expression /////////////////////////////////
 
   /**
@@ -2478,6 +2524,15 @@ using detect_callable_cfunction_t = std::conditional_t<
                        detect_c_callee_t<std::decay_t<T>>,
                        std::decay_t<T>>,
     void>;
+
+// remove_ptr_or_smart_ptr
+
+template <typename T>
+using remove_ptr_or_smart_ptr_t =
+    std::conditional_t<is_std_shared_ptr<std::decay_t<T>>::value ||
+                           is_std_unique_ptr<std::decay_t<T>>::value,
+                       typename get_element_type<T>::type,
+                       typename std::remove_pointer<T>::type>;
 
 }  // namespace luaw_detail
 
@@ -4612,6 +4667,62 @@ struct luaw::registrar<void (*)(Class*, Key, Member)> {
 #undef REGISTER_SETTER
 };
 
+// register_member_ptr
+
+template <typename Class, typename Member>
+void luaw::register_member_ptr(const char* name, Member Class::*mp) {
+  static_assert(std::is_same<Class, std::decay_t<Class>>::value,
+                "Class must be decayed");
+  static_assert(
+      !luaw_detail::is_std_shared_ptr<std::decay_t<Member>>::value &&
+          !luaw_detail::is_std_unique_ptr<std::decay_t<Member>>::value,
+      "No need to register pointer for smart ptr members");
+  static_assert(!std::is_pointer<Member>::value,
+                "No need to register pointer for pointer members");
+  PEACALM_LUAW_ASSERT(name);
+
+  auto f = [=](auto& p) { return &(p.*mp); };
+
+  using Base = luaw::registrar<Member Class::*>;
+
+  // Member pointer should have same low-level cv- property as class pointer.
+  Base::template do_register_one_getter<Class*, Member* const>(*this, name, f);
+  Base::template do_register_one_getter<const Class*, const Member* const>(
+      *this, name, f);
+
+#if PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT
+  Base::template do_register_one_getter<volatile Class*,
+                                        volatile Member* const>(*this, name, f);
+  Base::template do_register_one_getter<const volatile Class*,
+                                        const volatile Member* const>(
+      *this, name, f);
+#endif
+
+  Base::template do_register_one_getter<std::shared_ptr<Class>*, Member* const>(
+      *this, name, f);
+  Base::template do_register_one_getter<std::shared_ptr<const Class>*,
+                                        const Member* const>(*this, name, f);
+
+  Base::template do_register_one_getter<std::unique_ptr<Class>*, Member* const>(
+      *this, name, f);
+  Base::template do_register_one_getter<std::unique_ptr<const Class>*,
+                                        const Member* const>(*this, name, f);
+
+#if PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT
+  Base::template do_register_one_getter<std::shared_ptr<volatile Class>*,
+                                        volatile Member* const>(*this, name, f);
+  Base::template do_register_one_getter<std::shared_ptr<const volatile Class>*,
+                                        const volatile Member* const>(
+      *this, name, f);
+
+  Base::template do_register_one_getter<std::unique_ptr<volatile Class>*,
+                                        volatile Member* const>(*this, name, f);
+  Base::template do_register_one_getter<std::unique_ptr<const volatile Class>*,
+                                        const volatile Member* const>(
+      *this, name, f);
+#endif
+}
+
 // register member variable
 template <typename Class, typename Member>
 struct luaw::registrar<
@@ -4683,16 +4794,40 @@ struct luaw::registrar<
     __register_setters(l, mname, std::forward<F>(f), std::is_const<Member>{});
   }
 
-  // Register a member getter for `ObjectPointer`
+  // Register a member getter for `ObjectPointer`, the member's type is same cv-
+  // qualifed with object on `Member`.
   template <typename ObjectPointer, typename F>
   static void register_one_getter(luaw& l, const char* mname, F&& f) {
     static_assert(std::is_pointer<ObjectPointer>::value,
                   "ObjectPointer should be a pointer type");
-    // The getter will return a copy of the member with type `Member`, which
-    // could be sepcified by `Hint`, it could be different with the member's
-    // real type, but it must be convertible from the real member type to this
-    // target member type.
-    auto getter = [f, &l](ObjectPointer o) -> Member {
+
+    // To add same cv- property on Member as Object
+    using O = luaw_detail::remove_ptr_or_smart_ptr_t<
+        std::remove_pointer_t<ObjectPointer>>;
+    using M0 = Member;
+    using M1 = std::conditional_t<std::is_volatile<O>::value, volatile M0, M0>;
+    using M2 = std::conditional_t<std::is_const<O>::value, const M1, M1>;
+
+    do_register_one_getter<ObjectPointer, M2, F>(l, mname, std::forward<F>(f));
+  }
+
+  // Register a member getter for `ObjectPointer`, the member's type is
+  // `CVPossibleMember`.
+  template <typename ObjectPointer, typename CVPossibleMember, typename F>
+  static void do_register_one_getter(luaw& l, const char* mname, F&& f) {
+    static_assert(std::is_pointer<ObjectPointer>::value,
+                  "ObjectPointer should be a pointer type");
+    // The getter will return a copy of the member with type `CVPossibleMember`
+    // which is a type maybe possibly cv- qualified on `Member`. And it should
+    // have same cv- property with `ObjectPointer`'s low-level cv- property.
+    //
+    // The type `Member` maybe the member's real type, or could be sepcified by
+    // `Hint` and it could be different with the member's real type, but it must
+    // be convertible from the real type to this target member type.
+    // Thus, it enables us to register a member to another type in Lua, e.g.
+    // register a non-const member as a const member in Lua, or register a
+    // integer member as a boolean member in Lua, etc.
+    auto getter = [f, &l](ObjectPointer o) -> CVPossibleMember {
       PEACALM_LUAW_ASSERT(o);
       auto p = luaw_detail::retrieve_underlying_ptr(*o);
       if (!p) {
@@ -4700,9 +4835,7 @@ struct luaw::registrar<
         // Never runs here
         PEACALM_LUAW_ASSERT(false);
       }
-      using rmp_t = std::remove_pointer_t<decltype(p)>;
-      using rmv_t = std::remove_volatile_t<rmp_t>;
-      return f(*const_cast<rmv_t*>(p));
+      return f(*p);
     };
     void* p = reinterpret_cast<void*>(
         const_cast<std::type_info*>(&typeid(ObjectPointer)));
@@ -4776,26 +4909,24 @@ private:
                                  const char* mname,
                                  F&&         f,
                                  std::false_type) {
-#define DEFINE_SETTER(ObjectType)                                     \
-  {                                                                   \
-    auto setter = [=, &l](ObjectType o, Member v) {                   \
-      PEACALM_LUAW_ASSERT(o);                                         \
-      auto p = luaw_detail::retrieve_underlying_ptr(*o);              \
-      if (!p) {                                                       \
-        luaL_error(l.L(), "Setting member by empty smart ptr.");      \
-        /* Never runs here */                                         \
-        PEACALM_LUAW_ASSERT(false);                                   \
-      }                                                               \
-      using rmp_t               = std::remove_pointer_t<decltype(p)>; \
-      using rmv_t               = std::remove_volatile_t<rmp_t>;      \
-      f(*const_cast<rmv_t*>(p)) = std::move(v);                       \
-    };                                                                \
-    void* p = reinterpret_cast<void*>(                                \
-        const_cast<std::type_info*>(&typeid(ObjectType)));            \
-    l.touchtb(p, LUA_REGISTRYINDEX)                                   \
-        .touchtb(luaw::member_info_fields::member_setter)             \
-        .setkv<luaw::function_tag>(mname, setter);                    \
-    l.pop(2);                                                         \
+#define DEFINE_SETTER(ObjectType)                                \
+  {                                                              \
+    auto setter = [=, &l](ObjectType o, Member v) {              \
+      PEACALM_LUAW_ASSERT(o);                                    \
+      auto p = luaw_detail::retrieve_underlying_ptr(*o);         \
+      if (!p) {                                                  \
+        luaL_error(l.L(), "Setting member by empty smart ptr."); \
+        /* Never runs here */                                    \
+        PEACALM_LUAW_ASSERT(false);                              \
+      }                                                          \
+      f(*p) = std::move(v);                                      \
+    };                                                           \
+    void* p = reinterpret_cast<void*>(                           \
+        const_cast<std::type_info*>(&typeid(ObjectType)));       \
+    l.touchtb(p, LUA_REGISTRYINDEX)                              \
+        .touchtb(luaw::member_info_fields::member_setter)        \
+        .setkv<luaw::function_tag>(mname, setter);               \
+    l.pop(2);                                                    \
   }
 
     DEFINE_SETTER(Class*);

@@ -3,6 +3,9 @@
 
 ## Currently Unreleased - TBD
 
+* Check accessing member or dynamic member by empty smart pointer. Raise error, do not abort.
+* When getting a registered member by an object, add same cv- property on the member as the object.
+* New feature: register member's pointer and (low-level) const pointer. ("register_member_ptr", "register_member_cptr")
 
 ## v1.1.2 - 2024.9.22
 
