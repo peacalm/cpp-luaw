@@ -4835,9 +4835,7 @@ struct luaw::registrar<
         // Never runs here
         PEACALM_LUAW_ASSERT(false);
       }
-      using rmp_t = std::remove_pointer_t<decltype(p)>;
-      using rmv_t = std::remove_volatile_t<rmp_t>;
-      return f(*const_cast<rmv_t*>(p));
+      return f(*p);
     };
     void* p = reinterpret_cast<void*>(
         const_cast<std::type_info*>(&typeid(ObjectPointer)));
@@ -4911,26 +4909,24 @@ private:
                                  const char* mname,
                                  F&&         f,
                                  std::false_type) {
-#define DEFINE_SETTER(ObjectType)                                     \
-  {                                                                   \
-    auto setter = [=, &l](ObjectType o, Member v) {                   \
-      PEACALM_LUAW_ASSERT(o);                                         \
-      auto p = luaw_detail::retrieve_underlying_ptr(*o);              \
-      if (!p) {                                                       \
-        luaL_error(l.L(), "Setting member by empty smart ptr.");      \
-        /* Never runs here */                                         \
-        PEACALM_LUAW_ASSERT(false);                                   \
-      }                                                               \
-      using rmp_t               = std::remove_pointer_t<decltype(p)>; \
-      using rmv_t               = std::remove_volatile_t<rmp_t>;      \
-      f(*const_cast<rmv_t*>(p)) = std::move(v);                       \
-    };                                                                \
-    void* p = reinterpret_cast<void*>(                                \
-        const_cast<std::type_info*>(&typeid(ObjectType)));            \
-    l.touchtb(p, LUA_REGISTRYINDEX)                                   \
-        .touchtb(luaw::member_info_fields::member_setter)             \
-        .setkv<luaw::function_tag>(mname, setter);                    \
-    l.pop(2);                                                         \
+#define DEFINE_SETTER(ObjectType)                                \
+  {                                                              \
+    auto setter = [=, &l](ObjectType o, Member v) {              \
+      PEACALM_LUAW_ASSERT(o);                                    \
+      auto p = luaw_detail::retrieve_underlying_ptr(*o);         \
+      if (!p) {                                                  \
+        luaL_error(l.L(), "Setting member by empty smart ptr."); \
+        /* Never runs here */                                    \
+        PEACALM_LUAW_ASSERT(false);                              \
+      }                                                          \
+      f(*p) = std::move(v);                                      \
+    };                                                           \
+    void* p = reinterpret_cast<void*>(                           \
+        const_cast<std::type_info*>(&typeid(ObjectType)));       \
+    l.touchtb(p, LUA_REGISTRYINDEX)                              \
+        .touchtb(luaw::member_info_fields::member_setter)        \
+        .setkv<luaw::function_tag>(mname, setter);               \
+    l.pop(2);                                                    \
   }
 
     DEFINE_SETTER(Class*);
