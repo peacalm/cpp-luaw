@@ -2021,8 +2021,8 @@ public:
    * can't modify or access efficiently members of the member.
    *
    * This feature is used to modify or access efficiently members'
-   * members by getting members' pointer first then modify or access members of
-   * the member by the pointer.
+   * members by getting a member's pointer first then modify or access members
+   * of the member by the pointer.
    *
    * @tparam Class Should be decayed class type.
    * @tparam Member Can't be raw pointer or smart pointer type.
