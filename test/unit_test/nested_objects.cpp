@@ -161,7 +161,7 @@ TEST(nested_objects, register_solid_nested_member) {
   EXPECT_EQ(l.eval<int>("return a.i"), 123);       // changed
   EXPECT_EQ(l.eval<int>("return b.a.i"), oldbai);  // no change
 
-  // modify the whole member a
+  // can modify the whole member a
   EXPECT_EQ(l.dostring("b.a = a"), LUA_OK);
   EXPECT_EQ(l.eval<int>("return b.a.i"), 123);  // changed!
 }
@@ -204,7 +204,7 @@ TEST(nested_objects, register_solid_nested_member_for_const) {
   EXPECT_EQ(l.eval<int>("return a.i"), oldbai);
   EXPECT_EQ(l.eval<int>("return b.a.i"), oldbai);
 
-  // modify the whole member a
+  // can't modify the whole member a
   EXPECT_NE(l.dostring("b.a = a"), LUA_OK);
   l.log_error_out();
 }
@@ -240,6 +240,7 @@ TEST(nested_objects, register_member_ptr_by_shared_ptr_nonconst_obj) {
     std::string mtaptr_again = l.get_metatable_name(-1);
 
     watch(mtaptr_again, mtacptr);
+    EXPECT_NE(mtaptr_again, mtaptr);  // metatable has changed
     EXPECT_EQ(mtaptr_again, mtacptr);
   }
   EXPECT_EQ(l.gettop(), 0);
@@ -377,6 +378,7 @@ TEST(nested_objects, register_member_ptr_by_nonconst_obj) {
     std::string mtaptr_again = l.get_metatable_name(-1);
 
     watch(mtaptr_again, mtacptr);
+    EXPECT_NE(mtaptr_again, mtaptr);  // metatable has changed
     EXPECT_EQ(mtaptr_again, mtacptr);
   }
   EXPECT_EQ(l.gettop(), 0);
@@ -482,15 +484,178 @@ TEST(nested_objects, register_member_ptr_invalid_ways) {
 
   // ok! register ptr for int member
   l.register_member_ptr("iptr", &Bap::i);
-  l.register_member_cptr("iptr", &Bap::i);
+  l.register_member_cptr("icptr", &Bap::i);
 
   // No need to register pointer for pointer members
   // l.register_member_ptr("apptr", &Bap::ap);    // error
   // l.register_member_cptr("apcptr", &Bap::ap);  // error
 
-  // No need to register member for smart ptr member
+  // No need to register pointer for smart ptr member
   // l.register_member_ptr("saptr", &Bap::sa);    // error
   // l.register_member_cptr("sacptr", &Bap::sa);  // error
+}
+
+TEST(nested_objects, register_member_ref_invalid_ways) {
+  peacalm::luaw l;
+
+  // Class must be decayed
+  using CB = const B;
+  l.register_member_ref("aref", &CB::a);  // ok. auto decay
+  // l.register_member_ref<CB>("aref", &CB::a);       // error
+  // l.register_member_ref<CB, A>("aref", &CB::a);    // error
+  // l.register_member_ref<const B>("aref", &CB::a);  // error
+  // l.register_member_ref<CB>("aref", &B::a);        // error
+
+  // ok! register reference for int member
+  l.register_member_ref("iref", &Bap::i);
+  l.register_member_cref("icref", &Bap::i);
+
+  // No need to register reference for pointer members
+  // l.register_member_ref("apref", &Bap::ap);    // error
+  // l.register_member_cref("apcref", &Bap::ap);  // error
+
+  // No need to register reference for smart ptr member
+  // l.register_member_ref("saptr", &Bap::sa);    // error
+  // l.register_member_cref("sacptr", &Bap::sa);  // error
+}
+
+TEST(nested_objects, register_member_ref_by_shared_ptr_nonconst_obj) {
+  peacalm::luaw l;
+  l.register_member("i", &A::i);
+  l.register_member("i", &B::i);
+  l.register_member("a", &B::a);
+  l.register_member_ref("aref", &B::a);
+  l.register_member_cref("acref", &B::a);
+
+  auto b = std::make_shared<B>();
+  l.set("b", b);
+
+  // check metatable of ref and cref
+  {
+    EXPECT_EQ(l.gettop(), 0);
+    auto _g = l.make_guarder();
+
+    EXPECT_EQ(l.dostring("aref = b.aref"), LUA_OK);
+    l.gseek("aref");
+    std::string mtaref = l.get_metatable_name(-1);
+
+    EXPECT_EQ(l.dostring("acref = b.acref"), LUA_OK);
+    l.gseek("acref");
+    std::string mtacref = l.get_metatable_name(-1);
+
+    watch(mtaref, mtacref);
+    EXPECT_NE(mtaref, mtacref);
+
+    l.gseek("aref");
+    std::string mtaref_again = l.get_metatable_name(-1);
+
+    watch(mtaref_again, mtaref);
+    EXPECT_EQ(mtaref_again, mtaref);  // metatable does not change
+    EXPECT_NE(mtaref_again, mtacref);
+  }
+  EXPECT_EQ(l.gettop(), 0);
+
+  // check value of ref and cref
+  {
+    EXPECT_EQ(l.dostring("assert(b.aref ~= b.acref)"), LUA_OK);
+
+    bool  failed1 = true, failed2 = true;
+    void* p  = l.eval<void*>("return b.aref", false, &failed1);
+    void* cp = l.eval<void*>("return b.acref", false, &failed2);
+
+    EXPECT_NE(p, cp);
+    EXPECT_FALSE(failed1);
+    EXPECT_FALSE(failed2);
+
+    // each time call b.aref, it will build a new ref
+    void* p2 = l.eval<void*>("aref = b.aref; return aref");
+    void* p3 = l.eval<void*>("return aref");
+    // EXPECT_NE(p, p2);  // Can be not equal, but do not make assurance
+    EXPECT_EQ(p2, p3);
+  }
+
+  EXPECT_EQ(b->a.i, 1);
+  EXPECT_EQ(l.eval<int>("return b.a.i"), 1);
+  EXPECT_EQ(l.eval<int>("return b.aref.i"), 1);
+  EXPECT_EQ(l.eval<int>("return b.acref.i"), 1);
+
+  b->a.i = 2;
+  EXPECT_EQ(l.eval<int>("return b.a.i"), 2);
+  EXPECT_EQ(l.eval<int>("return b.aref.i"), 2);
+  EXPECT_EQ(l.eval<int>("return b.acref.i"), 2);
+
+  // modify b.a.i in Lua by aptr
+  EXPECT_EQ(l.dostring("b.aref.i = 4"), LUA_OK);
+  EXPECT_EQ(l.eval<int>("return b.a.i"), 4);
+  EXPECT_EQ(l.eval<int>("return b.aref.i"), 4);
+  EXPECT_EQ(l.eval<int>("return b.acref.i"), 4);
+  EXPECT_EQ(b->a.i, 4);
+
+  // can't modify by acptr
+  EXPECT_NE(l.dostring("b.acref.i = 5"), LUA_OK);
+  l.log_error_out();
+}
+
+TEST(nested_objects, register_member_ref_by_shared_ptr_const_obj) {
+  peacalm::luaw l;
+  l.register_member("i", &A::i);
+  l.register_member("i", &B::i);
+  l.register_member("a", &B::a);
+  l.register_member_ref("aref", &B::a);
+  l.register_member_cref("acref", &B::a);
+
+  auto b = std::make_shared<const B>();
+  l.set("b", b);
+
+  // check metatable of ref and cref
+  {
+    EXPECT_EQ(l.gettop(), 0);
+    auto _g = l.make_guarder();
+
+    EXPECT_EQ(l.dostring("aref = b.aref"), LUA_OK);
+    l.gseek("aref");
+    std::string mtaref = l.get_metatable_name(-1);
+
+    EXPECT_EQ(l.dostring("acref = b.acref"), LUA_OK);
+    l.gseek("acref");
+    std::string mtacref = l.get_metatable_name(-1);
+
+    watch(mtaref, mtacref);
+    EXPECT_EQ(mtaref, mtacref);
+  }
+  EXPECT_EQ(l.gettop(), 0);
+
+  // check value of ref and cref
+  {
+    EXPECT_EQ(l.dostring("assert(b.aref ~= b.acref)"), LUA_OK);
+
+    bool  failed1 = true, failed2 = true;
+    void* p  = l.eval<void*>("return b.aref", false, &failed1);
+    void* cp = l.eval<void*>("return b.acref", false, &failed2);
+
+    EXPECT_NE(p, cp);
+    EXPECT_FALSE(failed1);
+    EXPECT_FALSE(failed2);
+
+    // each time call b.aref, it will build a new ref
+    void* p2 = l.eval<void*>("aref = b.aref; return aref");
+    void* p3 = l.eval<void*>("return aref");
+    // EXPECT_NE(p, p2);  // Can be not equal, but do not make assurance
+    EXPECT_EQ(p2, p3);
+  }
+
+  EXPECT_EQ(b->a.i, 1);
+  EXPECT_EQ(l.eval<int>("return b.a.i"), 1);
+  EXPECT_EQ(l.eval<int>("return b.aref.i"), 1);
+  EXPECT_EQ(l.eval<int>("return b.acref.i"), 1);
+
+  // can't modify b.a.i in Lua by aptr
+  EXPECT_NE(l.dostring("b.aref.i = 4"), LUA_OK);
+  l.log_error_out();
+
+  // can't modify by acptr
+  EXPECT_NE(l.dostring("b.acref.i = 5"), LUA_OK);
+  l.log_error_out();
 }
 
 TEST(nested_objects, register_member_address_manually) {
@@ -675,6 +840,9 @@ TEST(nested_objects, volatile_outer) {
   l.register_member_ptr("aptr", &Bval::a);
   l.register_member_cptr("acptr", &Bval::a);
 
+  l.register_member_ref("aref", &Bval::a);
+  l.register_member_cref("acref", &Bval::a);
+
   volatile Bval b;
   b.a.i = 1;
   b.i   = 1;
@@ -699,26 +867,47 @@ TEST(nested_objects, volatile_outer) {
   EXPECT_EQ(l.eval<int>("return b.a.i"), 1);
   EXPECT_EQ(l.eval<int>("return b.aptr.i"), 1);
   EXPECT_EQ(l.eval<int>("return b.acptr.i"), 1);
+  EXPECT_EQ(l.eval<int>("return b.aref.i"), 1);
+  EXPECT_EQ(l.eval<int>("return b.acref.i"), 1);
 
   // can't modify b.a.i by b.a.i
   EXPECT_EQ(l.dostring("b.a.i = 2"), LUA_OK);
   EXPECT_EQ(l.eval<int>("return b.a.i"), 1);
+  EXPECT_EQ(l.eval<int>("return b.aptr.i"), 1);
+  EXPECT_EQ(l.eval<int>("return b.acptr.i"), 1);
+  EXPECT_EQ(l.eval<int>("return b.aref.i"), 1);
+  EXPECT_EQ(l.eval<int>("return b.acref.i"), 1);
 
   // modify b.a.i by aptr
   EXPECT_EQ(l.dostring("b.aptr.i = 2"), LUA_OK);
   EXPECT_EQ(l.eval<int>("return b.a.i"), 2);
   EXPECT_EQ(l.eval<int>("return b.aptr.i"), 2);
   EXPECT_EQ(l.eval<int>("return b.acptr.i"), 2);
+  EXPECT_EQ(l.eval<int>("return b.aref.i"), 2);
+  EXPECT_EQ(l.eval<int>("return b.acref.i"), 2);
 
   // can't modify b.a.i by acptr
   EXPECT_NE(l.dostring("b.acptr.i = 3"), LUA_OK);
   l.log_error_out();
 
+  // modify b.a.i by aref
+  EXPECT_EQ(l.dostring("b.aref.i = 4"), LUA_OK);
+  EXPECT_EQ(l.eval<int>("return b.a.i"), 4);
+  EXPECT_EQ(l.eval<int>("return b.aptr.i"), 4);
+  EXPECT_EQ(l.eval<int>("return b.acptr.i"), 4);
+  EXPECT_EQ(l.eval<int>("return b.aref.i"), 4);
+  EXPECT_EQ(l.eval<int>("return b.acref.i"), 4);
+
+  // can't modify b.a.i by acref
+  EXPECT_NE(l.dostring("b.acref.i = 5"), LUA_OK);
+  l.log_error_out();
 #else
 
   EXPECT_EQ(l.eval<int>("return b.a.i"), 0);
   EXPECT_EQ(l.eval<int>("return b.aptr.i"), 0);
   EXPECT_EQ(l.eval<int>("return b.acptr.i"), 0);
+  EXPECT_EQ(l.eval<int>("return b.aref.i"), 0);
+  EXPECT_EQ(l.eval<int>("return b.acref.i"), 0);
 
   EXPECT_EQ(l.gettop(), 0);
 
@@ -731,6 +920,11 @@ TEST(nested_objects, volatile_outer) {
   EXPECT_NE(l.dostring("b.acptr.i = 4"), LUA_OK);
   l.log_error_out();
 
+  EXPECT_NE(l.dostring("b.aref.i = 3"), LUA_OK);
+  l.log_error_out();
+
+  EXPECT_NE(l.dostring("b.acref.i = 4"), LUA_OK);
+  l.log_error_out();
   EXPECT_EQ(l.gettop(), 0);
 #endif
 }
@@ -739,7 +933,7 @@ struct C {
   volatile Bval b;
 };
 
-TEST(nested_objects, member_volatile) {
+TEST(nested_objects, member_volatile_ptr) {
   peacalm::luaw l;
   l.register_member("i", &A::i);
   l.register_member("a", &Bval::a);
@@ -754,33 +948,156 @@ TEST(nested_objects, member_volatile) {
 
 #if PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT
 
+  // access c.b.i
   EXPECT_EQ(l.eval<int>("return c.b.i"), 1);
   EXPECT_EQ(l.eval<int>("return c.bptr.i"), 1);
 
+  // access c.b.a.i
   EXPECT_EQ(l.eval<int>("return c.b.a.i"), 1);
-  EXPECT_EQ(l.eval<int>("return c.bptr.a.i"), 1);
   EXPECT_EQ(l.eval<int>("return c.b.aptr.i"), 1);
+  EXPECT_EQ(l.eval<int>("return c.bptr.a.i"), 1);
   EXPECT_EQ(l.eval<int>("return c.bptr.aptr.i"), 1);
 
+  // modify c.b.i by bptr
   EXPECT_EQ(l.dostring("c.bptr.i = 3;"), LUA_OK);
   EXPECT_EQ(l.eval<int>("return c.b.i"), 3);
   EXPECT_EQ(l.eval<int>("return c.bptr.i"), 3);
 
+  // modify c.b.a.i by bptr.aptr
   EXPECT_EQ(l.dostring("c.bptr.aptr.i = 4;"), LUA_OK);
   EXPECT_EQ(l.eval<int>("return c.b.a.i"), 4);
-  EXPECT_EQ(l.eval<int>("return c.bptr.a.i"), 4);
   EXPECT_EQ(l.eval<int>("return c.b.aptr.i"), 4);
+  EXPECT_EQ(l.eval<int>("return c.bptr.a.i"), 4);
   EXPECT_EQ(l.eval<int>("return c.bptr.aptr.i"), 4);
 
 #else
 
+  // access volatile b, got nil
   EXPECT_EQ(l.eval<int>("return c.b.i"), 0);
   EXPECT_EQ(l.eval<int>("return c.bptr.i"), 0);
 
   EXPECT_EQ(l.eval<int>("return c.b.a.i"), 0);
-  EXPECT_EQ(l.eval<int>("return c.bptr.a.i"), 0);
   EXPECT_EQ(l.eval<int>("return c.b.aptr.i"), 0);
+  EXPECT_EQ(l.eval<int>("return c.bptr.a.i"), 0);
   EXPECT_EQ(l.eval<int>("return c.bptr.aptr.i"), 0);
+
+#endif
+
+  EXPECT_EQ(l.gettop(), 0);
+}
+
+TEST(nested_objects, member_volatile_ref) {
+  peacalm::luaw l;
+  l.register_member("i", &A::i);
+  l.register_member("a", &Bval::a);
+  l.register_member("i", &Bval::i);
+  l.register_member("b", &C::b);
+
+  l.register_member_ptr("aptr", &Bval::a);
+  l.register_member_ptr("bptr", &C::b);
+
+  l.register_member_ref("aref", &Bval::a);
+  l.register_member_ref("bref", &C::b);
+
+  auto c = std::make_shared<C>();
+  l.set("c", c);
+
+  int ival;
+
+#if PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT
+
+  // access c.b.i
+  ival = 1;
+  EXPECT_EQ(l.eval<int>("return c.b.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bptr.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bref.i"), ival);
+
+  // access c.b.a.i
+  ival = 1;
+  EXPECT_EQ(l.eval<int>("return c.b.a.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.b.aptr.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.b.aref.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bptr.a.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bptr.aptr.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bptr.aref.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bref.a.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bref.aptr.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bref.aref.i"), ival);
+
+  // modify c.b.i by bptr
+  ival = 2;
+  EXPECT_EQ(l.dostring("c.bptr.i = 2;"), LUA_OK);
+  EXPECT_EQ(l.eval<int>("return c.b.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bptr.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bref.i"), ival);
+
+  // modify c.b.a.i by bptr.aptr
+  ival = 3;
+  EXPECT_EQ(l.dostring("c.bptr.aptr.i = 3;"), LUA_OK);
+  EXPECT_EQ(l.eval<int>("return c.b.a.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.b.aptr.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.b.aref.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bptr.a.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bptr.aptr.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bptr.aref.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bref.a.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bref.aptr.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bref.aref.i"), ival);
+
+  // modify c.b.a.i by bptr.aref
+  ival = 4;
+  EXPECT_EQ(l.dostring("c.bptr.aref.i = 4;"), LUA_OK);
+  EXPECT_EQ(l.eval<int>("return c.b.a.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.b.aptr.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.b.aref.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bptr.a.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bptr.aptr.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bptr.aref.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bref.a.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bref.aptr.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bref.aref.i"), ival);
+
+  // modify c.b.a.i by bref.aptr
+  ival = 5;
+  EXPECT_EQ(l.dostring("c.bref.aptr.i = 5;"), LUA_OK);
+  EXPECT_EQ(l.eval<int>("return c.b.a.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.b.aptr.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.b.aref.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bptr.a.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bptr.aptr.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bptr.aref.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bref.a.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bref.aptr.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bref.aref.i"), ival);
+
+  // modify c.b.a.i by bref.aref
+  ival = 6;
+  EXPECT_EQ(l.dostring("c.bref.aref.i = 6;"), LUA_OK);
+  EXPECT_EQ(l.eval<int>("return c.b.a.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.b.aptr.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.b.aref.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bptr.a.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bptr.aptr.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bptr.aref.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bref.a.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bref.aptr.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bref.aref.i"), ival);
+#else
+
+  // access volatile b, got nil
+  ival = 0;
+  EXPECT_EQ(l.eval<int>("return c.b.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bptr.i"), ival);
+
+  EXPECT_EQ(l.eval<int>("return c.b.a.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.b.aptr.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.b.aref.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bptr.a.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bptr.aptr.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bptr.aref.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bref.a.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bref.aptr.i"), ival);
+  EXPECT_EQ(l.eval<int>("return c.bref.aref.i"), ival);
 
 #endif
 
