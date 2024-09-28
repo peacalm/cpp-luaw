@@ -2581,9 +2581,9 @@ int main() {
   l.set("o", Obj{});
   l.register_member<int Obj::*>("gi", &getgi);
 
-  EXPECT_EQ(l.eval<int>("return o.gi"), gi);
-  EXPECT_EQ(l.eval<int>("o.gi = 101; return o.gi"), 101);
-  EXPECT_EQ(gi, 101);
+  assert(l.eval<int>("return o.gi") == gi);
+  assert(l.eval<int>("o.gi = 101; return o.gi") == 101);
+  assert(gi == 101);
 }
 ```
 
@@ -2597,9 +2597,9 @@ int  li    = 100;  // local variable i
 auto getli = [&](const Obj*) -> int& { return li; };
 l.register_member<int Obj::*>("li", getli);
 
-EXPECT_EQ(l.eval<int>("return o.li"), li);
-EXPECT_EQ(l.eval<int>("o.li = 101; return o.li"), 101);
-EXPECT_EQ(li, 101);
+assert(l.eval<int>("return o.li") == li);
+assert(l.eval<int>("o.li = 101; return o.li") == 101);
+assert(li == 101);
 ```
 
 Or we can fake member variables by dereference of pointer members of the class:
