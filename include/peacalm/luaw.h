@@ -4821,6 +4821,45 @@ void luaw::register_member_ptr(const char* name, Member Class::*mp) {
 #endif
 }
 
+namespace luaw_detail {
+
+// A mock allocator to support volatile
+template <typename T>
+struct allocator {
+  using value_type = T;
+  using size_type  = std::size_t;
+
+  allocator() = default;
+
+  template <typename U>
+  allocator(const allocator<U>& r) {}
+
+  value_type* allocate(size_type n) {
+    if (n == 0) { return nullptr; }
+    if (n > max_size()) { throw std::bad_array_new_length(); }
+    void* const p = ::operator new(n * sizeof(value_type));
+    if (!p) { throw std::bad_alloc(); }
+    return static_cast<value_type*>(p);
+  }
+
+  void deallocate(const value_type* p, size_type n) {
+    return ::operator delete((void*)(p));
+  }
+
+  size_type max_size() const { return size_type(~0) / sizeof(T); }
+};
+
+// To make a shared_ptr with a given pointer,
+// but never deletes the given pointer,
+// and uses an allocator who supports volatile.
+template <typename T>
+std::shared_ptr<T> mock_shared(T* p) {
+  return std::shared_ptr<T>(
+      p, [](...) {}, allocator<T>{});
+}
+
+}  // namespace luaw_detail
+
 // register_member_ref
 template <typename Class, typename Member>
 void luaw::register_member_ref(const char* name, Member Class::*mp) {
@@ -4840,114 +4879,114 @@ void luaw::register_member_ref(const char* name, Member Class::*mp) {
   Registrar::template do_register_one_getter<Class*,
                                              const std::shared_ptr<Member>>(
       *this, name, [=](auto& p) {
-        return std::shared_ptr<Member>(&(p.*mp), [](...) {});
+        return luaw_detail::mock_shared<Member>(&(p.*mp));
       });
   Registrar::template do_register_one_getter<
       const Class*,
       const std::shared_ptr<const Member>>(*this, name, [=](auto& p) {
-    return std::shared_ptr<const Member>(&(p.*mp), [](...) {});
+    return luaw_detail::mock_shared<const Member>(&(p.*mp));
   });
 
 #if PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT
   Registrar::template do_register_one_getter<
       volatile Class*,
       const std::shared_ptr<volatile Member>>(*this, name, [=](auto& p) {
-    return std::shared_ptr<volatile Member>(&(p.*mp), [](...) {});
+    return luaw_detail::mock_shared<volatile Member>(&(p.*mp));
   });
   Registrar::template do_register_one_getter<
       const volatile Class*,
       const std::shared_ptr<const volatile Member>>(*this, name, [=](auto& p) {
-    return std::shared_ptr<const volatile Member>(&(p.*mp), [](...) {});
+    return luaw_detail::mock_shared<const volatile Member>(&(p.*mp));
   });
 #endif
 
   Registrar::template do_register_one_getter<std::shared_ptr<Class>*,
                                              const std::shared_ptr<Member>>(
       *this, name, [=](auto& p) {
-        return std::shared_ptr<Member>(&(p.*mp), [](...) {});
+        return luaw_detail::mock_shared<Member>(&(p.*mp));
       });
   Registrar::template do_register_one_getter<
       std::shared_ptr<const Class>*,
       const std::shared_ptr<const Member>>(*this, name, [=](auto& p) {
-    return std::shared_ptr<const Member>(&(p.*mp), [](...) {});
+    return luaw_detail::mock_shared<const Member>(&(p.*mp));
   });
 
   Registrar::template do_register_one_getter<const std::shared_ptr<Class>*,
                                              const std::shared_ptr<Member>>(
       *this, name, [=](auto& p) {
-        return std::shared_ptr<Member>(&(p.*mp), [](...) {});
+        return luaw_detail::mock_shared<Member>(&(p.*mp));
       });
   Registrar::template do_register_one_getter<
       const std::shared_ptr<const Class>*,
       const std::shared_ptr<const Member>>(*this, name, [=](auto& p) {
-    return std::shared_ptr<const Member>(&(p.*mp), [](...) {});
+    return luaw_detail::mock_shared<const Member>(&(p.*mp));
   });
 
   Registrar::template do_register_one_getter<std::unique_ptr<Class>*,
                                              const std::shared_ptr<Member>>(
       *this, name, [=](auto& p) {
-        return std::shared_ptr<Member>(&(p.*mp), [](...) {});
+        return luaw_detail::mock_shared<Member>(&(p.*mp));
       });
   Registrar::template do_register_one_getter<
       std::unique_ptr<const Class>*,
       const std::shared_ptr<const Member>>(*this, name, [=](auto& p) {
-    return std::shared_ptr<const Member>(&(p.*mp), [](...) {});
+    return luaw_detail::mock_shared<const Member>(&(p.*mp));
   });
 
   Registrar::template do_register_one_getter<const std::unique_ptr<Class>*,
                                              const std::shared_ptr<Member>>(
       *this, name, [=](auto& p) {
-        return std::shared_ptr<Member>(&(p.*mp), [](...) {});
+        return luaw_detail::mock_shared<Member>(&(p.*mp));
       });
   Registrar::template do_register_one_getter<
       const std::unique_ptr<const Class>*,
       const std::shared_ptr<const Member>>(*this, name, [=](auto& p) {
-    return std::shared_ptr<const Member>(&(p.*mp), [](...) {});
+    return luaw_detail::mock_shared<const Member>(&(p.*mp));
   });
 
 #if PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT
   Registrar::template do_register_one_getter<
       std::shared_ptr<volatile Class>*,
       const std::shared_ptr<volatile Member>>(*this, name, [=](auto& p) {
-    return std::shared_ptr<volatile Member>(&(p.*mp), [](...) {});
+    return luaw_detail::mock_shared<volatile Member>(&(p.*mp));
   });
   Registrar::template do_register_one_getter<
       std::shared_ptr<const volatile Class>*,
       const std::shared_ptr<const volatile Member>>(*this, name, [=](auto& p) {
-    return std::shared_ptr<const volatile Member>(&(p.*mp), [](...) {});
+    return luaw_detail::mock_shared<const volatile Member>(&(p.*mp));
   });
 
   Registrar::template do_register_one_getter<
       const std::shared_ptr<volatile Class>*,
       const std::shared_ptr<volatile Member>>(*this, name, [=](auto& p) {
-    return std::shared_ptr<volatile Member>(&(p.*mp), [](...) {});
+    return luaw_detail::mock_shared<volatile Member>(&(p.*mp));
   });
   Registrar::template do_register_one_getter<
       const std::shared_ptr<const volatile Class>*,
       const std::shared_ptr<const volatile Member>>(*this, name, [=](auto& p) {
-    return std::shared_ptr<const volatile Member>(&(p.*mp), [](...) {});
+    return luaw_detail::mock_shared<const volatile Member>(&(p.*mp));
   });
 
   Registrar::template do_register_one_getter<
       std::unique_ptr<volatile Class>*,
       const std::shared_ptr<volatile Member>>(*this, name, [=](auto& p) {
-    return std::shared_ptr<volatile Member>(&(p.*mp), [](...) {});
+    return luaw_detail::mock_shared<volatile Member>(&(p.*mp));
   });
   Registrar::template do_register_one_getter<
       std::unique_ptr<const volatile Class>*,
       const std::shared_ptr<const volatile Member>>(*this, name, [=](auto& p) {
-    return std::shared_ptr<const volatile Member>(&(p.*mp), [](...) {});
+    return luaw_detail::mock_shared<const volatile Member>(&(p.*mp));
   });
 
   Registrar::template do_register_one_getter<
       const std::unique_ptr<volatile Class>*,
       const std::shared_ptr<volatile Member>>(*this, name, [=](auto& p) {
-    return std::shared_ptr<volatile Member>(&(p.*mp), [](...) {});
+    return luaw_detail::mock_shared<volatile Member>(&(p.*mp));
   });
   Registrar::template do_register_one_getter<
       const std::unique_ptr<const volatile Class>*,
       const std::shared_ptr<const volatile Member>>(*this, name, [=](auto& p) {
-    return std::shared_ptr<const volatile Member>(&(p.*mp), [](...) {});
+    return luaw_detail::mock_shared<const volatile Member>(&(p.*mp));
   });
 #endif
 }
