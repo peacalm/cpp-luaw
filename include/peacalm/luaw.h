@@ -65,6 +65,14 @@ static_assert(
     std::is_integral<decltype(PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT)>::value,
     "PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT should be bool or int");
 
+#define PEACALM_LUAW_SUPPORT_CPP17 (__cplusplus >= 201703)
+
+#if PEACALM_LUAW_SUPPORT_CPP17
+#define PEACAML_LUAW_IF_CONSTEXPR constexpr
+#else
+#define PEACAML_LUAW_IF_CONSTEXPR
+#endif
+
 namespace peacalm {
 
 namespace luaexf {  // Useful extended functions for Lua
@@ -4211,7 +4219,8 @@ struct luaw::metatable_factory<T*>
     }
 
     // whether calling nonconst member function by a const object
-    if ((luaw_detail::is_std_shared_ptr<std::decay_t<T>>::value ||
+    if PEACAML_LUAW_IF_CONSTEXPR (
+        (luaw_detail::is_std_shared_ptr<std::decay_t<T>>::value ||
          luaw_detail::is_std_unique_ptr<std::decay_t<T>>::value)
             ? std::is_const<
                   typename luaw_detail::get_element_type<T>::type>::value
@@ -4232,7 +4241,8 @@ struct luaw::metatable_factory<T*>
     }
 
     // whether calling nonvolatile member function by a volatile object
-    if ((luaw_detail::is_std_shared_ptr<std::decay_t<T>>::value ||
+    if PEACAML_LUAW_IF_CONSTEXPR (
+        (luaw_detail::is_std_shared_ptr<std::decay_t<T>>::value ||
          luaw_detail::is_std_unique_ptr<std::decay_t<T>>::value)
             ? std::is_volatile<
                   typename luaw_detail::get_element_type<T>::type>::value
@@ -4564,7 +4574,7 @@ struct luaw::registrar<Member (*)(Class*, Key)> {
 
 #if PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT
 
-    if (std::is_volatile<Class>::value) {
+    if PEACAML_LUAW_IF_CONSTEXPR (std::is_volatile<Class>::value) {
       REGISTER_GETTER(volatile DecayClass*);
       REGISTER_GETTER(const volatile DecayClass*);
     }
@@ -4573,8 +4583,10 @@ struct luaw::registrar<Member (*)(Class*, Key)> {
 
     // Do not support nested smart pointers, which is meaningless!
     // DO NOT support top-level volatile for smart pointers!
-    if (!luaw_detail::is_std_shared_ptr<DecayClass>::value &&
-        !luaw_detail::is_std_unique_ptr<DecayClass>::value) {
+    if PEACAML_LUAW_IF_CONSTEXPR (!luaw_detail::is_std_shared_ptr<
+                                      DecayClass>::value &&
+                                  !luaw_detail::is_std_unique_ptr<
+                                      DecayClass>::value) {
       REGISTER_SMART_GETTER(std::shared_ptr<DecayClass>*);
       REGISTER_SMART_GETTER(const std::shared_ptr<DecayClass>*);
       REGISTER_SMART_GETTER(std::shared_ptr<const DecayClass>*);
@@ -4667,7 +4679,7 @@ struct luaw::registrar<void (*)(Class*, Key, Member)> {
 
 #if PEACALM_LUAW_SUPPORT_VOLATILE_OBJECT
 
-    if (std::is_volatile<Class>::value) {
+    if PEACAML_LUAW_IF_CONSTEXPR (std::is_volatile<Class>::value) {
       REGISTER_SETTER(volatile DecayClass*);
       REGISTER_SETTER_OF_CONST(const volatile DecayClass*);
     }
@@ -4676,8 +4688,10 @@ struct luaw::registrar<void (*)(Class*, Key, Member)> {
 
     // Do not support nested smart pointers, which is meaningless!
     // DO NOT support top-level volatile for smart pointers!
-    if (!luaw_detail::is_std_shared_ptr<Class>::value &&
-        !luaw_detail::is_std_unique_ptr<Class>::value) {
+    if PEACAML_LUAW_IF_CONSTEXPR (!luaw_detail::is_std_shared_ptr<
+                                      Class>::value &&
+                                  !luaw_detail::is_std_unique_ptr<
+                                      Class>::value) {
       REGISTER_SMART_SETTER(std::shared_ptr<DecayClass>*);
       REGISTER_SMART_SETTER(const std::shared_ptr<DecayClass>*);
 
@@ -5011,8 +5025,10 @@ struct luaw::registrar<
 
     // Do not support nested smart pointers, which is meaningless!
     // DO NOT support top-level volatile for smart pointers!
-    if (!luaw_detail::is_std_shared_ptr<Class>::value &&
-        !luaw_detail::is_std_unique_ptr<Class>::value) {
+    if PEACAML_LUAW_IF_CONSTEXPR (!luaw_detail::is_std_shared_ptr<
+                                      Class>::value &&
+                                  !luaw_detail::is_std_unique_ptr<
+                                      Class>::value) {
       register_one_getter<std::shared_ptr<Class>*>(
           l, mname, std::forward<F>(f));
       register_one_getter<std::shared_ptr<const Class>*>(
@@ -5141,8 +5157,10 @@ private:
 
     // Do not support nested smart pointers, which is meaningless!
     // DO NOT support top-level volatile for smart pointers!
-    if (!luaw_detail::is_std_shared_ptr<Class>::value &&
-        !luaw_detail::is_std_unique_ptr<Class>::value) {
+    if PEACAML_LUAW_IF_CONSTEXPR (!luaw_detail::is_std_shared_ptr<
+                                      Class>::value &&
+                                  !luaw_detail::is_std_unique_ptr<
+                                      Class>::value) {
       __register_const_member<std::shared_ptr<Class>*>(l, mname);
       __register_const_member<std::shared_ptr<const Class>*>(l, mname);
       __register_const_member<const std::shared_ptr<Class>*>(l, mname);
@@ -5210,8 +5228,10 @@ private:
 
     // Do not support nested smart pointers, which is meaningless!
     // DO NOT support top-level volatile for smart pointers!
-    if (!luaw_detail::is_std_shared_ptr<Class>::value &&
-        !luaw_detail::is_std_unique_ptr<Class>::value) {
+    if PEACAML_LUAW_IF_CONSTEXPR (!luaw_detail::is_std_shared_ptr<
+                                      Class>::value &&
+                                  !luaw_detail::is_std_unique_ptr<
+                                      Class>::value) {
       DEFINE_SETTER(std::shared_ptr<Class>*);
       DEFINE_SETTER(const std::shared_ptr<Class>*);
       __register_const_member<std::shared_ptr<const Class>*>(l, mname);
@@ -5311,8 +5331,10 @@ struct luaw::registrar<Return (Class::*)(Args...)> {
 
     // Do not support nested smart pointers, which is meaningless!
     // DO NOT support top-level volatile for smart pointers!
-    if (!luaw_detail::is_std_shared_ptr<Class>::value &&
-        !luaw_detail::is_std_unique_ptr<Class>::value) {
+    if PEACAML_LUAW_IF_CONSTEXPR (!luaw_detail::is_std_shared_ptr<
+                                      Class>::value &&
+                                  !luaw_detail::is_std_unique_ptr<
+                                      Class>::value) {
       register_member_function<std::shared_ptr<Class>*>(l, fname, mf);
       register_member_function<const std::shared_ptr<Class>*>(l, fname, mf);
 
@@ -5387,8 +5409,10 @@ struct luaw::registrar<Return (Class::*)(Args...) const> {
 
     // Do not support nested smart pointers, which is meaningless!
     // DO NOT support top-level volatile for smart pointers!
-    if (!luaw_detail::is_std_shared_ptr<Class>::value &&
-        !luaw_detail::is_std_unique_ptr<Class>::value) {
+    if PEACAML_LUAW_IF_CONSTEXPR (!luaw_detail::is_std_shared_ptr<
+                                      Class>::value &&
+                                  !luaw_detail::is_std_unique_ptr<
+                                      Class>::value) {
       Basic::template register_member_function<std::shared_ptr<Class>*>(
           l, fname, mf);
       Basic::template register_member_function<const std::shared_ptr<Class>*>(
@@ -5452,8 +5476,10 @@ struct luaw::registrar<Return (Class::*)(Args...) volatile> {
 
     // Do not support nested smart pointers, which is meaningless!
     // DO NOT support top-level volatile for smart pointers!
-    if (!luaw_detail::is_std_shared_ptr<Class>::value &&
-        !luaw_detail::is_std_unique_ptr<Class>::value) {
+    if PEACAML_LUAW_IF_CONSTEXPR (!luaw_detail::is_std_shared_ptr<
+                                      Class>::value &&
+                                  !luaw_detail::is_std_unique_ptr<
+                                      Class>::value) {
       Basic::template register_member_function<std::shared_ptr<Class>*>(
           l, fname, mf);
       Basic::template register_member_function<const std::shared_ptr<Class>*>(
@@ -5521,8 +5547,10 @@ struct luaw::registrar<Return (Class::*)(Args...) const volatile> {
 
     // Do not support nested smart pointers, which is meaningless!
     // DO NOT support top-level volatile for smart pointers!
-    if (!luaw_detail::is_std_shared_ptr<Class>::value &&
-        !luaw_detail::is_std_unique_ptr<Class>::value) {
+    if PEACAML_LUAW_IF_CONSTEXPR (!luaw_detail::is_std_shared_ptr<
+                                      Class>::value &&
+                                  !luaw_detail::is_std_unique_ptr<
+                                      Class>::value) {
       Basic::template register_member_function<std::shared_ptr<Class>*>(
           l, fname, mf);
       Basic::template register_member_function<const std::shared_ptr<Class>*>(
