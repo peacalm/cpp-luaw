@@ -895,6 +895,45 @@ l.register_member<void (Obj ::*)(int)>(
   </td>
 </tr>
 
+
+<tr>
+  <td> <ul><ul><li> Register a member as another convertible type in Lua </li></ul></ul> </td>
+  <td> ✅  </td>
+  <td>
+
+```C++
+peacalm::luaw l;
+// register int member Obj::i as const integer member
+l.register_member<const int Obj::*>("i", &Obj::i);
+// register int member Obj::i as boolean member
+l.register_member<bool Obj::*>("b", &Obj::i); 
+
+auto o = std::make_shared<Obj>();
+l.set("o", o);
+
+// o.i is const integer
+assert(l.dostring("o.i = 2") != LUA_OK);
+l.log_error_out(); // Const member cannot be modified: i
+
+// o.b is a boolean converted by o.i
+assert(l.dostring("assert(o.b == true and o.b ~= 1)") == LUA_OK);
+o->i = 2;
+assert(l.dostring("assert(o.b == true and o.b ~= 2)") == LUA_OK);
+
+// set boolean value to Obj::i, convert boolean to int by C++ way
+assert(l.dostring("o.b = true") == LUA_OK);
+assert(o->i == 1);
+assert(l.dostring("o.b = false") == LUA_OK);
+assert(o->i == 0);
+
+// Convert 2 to true then set to o.b
+assert(l.dostring("o.b = 2") == LUA_OK);
+assert(l.dostring("assert(o.b == true and o.b ~= 2)") == LUA_OK);
+assert(o->i == 1);
+```
+  </td>
+</tr>
+
 <tr>
   <td> <ul><ul><li> Set class instance directly to Lua </li></ul></ul> </td>
   <td> ✅  </td>
@@ -1066,6 +1105,113 @@ l.dostring("a = NewObj(); a.i = 3;"); // creat a instance of Obj
 Obj a = l.get<Obj>("a");
 assert(a.i == 3);
 assert(a.ci == 1);
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Register nested class members (Register member of member) </li></ul></ul> </td>
+  <td> ✅  </td>
+  <td>
+
+```C++
+struct A { int i = 1; };
+struct B { A a; };
+int main() {
+  peacalm::luaw l;
+  l.register_member("i", &A::i);
+  l.register_member("a", &B::a);
+
+  auto b = std::make_shared<B>();
+  l.set("b", b);
+
+  assert(l.dostring(R"(
+    assert(b.a.i == 1)
+
+    -- Wrong way of modifying member of member
+    b.a.i = 2
+    assert(b.a.i == 1)
+
+    -- Correct way of modifying member of member
+    t = b.a  -- Get a copy of b.a
+    t.i = 2  -- Modify the copy
+    b.a = t  -- Modify the whole member b.a by the copy
+    assert(b.a.i == 2)
+  )") == LUA_OK);
+}
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Register pointer of member variables (Raw pointer, which is a light userdata) </li></ul></ul> </td>
+  <td> ✅  </td>
+  <td>
+
+```C++
+struct A { int i = 1; };
+struct B { A a; };
+int main() {
+  peacalm::luaw l;
+  l.register_member("i", &A::i);
+  // register pointer of B::a, can access and modify member
+  l.register_member_ptr("aptr", &B::a);
+  // register (low-level) const pointer of B::a, can only access member
+  l.register_member_cptr("acptr", &B::a);
+
+  auto b = std::make_shared<B>();
+  l.set("b", b);
+
+  assert(l.dostring(R"(
+    assert(b.aptr.i == 1)
+    assert(b.acptr.i == 1)
+
+    b.aptr.i = 2  -- Can modify member of a by aptr
+    assert(b.aptr.i == 2)
+    assert(b.acptr.i == 2)
+  )") == LUA_OK);
+
+  // Can't modify member of a by acptr
+  assert(l.dostring("b.acptr.i = 3") != LUA_OK);
+  l.log_error_out(); // Const member cannot be modified: i
+}
+```
+  </td>
+</tr>
+
+
+<tr>
+  <td> <ul><ul><li> Register reference of member variables (which is a full userdata) </li></ul></ul> </td>
+  <td> ✅  </td>
+  <td>
+
+```C++
+struct A { int i = 1; };
+struct B { A a; };
+int main() {
+  peacalm::luaw l;
+  l.register_member("i", &A::i);
+  // register reference of B::a, can access and modify member
+  l.register_member_ref("aref", &B::a);
+  // register (low-level) const reference of B::a, can only access member
+  l.register_member_cref("acref", &B::a);
+
+  auto b = std::make_shared<B>();
+  l.set("b", b);
+
+  assert(l.dostring(R"(
+    assert(b.aref.i == 1)
+    assert(b.acref.i == 1)
+
+    b.aref.i = 2  -- Can modify member of a by aref
+    assert(b.aref.i == 2)
+    assert(b.acref.i == 2)
+  )") == LUA_OK);
+
+  // Can't modify member of a by acref
+  assert(l.dostring("b.acref.i = 3") != LUA_OK);
+  l.log_error_out(); // Const member cannot be modified: i
+}
 ```
   </td>
 </tr>
@@ -2919,6 +3065,237 @@ auto cs = std::make_shared<const Obj>(); // low level const
 l.set("o3", cs);
 l.dostring("o3.i = 2"); // error
 ```
+
+
+#### 5.12 Register nested class members (Register member of member)
+
+Class members can be registered in same way as simple type of members.
+
+So we can access member of member in Lua, 
+but each time when we access a class member, we'll get a copy of the member.
+This is not efficient.
+
+Also we can modify a class member, but we can only modify the whole class member,
+can't simply modify the member's member.
+This is not converient.
+
+
+Example:
+
+```C++
+struct A { int i = 1; };
+struct B { A a; };
+int main() {
+  peacalm::luaw l;
+  l.register_member("i", &A::i);
+  l.register_member("a", &B::a);
+
+  auto b = std::make_shared<B>();
+  l.set("b", b);
+
+  assert(l.dostring(R"(
+    assert(b.a.i == 1)
+
+    -- Wrong way of modifying member of member
+    b.a.i = 2
+    assert(b.a.i == 1)
+
+    -- Correct way of modifying member of member
+    t = b.a  -- Get a copy of b.a
+    t.i = 2  -- Modify the copy
+    b.a = t  -- Modify the whole member b.a by the copy
+    assert(b.a.i == 2)
+  )") == LUA_OK);
+}
+```
+
+
+#### 5.13 Register pointer of member variables (Raw pointer, which is a light userdata)
+
+To access and modify member of member efficiently, we can register a member's
+pointer as a fake member in Lua. And if we only want to access member of member,
+not modify, we also can register the member's (low-level) const pointer.
+
+But the pointer is a raw pointer, which is a light userdata in Lua, 
+it doesn't have per-value metatable. 
+So the pointer should be used very carefully.
+
+API:
+``` C++
+/**
+ * @brief Register a member's pointer into Lua.
+ *
+ * Register a fake member into Lua, the fake member is a pointer of a class's
+ * real member.
+ *
+ * Since when getting a member, it will return a copy of the member. So we
+ * can't modify or access efficiently members of the member.
+ *
+ * This feature is used to modify or access efficiently members'
+ * members by getting a member's pointer first then modify or access members
+ * of the member by the pointer.
+ *
+ * The fake member, namely the member's pointer, is always top-level const.
+ *
+ * When using a member's pointer, it is the user's responsibility to make
+ * sure the member is alive, which means the object which holds the member is
+ * alive. Using a pointer to an already recycled member is dangerous, the
+ * behavior is undefined.
+ *
+ *
+ * @tparam Class Should be decayed class type.
+ * @tparam Member Can't be raw pointer or smart pointer type.
+ * @param name The member's pointer name used in Lua.
+ * @param mp Member pointer value.
+ */
+template <typename Class, typename Member>
+void register_member_ptr(const char* name, Member Class::*mp);
+template <typename Class, typename Member>
+void register_member_ptr(const std::string& name, Member Class::*mp);
+
+/**
+ * @brief Register a member's low-level const pointer into Lua.
+ *
+ * No matter whether the member is already const, this can always register a
+ * low-level const pointer of the member into Lua. (Of course the pointer is
+ * top-level const too.)
+ *
+ * This feature is used to access member of member, can't modify.
+ * Others are similar to "register_member_ptr"
+ *
+ * @sa "register_member_ptr"
+ */
+template <typename Class, typename Member>
+void register_member_cptr(const char* name, Member Class::*mp);
+template <typename Class, typename Member>
+void register_member_cptr(const std::string& name, Member Class::*mp);
+```
+
+Example:
+
+```C++
+struct A { int i = 1; };
+struct B { A a; };
+int main() {
+  peacalm::luaw l;
+  l.register_member("i", &A::i);
+  // register pointer of B::a, can access and modify member
+  l.register_member_ptr("aptr", &B::a);
+  // register (low-level) const pointer of B::a, can only access member
+  l.register_member_cptr("acptr", &B::a);
+
+  auto b = std::make_shared<B>();
+  l.set("b", b);
+
+  assert(l.dostring(R"(
+    assert(b.aptr.i == 1)
+    assert(b.acptr.i == 1)
+
+    b.aptr.i = 2  -- Can modify member of a by aptr
+    assert(b.aptr.i == 2)
+    assert(b.acptr.i == 2)
+  )") == LUA_OK);
+
+  // Can't modify member of a by acptr
+  assert(l.dostring("b.acptr.i = 3") != LUA_OK);
+  l.log_error_out(); // Const member cannot be modified: i
+}
+```
+
+
+#### 5.13 Register reference of member variables (which is a full userdata)
+
+Like registering pointer of member variables, we can also register reference of 
+member variables. The only difference is that this reference is a full userdata,
+and it has an exclusive metatable, it won't be disturbed by other references.
+
+Use the reference to access or modify member of member in same way as using 
+pointer of member.
+
+
+API:
+```C++
+/**
+ * @brief Register a member's reference into Lua.
+ *
+ * When registering a member's pointer into Lua using "register_member_ptr",
+ * it registers a member's raw pointer, which is a light userdata, so it does
+ * not have an exclusive metatable, and it is very dangerous to use a light
+ * userdata with a wrong metatable.
+ *
+ * So this feature is to register a member's reference which can access and
+ * modify efficiently the member, just like "register_member_ptr", and have
+ * an exclusive metatable.
+ *
+ * Currently the reference is implimented by a std::shared_ptr holding a raw
+ * member's pointer and without deleter. So it is a full userdata and has
+ * per-value metatables.
+ *
+ * The member's reference is also a fake member, and is also always top-level
+ * const like member's pointer.
+ *
+ * When using a member's reference, it is the user's responsibility to make
+ * sure the member is alive, which means the object which holds the member is
+ * alive. Using a reference to an already recycled member is dangerous, the
+ * behavior is undefined.
+ *
+ * @tparam Class Should be decayed class type.
+ * @tparam Member Can't be raw pointer or smart pointer type.
+ * @param name The member's reference name used in Lua.
+ * @param mp Member pointer value.
+ * @sa "register_member_ptr"
+ */
+template <typename Class, typename Member>
+void register_member_ref(const char* name, Member Class::*mp);
+template <typename Class, typename Member>
+void register_member_ref(const std::string& name, Member Class::*mp);
+
+/**
+ * @brief Register a member's low-level const reference into Lua.
+ *
+ * Like "register_member_ref", but this will register a low-level const
+ * reference (Of course it is also top-level const). The const reference can
+ * only be used to access members, can not modify.
+ *
+ * @sa "register_member_ref"
+ */
+template <typename Class, typename Member>
+void register_member_cref(const char* name, Member Class::*mp);
+template <typename Class, typename Member>
+void register_member_cref(const std::string& name, Member Class::*mp);
+```
+
+Example:
+
+```C++
+struct A { int i = 1; };
+struct B { A a; };
+int main() {
+  peacalm::luaw l;
+  l.register_member("i", &A::i);
+  // register reference of B::a, can access and modify member
+  l.register_member_ref("aref", &B::a);
+  // register (low-level) const reference of B::a, can only access member
+  l.register_member_cref("acref", &B::a);
+
+  auto b = std::make_shared<B>();
+  l.set("b", b);
+
+  assert(l.dostring(R"(
+    assert(b.aref.i == 1)
+    assert(b.acref.i == 1)
+
+    b.aref.i = 2  -- Can modify member of a by aref
+    assert(b.aref.i == 2)
+    assert(b.acref.i == 2)
+  )") == LUA_OK);
+
+  // Can't modify member of a by acref
+  assert(l.dostring("b.acref.i = 3") != LUA_OK);
+  l.log_error_out(); // Const member cannot be modified: i
+}
+```
+
 
 ### 6. Evaluate a Lua expression and get the results
 

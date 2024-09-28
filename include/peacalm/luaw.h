@@ -2106,7 +2106,6 @@ public:
    */
   template <typename Class, typename Member>
   void register_member_ref(const char* name, Member Class::*mp);
-
   template <typename Class, typename Member>
   void register_member_ref(const std::string& name, Member Class::*mp) {
     register_member_ref<Class, Member>(name.c_str(), mp);
