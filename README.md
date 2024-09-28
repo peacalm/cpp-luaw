@@ -2645,10 +2645,9 @@ Sometimes we want to fake a mutable member variable by real member variable of
 the class, but if we declare the first formal parameter as cv-qualified,
 it will make a compilation error when binding reference of non-const variable 
 to const object's member.
-In this case we have three ways to do:
-* use a `const_cast` in function body to remove the pointer's underlying cv- property.
-* declare the first argument as `auto*`, and declare the return as `auto&`, when faking by lambda.
-* mix the two usage above together when faking by lambda.
+In this case we have two choices:
+* Use a `const_cast` in function body to remove the pointer's underlying cv- property.
+* Declare the first argument as `auto*`, and declare the return as `auto&`, when faking by lambda.
 
 Example:
 
@@ -2670,7 +2669,7 @@ int main() {
     return o->a[1];
   });
   // 3. mix the two usage together
-  l.register_member<int Foo::*>("a2", [](auto* o) -> auto& {
+  l.register_member<int Foo::*>("a2", [](auto* o) -> int& {
     // use const_cast to ensure it is not cv-qualifed
     return const_cast<Foo*>(o)->a[2];
   });
