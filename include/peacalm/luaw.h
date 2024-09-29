@@ -2369,7 +2369,7 @@ public:
     return to_string(-1, def, disable_log, failed, exists);
   }
 
-  /// Get metatable name for value at given index.
+  /// Get metatable name for value at given index. (not only for light userdata)
   std::string get_metatable_name(int                idx           = -1,
                                  const std::string& def           = "",
                                  bool*              has_metatable = nullptr,

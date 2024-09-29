@@ -1012,7 +1012,7 @@ l.set("o", &o); // set a lightuserdata with metatable of class Obj
 
 <tr>
   <td> <ul><ul><li> Set raw pointer by wrapper
-  (The wrapped pointer will be a full userdata, it has an exclusive metatable, and can access member like raw pointer.) </li></ul></ul> </td>
+  (The wrapped pointer will be a full userdata, it has an exclusive metatable, and can access members like raw pointer too.) </li></ul></ul> </td>
   <td> ✅  </td>
   <td>
 
@@ -2746,7 +2746,7 @@ The raw pointer should not be pointer to smart pointers.
 In this case, It's user's responsibility to make sure the raw pointer is valid while using it in Lua. Otherwize the behavior is undefined.
 
 
-API for set_ptr_by_wrapper:
+API for "set_ptr_by_wrapper":
 
 ```C++
 /**
@@ -2906,6 +2906,13 @@ std::string get_lightuserdata_metatable_name(const std::string& def = "",
                                              bool* failed           = nullptr,
                                              bool* exists = nullptr);
 
+```
+
+##### get metatable name (not only for light userdata, but for all variables)
+
+API:
+
+```C++
 /// Get metatable name for value at given index. (not only for light userdata)
 std::string get_metatable_name(int                idx           = -1,
                                const std::string& def           = "",
@@ -2913,6 +2920,14 @@ std::string get_metatable_name(int                idx           = -1,
                                bool               disable_log   = false,
                                bool*              failed        = nullptr,
                                bool*              exists        = nullptr);
+
+/// Get a global variable's metatable name.
+std::string g_get_metatable_name(const char*        name,
+                                  const std::string& def           = "",
+                                  bool*              has_metatable = nullptr,
+                                  bool               disable_log   = false,
+                                  bool*              failed        = nullptr,
+                                  bool*              exists        = nullptr);
 ```
 
 
@@ -2945,11 +2960,9 @@ int main() {
 
   // Another way to get metatable of "p", 
   // this way could be used for full userdata too!
-  l.gseek("p");
-  std::string metaname0 = l.get_metatable_name();
+  std::string metaname0 = l.g_get_metatable_name("p");
   // "p" doesn't have metatable
   assert(metaname0.empty());
-  l.pop();
 
   /* Set light userdata with metatable! Raw pointer to class type. */
 
@@ -2976,11 +2989,9 @@ int main() {
   assert(l.dostring("assert(b.v == nil)") == LUA_OK);
 
   // Get metatable of "p"
-  l.gseek("p");
-  std::string metaname3 = l.get_metatable_name();
+  std::string metaname3 = l.g_get_metatable_name("p");
   // Now "p" has metatable too!
   assert(metaname3 == metaname2);
-  l.pop();
 
   /* How to clear light userdata's metatable */
 
