@@ -2938,7 +2938,7 @@ Then the formal parameter `path` is a global variable's name in Lua.
 
 2. `const std::initializer_list<const char*>&`, `const std::initializer_list<std::string>&`, `const std::vector<const char*>&` or`const std::vector<std::string>&`.
 
-Then the formal parameter `path` is a path to subfield of a table.
+Then the formal parameter `path` is a path to a subfield/member of a variable.
 
 
 Example:

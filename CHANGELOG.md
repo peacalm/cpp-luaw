@@ -14,7 +14,7 @@
 * New feature: register member's reference and (low-level) const reference. (`register_member_ref`, `register_member_cref`)
 * Use constexpr if statement if supports C++17.
 * New feature: set raw pointer by wrapper. The wrapped pointer will be a full userdata, and can access member like raw pointer. (`set_ptr_by_wrapper`)
-* Add method for getting a global variable's metatable name. (`get_metatable_name`)
+* Add method: get metatable name of a global variable or a subfild/member. (`get_metatable_name`)
 
 
 ## v1.1.2 - 2024.9.22
