@@ -2913,7 +2913,7 @@ std::string get_lightuserdata_metatable_name(const std::string& def = "",
 API:
 
 ```C++
-/// Get metatable name for value at given index. (not only for light userdata)
+/// Get metatable name for value at given index.
 std::string get_metatable_name(int                idx           = -1,
                                const std::string& def           = "",
                                bool*              has_metatable = nullptr,
@@ -2921,14 +2921,24 @@ std::string get_metatable_name(int                idx           = -1,
                                bool*              failed        = nullptr,
                                bool*              exists        = nullptr);
 
-/// Get a global variable's metatable name.
-std::string g_get_metatable_name(const char*        name,
-                                  const std::string& def           = "",
-                                  bool*              has_metatable = nullptr,
-                                  bool               disable_log   = false,
-                                  bool*              failed        = nullptr,
-                                  bool*              exists        = nullptr);
+/// Get a variable's metatable name by a given path.
+std::string get_metatable_name(@PATH_TYPE@ path,
+                               const std::string& def           = "",
+                               bool*              has_metatable = nullptr,
+                               bool               disable_log   = false,
+                               bool*              failed        = nullptr,
+                               bool*              exists        = nullptr);
 ```
+
+where `@PATH_TYPE@` could be:
+
+1. `const char*` or `const std::string&`.
+
+Then the formal parameter `path` is a global variable's name in Lua.
+
+2. `const std::initializer_list<const char*>&`, `const std::initializer_list<std::string>&`, `const std::vector<const char*>&` or`const std::vector<std::string>&`.
+
+Then the formal parameter `path` is a path to subfield of a table.
 
 
 Example:
@@ -2960,7 +2970,7 @@ int main() {
 
   // Another way to get metatable of "p", 
   // this way could be used for full userdata too!
-  std::string metaname0 = l.g_get_metatable_name("p");
+  std::string metaname0 = l.get_metatable_name("p");
   // "p" doesn't have metatable
   assert(metaname0.empty());
 
@@ -2989,7 +2999,7 @@ int main() {
   assert(l.dostring("assert(b.v == nil)") == LUA_OK);
 
   // Get metatable of "p"
-  std::string metaname3 = l.g_get_metatable_name("p");
+  std::string metaname3 = l.get_metatable_name("p");
   // Now "p" has metatable too!
   assert(metaname3 == metaname2);
 
