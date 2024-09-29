@@ -1440,7 +1440,7 @@ public:
 
   /// Pointer wrapper type
   template <typename T>
-  using ptrw = std::shared_ptr<T>;
+  using ptrw = const std::shared_ptr<T>;
 
   /// Make a wrapper for a raw pointer.
   /// (The raw pointer can't be pointer of smart ptr)
