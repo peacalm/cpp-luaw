@@ -3,6 +3,11 @@
 
 ## Currently Unreleased - TBD
 
+(nothing)
+
+
+## v1.2.0 - 2024.9.29
+
 * Check accessing member or dynamic member by empty smart pointer. Raise error, do not abort.
 * When getting a registered member by an object, add same cv- property on the member as the object.
 * New feature: register member's pointer and (low-level) const pointer. ("register_member_ptr", "register_member_cptr")
@@ -10,6 +15,7 @@
 * Use constexpr if statement if supports C++17.
 * New feature: set raw pointer by wrapper. The wrapped pointer will be a full userdata, and can access member like raw pointer.
 * Add method for getting a global variable's metatable name.
+
 
 ## v1.1.2 - 2024.9.22
 
