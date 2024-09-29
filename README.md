@@ -1011,6 +1011,24 @@ l.set("o", &o); // set a lightuserdata with metatable of class Obj
 </tr>
 
 <tr>
+  <td> <ul><ul><li> Set raw pointer by wrapper
+  (The wrapped pointer will be a full userdata, it has an exclusive metatable, and can access members like raw pointer too.) </li></ul></ul> </td>
+  <td> ✅  </td>
+  <td>
+
+```C++
+Obj o;
+l.set_ptr_by_wrapper("o", &o); // set a full userdata which has metatable of class Obj
+// The variable "o" can access all registered members of Obj
+
+// set a (low-level) const pointer to "o" into Lua
+l.set_ptr_by_wrapper("co", (const Obj*)(&o));
+// "co" can only read members of "o", can't modify
+```
+  </td>
+</tr>
+
+<tr>
   <td> <ul><ul><li> Set address of class instance (no setting metatable) </li></ul></ul> </td>
   <td> ✅ </td>
   <td>
@@ -2723,17 +2741,51 @@ int main() {
 Use "set" method, we can set a class's instance which is defined in C++ to Lua,
 just like set other type values.
 
+Use "set_ptr_by_wrapper", we can a raw pointer as a full userdata into Lua.
+The raw pointer should not be pointer to smart pointers. 
+In this case, It's user's responsibility to make sure the raw pointer is valid while using it in Lua. Otherwize the behavior is undefined.
+
+
+API for "set_ptr_by_wrapper":
+
+```C++
+/**
+ * @brief Set a raw pointer by a wrapper (full userdata)
+ *
+ * A raw pointer in Lua is a light userdata, and it doesn't have per-value
+ * metatable. But a pointer wrapper is a full userdata, and it has per-value
+ * metatable.
+ *
+ * This method makes a wrapper for a raw pointer first, then set the wrapper
+ * into Lua. The pointer wrapper can access all members registered just like
+ * the raw pointer.
+ *
+ * It's user's responsibility to make sure the raw pointer is valid while
+ * using it in Lua. Otherwize the behavior is undefined.
+ *
+ * @tparam T The type that the raw pointer points to. Can't be smart pointers.
+ * @param name The pointer wrapper's name used in Lua.
+ * @param p The raw pointer.
+ */
+template <typename T>
+void set_ptr_by_wrapper(const char* name, T* p);
+template <typename T>
+void set_ptr_by_wrapper(const std::string& name, T* p);
+```
+
+
 Here are multiple ways to set a class's instance to Lua, 
 all the object setted to Lua by these ways can access members that have been registered.
 
-These 4 ways make a full userdata to Lua:
+These 5 ways make a full userdata to Lua:
 
 * Set instance by copy
 * Set instance by move
 * Set smart pointer to instance by copy
 * Set smart pointer to instance by move
+* Set raw pointer by wrapper
 
-These 2 ways make a lightuserdata to Lua:
+These 2 ways make a light userdata to Lua:
 
 * Set raw pointer to instance
 * Set raw pointer to smart pointer to instance
@@ -2769,29 +2821,32 @@ l.set("o9", std::move(ud));
 // by move of unique_ptr with user defined deleter
 l.set("o10", std::unique_ptr<Obj, ObjDeleter>(new Obj, ObjDeleter{}));
 
+// set raw pointer by wrapper
+l.set_ptr_by_wrapper("o11", &a);
+
 // ----- set light userdata
 
 Obj a2;
-l.set("o11", &a2);           // by pointer
+l.set("o12", &a2);           // by pointer
 
 auto s2 = std::make_shared<Obj>();
 auto u2 = std::make_unique<Obj>();
 auto ud2 = std::unique_ptr<Obj, ObjDeleter>(new Obj, ObjDeleter{});
-l.set("o12", &s2);   // by raw pointer to shared_ptr
-l.set("o13", &u2);   // by raw pointer to unique_ptr
-l.set("o14", &ud2);  // by raw pointer to unique_ptr with user defined deleter
+l.set("o13", &s2);   // by raw pointer to shared_ptr
+l.set("o14", &u2);   // by raw pointer to unique_ptr
+l.set("o15", &ud2);  // by raw pointer to unique_ptr with user defined deleter
 
 ```
 
-Then all variables "o1" ~ "o14" setted to Lua can access members of Obj that have been registered.
+Then all variables "o1" ~ "o15" setted to Lua can access members of Obj that have been registered.
 
-But "o1" ~ "o10" are full userdata, "o11" ~ "o14" are light userdata, 
+But "o1" ~ "o11" are full userdata, "o12" ~ "o15" are light userdata, 
 their metatables are different, although they have some same meta methods.
 And the biggest difference is that full userdata have per-value metatables,
 but light userdata don't. **All light userdata share the same metatable**, 
 which by default is not set (nil).
 
-So once you set a raw pointer of a class object to Lua, like "o11" ~ "o14", 
+So once you set a raw pointer of a class object to Lua, like "o12" ~ "o15", 
 it will generate a metatable which will take effect on all light userdata!
 
 This feature of Lua makes you can call a light userdata's meta methods with wrong metatable, whose behavior is undefined! 
@@ -2799,6 +2854,9 @@ This might make people very confused! And that's dangerous!
 
 So, be careful if you want to set an object to Lua by light userdata!
 Make sure you won't set objects with different types by light userdata at same time!
+
+We recommend you to use "set_ptr_by_wrapper" if you really have to set an 
+object's raw pointer into Lua.
 
 ##### Light userdata's metatable operations
 
@@ -2848,6 +2906,13 @@ std::string get_lightuserdata_metatable_name(const std::string& def = "",
                                              bool* failed           = nullptr,
                                              bool* exists = nullptr);
 
+```
+
+##### get metatable name (not only for light userdata, but for all variables)
+
+API:
+
+```C++
 /// Get metatable name for value at given index. (not only for light userdata)
 std::string get_metatable_name(int                idx           = -1,
                                const std::string& def           = "",
@@ -2855,6 +2920,14 @@ std::string get_metatable_name(int                idx           = -1,
                                bool               disable_log   = false,
                                bool*              failed        = nullptr,
                                bool*              exists        = nullptr);
+
+/// Get a global variable's metatable name.
+std::string g_get_metatable_name(const char*        name,
+                                  const std::string& def           = "",
+                                  bool*              has_metatable = nullptr,
+                                  bool               disable_log   = false,
+                                  bool*              failed        = nullptr,
+                                  bool*              exists        = nullptr);
 ```
 
 
@@ -2887,11 +2960,9 @@ int main() {
 
   // Another way to get metatable of "p", 
   // this way could be used for full userdata too!
-  l.gseek("p");
-  std::string metaname0 = l.get_metatable_name();
+  std::string metaname0 = l.g_get_metatable_name("p");
   // "p" doesn't have metatable
   assert(metaname0.empty());
-  l.pop();
 
   /* Set light userdata with metatable! Raw pointer to class type. */
 
@@ -2918,11 +2989,9 @@ int main() {
   assert(l.dostring("assert(b.v == nil)") == LUA_OK);
 
   // Get metatable of "p"
-  l.gseek("p");
-  std::string metaname3 = l.get_metatable_name();
+  std::string metaname3 = l.g_get_metatable_name("p");
   // Now "p" has metatable too!
   assert(metaname3 == metaname2);
-  l.pop();
 
   /* How to clear light userdata's metatable */
 

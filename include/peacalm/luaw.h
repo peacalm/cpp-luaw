@@ -1436,6 +1436,44 @@ public:
     set_string(name.c_str(), value.c_str());
   }
 
+  ///////////////////////// set raw pointer by wrapper /////////////////////////
+
+  /// Pointer wrapper type
+  template <typename T>
+  using ptrw = std::shared_ptr<T>;
+
+  /// Make a wrapper for a raw pointer.
+  /// (The raw pointer can't be pointer of smart ptr)
+  template <typename T>
+  static ptrw<T> make_ptrw(T* p);
+
+  /**
+   * @brief Set a raw pointer by a wrapper (full userdata)
+   *
+   * A raw pointer in Lua is a light userdata, and it doesn't have per-value
+   * metatable. But a pointer wrapper is a full userdata, and it has per-value
+   * metatable.
+   *
+   * This method makes a wrapper for a raw pointer first, then set the wrapper
+   * into Lua. The pointer wrapper can access all members registered just like
+   * the raw pointer.
+   *
+   * It's user's responsibility to make sure the raw pointer is valid while
+   * using it in Lua. Otherwize the behavior is undefined.
+   *
+   * @tparam T The type that the raw pointer points to. Can't be smart pointers.
+   * @param name The pointer wrapper's name used in Lua.
+   * @param p The raw pointer.
+   */
+  template <typename T>
+  void set_ptr_by_wrapper(const char* name, T* p) {
+    set(name, make_ptrw<T>(p));
+  }
+  template <typename T>
+  void set_ptr_by_wrapper(const std::string& name, T* p) {
+    set_ptr_by_wrapper<T>(name.c_str(), p);
+  }
+
   ///////////////////////// get global variables ///////////////////////////////
 
   /**
@@ -2344,6 +2382,28 @@ public:
     if (!has) return def;
     getfield(-1, "__name");
     return to_string(-1, def, disable_log, failed, exists);
+  }
+
+  /// Get a global variable's metatable name.
+  std::string g_get_metatable_name(const char*        name,
+                                   const std::string& def           = "",
+                                   bool*              has_metatable = nullptr,
+                                   bool               disable_log   = false,
+                                   bool*              failed        = nullptr,
+                                   bool*              exists        = nullptr) {
+    auto _g = make_guarder();
+    getglobal(name);
+    return get_metatable_name(
+        -1, def, has_metatable, disable_log, failed, exists);
+  }
+  std::string g_get_metatable_name(const std::string& name,
+                                   const std::string& def           = "",
+                                   bool*              has_metatable = nullptr,
+                                   bool               disable_log   = false,
+                                   bool*              failed        = nullptr,
+                                   bool*              exists        = nullptr) {
+    return g_get_metatable_name(
+        name.c_str(), def, has_metatable, disable_log, failed, exists);
   }
 
   ///////////////////////// error log //////////////////////////////////////////
@@ -4872,6 +4932,15 @@ std::shared_ptr<T> mock_shared(T* p) {
 }
 
 }  // namespace luaw_detail
+
+// make wrapper for a raw pointer
+template <typename T>
+luaw::ptrw<T> luaw::make_ptrw(T* p) {
+  static_assert(!luaw_detail::is_std_shared_ptr<std::decay_t<T>>::value &&
+                    !luaw_detail::is_std_unique_ptr<std::decay_t<T>>::value,
+                "No need to make wrapper for smart pointers");
+  return luaw_detail::mock_shared<T>(p);
+}
 
 // register_member_ref
 template <typename Class, typename Member>
