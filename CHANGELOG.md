@@ -10,11 +10,11 @@
 
 * Check accessing member or dynamic member by empty smart pointer. Raise error, do not abort.
 * When getting a registered member by an object, add same cv- property on the member as the object.
-* New feature: register member's pointer and (low-level) const pointer. ("register_member_ptr", "register_member_cptr")
-* New feature: register member's reference and (low-level) const reference. ("register_member_ref", "register_member_cref")
+* New feature: register member's pointer and (low-level) const pointer. (`register_member_ptr`, `register_member_cptr`)
+* New feature: register member's reference and (low-level) const reference. (`register_member_ref`, `register_member_cref`)
 * Use constexpr if statement if supports C++17.
-* New feature: set raw pointer by wrapper. The wrapped pointer will be a full userdata, and can access member like raw pointer.
-* Add method for getting a global variable's metatable name.
+* New feature: set raw pointer by wrapper. The wrapped pointer will be a full userdata, and can access member like raw pointer. (`set_ptr_by_wrapper`)
+* Add method for getting a global variable's metatable name. (`g_get_metatable_name`)
 
 
 ## v1.1.2 - 2024.9.22
@@ -49,7 +49,7 @@
 
 ## v1.0.1 - 2024.8.27
 
-* Check error of calling member function by wrong syntax: "obj.func()". (The correct way is: "obj:func()")
+* Check error of calling member function by wrong syntax: `obj.func()`. (The correct way is: `obj:func()`)
 
 
 ## v1.0.0 - 2023.7.17
