@@ -2385,27 +2385,76 @@ public:
   }
 
   /// Get a global variable's metatable name.
-  std::string g_get_metatable_name(const char*        name,
-                                   const std::string& def           = "",
-                                   bool*              has_metatable = nullptr,
-                                   bool               disable_log   = false,
-                                   bool*              failed        = nullptr,
-                                   bool*              exists        = nullptr) {
+  std::string get_metatable_name(const char*        name,
+                                 const std::string& def           = "",
+                                 bool*              has_metatable = nullptr,
+                                 bool               disable_log   = false,
+                                 bool*              failed        = nullptr,
+                                 bool*              exists        = nullptr) {
     auto _g = make_guarder();
     getglobal(name);
     return get_metatable_name(
         -1, def, has_metatable, disable_log, failed, exists);
   }
-  std::string g_get_metatable_name(const std::string& name,
-                                   const std::string& def           = "",
-                                   bool*              has_metatable = nullptr,
-                                   bool               disable_log   = false,
-                                   bool*              failed        = nullptr,
-                                   bool*              exists        = nullptr) {
-    return g_get_metatable_name(
+  std::string get_metatable_name(const std::string& name,
+                                 const std::string& def           = "",
+                                 bool*              has_metatable = nullptr,
+                                 bool               disable_log   = false,
+                                 bool*              failed        = nullptr,
+                                 bool*              exists        = nullptr) {
+    return get_metatable_name(
         name.c_str(), def, has_metatable, disable_log, failed, exists);
   }
 
+  /// Get a variable's metatable name by a given path.
+  std::string get_metatable_name(const std::initializer_list<const char*>& path,
+                                 const std::string& def           = "",
+                                 bool*              has_metatable = nullptr,
+                                 bool               disable_log   = false,
+                                 bool*              failed        = nullptr,
+                                 bool*              exists        = nullptr) {
+    auto _g = make_guarder();
+    gseek_env();
+    for (const auto& s : path) seek(s);
+    return get_metatable_name(
+        -1, def, has_metatable, disable_log, failed, exists);
+  }
+  std::string get_metatable_name(const std::vector<const char*>& path,
+                                 const std::string&              def = "",
+                                 bool* has_metatable                 = nullptr,
+                                 bool  disable_log                   = false,
+                                 bool* failed                        = nullptr,
+                                 bool* exists = nullptr) {
+    auto _g = make_guarder();
+    gseek_env();
+    for (const auto& s : path) seek(s);
+    return get_metatable_name(
+        -1, def, has_metatable, disable_log, failed, exists);
+  }
+  std::string get_metatable_name(const std::initializer_list<std::string>& path,
+                                 const std::string& def           = "",
+                                 bool*              has_metatable = nullptr,
+                                 bool               disable_log   = false,
+                                 bool*              failed        = nullptr,
+                                 bool*              exists        = nullptr) {
+    auto _g = make_guarder();
+    gseek_env();
+    for (const auto& s : path) seek(s);
+    return get_metatable_name(
+        -1, def, has_metatable, disable_log, failed, exists);
+  }
+  std::string get_metatable_name(const std::vector<std::string>& path,
+                                 const std::string&              def = "",
+                                 bool* has_metatable                 = nullptr,
+                                 bool  disable_log                   = false,
+                                 bool* failed                        = nullptr,
+                                 bool* exists = nullptr) {
+    auto _g = make_guarder();
+    gseek_env();
+    for (const auto& s : path) seek(s);
+    return get_metatable_name(
+        -1, def, has_metatable, disable_log, failed, exists);
+  }
   ///////////////////////// error log //////////////////////////////////////////
 
   static void log_error(const char* s) {
