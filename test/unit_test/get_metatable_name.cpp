@@ -88,6 +88,8 @@ TEST(get_metatable_name, nested_class_by_member) {
 
   watch(cm, bm, am, cbm, cbam);
 
+  EXPECT_EQ(l.gettop(), 0);
+
   {
     auto _b = l.get_metatable_name(std::vector<const char*>{"c", "b"});
     EXPECT_EQ(_b, bm);
@@ -114,6 +116,8 @@ TEST(get_metatable_name, nested_class_by_member) {
         {std::string("c"), std::string("b"), std::string("a")});
     EXPECT_EQ(_a, am);
   }
+
+  EXPECT_EQ(l.gettop(), 0);
 }
 
 TEST(get_metatable_name, nested_class_by_member_ptr_ref) {
@@ -165,6 +169,8 @@ TEST(get_metatable_name, nested_class_by_member_ptr_ref) {
 
   watch(cbarefm, cbptrarefm, cbrefarefm);
 
+  EXPECT_EQ(l.gettop(), 0);
+
   {
     B b;
     l.set_ptr_by_wrapper("bw", &b);
@@ -175,6 +181,8 @@ TEST(get_metatable_name, nested_class_by_member_ptr_ref) {
 
     watch(bwm, cbrefm);
   }
+
+  EXPECT_EQ(l.gettop(), 0);
 }
 
 }  // namespace
