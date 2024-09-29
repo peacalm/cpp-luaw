@@ -2369,7 +2369,7 @@ public:
     return to_string(-1, def, disable_log, failed, exists);
   }
 
-  /// Get metatable name for value at given index. (not only for light userdata)
+  /// Get metatable name for value at given index.
   std::string get_metatable_name(int                idx           = -1,
                                  const std::string& def           = "",
                                  bool*              has_metatable = nullptr,
@@ -2382,6 +2382,28 @@ public:
     if (!has) return def;
     getfield(-1, "__name");
     return to_string(-1, def, disable_log, failed, exists);
+  }
+
+  /// Get a global variable's metatable name.
+  std::string g_get_metatable_name(const char*        name,
+                                   const std::string& def           = "",
+                                   bool*              has_metatable = nullptr,
+                                   bool               disable_log   = false,
+                                   bool*              failed        = nullptr,
+                                   bool*              exists        = nullptr) {
+    auto _g = make_guarder();
+    getglobal(name);
+    return get_metatable_name(
+        -1, def, has_metatable, disable_log, failed, exists);
+  }
+  std::string g_get_metatable_name(const std::string& name,
+                                   const std::string& def           = "",
+                                   bool*              has_metatable = nullptr,
+                                   bool               disable_log   = false,
+                                   bool*              failed        = nullptr,
+                                   bool*              exists        = nullptr) {
+    return g_get_metatable_name(
+        name.c_str(), def, has_metatable, disable_log, failed, exists);
   }
 
   ///////////////////////// error log //////////////////////////////////////////
