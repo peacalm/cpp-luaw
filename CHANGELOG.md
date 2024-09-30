@@ -40,11 +40,11 @@
 
 ## v1.0.2 - 2024.9.6
 
-* Add a member function `result_enough()` to check whether got enough results for luaw::function.
-* std::unique_ptr with user defined deleter does not share metatable with that with default deleter anymore. Enable its own destructor at `__gc`.
-* Add operation APIs for light userdata's metatable
-* Do not support nested smart pointers
-* Bugfix: object destruction & metatable name conflict by type T and cv-T
+* Add a member function `result_enough()` to check whether got enough results for `luaw::function`.
+* `std::unique_ptr` with user defined deleter does not share metatable with that with default deleter anymore. Enable its own destructor at `__gc`.
+* Add operation APIs for light userdata's metatable.
+* Do not support nested smart pointers.
+* Bugfix: object destruction & metatable name conflict by type T and cv-T.
 
 
 ## v1.0.1 - 2024.8.27
