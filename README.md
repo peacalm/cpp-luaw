@@ -3281,7 +3281,7 @@ int main() {
 ```
 
 
-#### 5.13 Register reference of member variables (which is a full userdata)
+#### 5.14 Register reference of member variables (which is a full userdata)
 
 Like registering pointer of member variables, we can also register reference of 
 member variables. The only difference is that this reference is a full userdata,
