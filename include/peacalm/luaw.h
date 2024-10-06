@@ -37,7 +37,8 @@
 // This comment to avoid clang-format mix includes before sort
 #include <lua.hpp>
 
-static_assert(LUA_VERSION_NUM >= 504, "Lua version at least 5.4");
+// static_assert(LUA_VERSION_NUM >= 504, "Lua version at least 5.4");
+#define LUA_GNAME "_G"
 
 #ifdef PEACALM_LUAW_ASSERT_OFF
 #define PEACALM_LUAW_ASSERT(x)
