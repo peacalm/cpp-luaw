@@ -2261,9 +2261,12 @@ There are two kind of API:
 * Register a static member by providing class type.
 * Register a static member by providing full fake member pointer type.
 
-We register static variables like usual member variables, which can not be 
-modified by const objects. The difference is that the static member will be 
-shared by all objects of same type.
+We register static member variables like usual member variables, 
+which **can not be modified by const objects**
+(But in C++, it allows to modify a non-const static member variable by a const 
+object. Here we do not follow the C++ way).
+But not like usual member variables, the static member variable will be shared 
+by all objects of same type.
 
 By providing full fake member pointer type, we can add const/volatile property
 for the static member.
