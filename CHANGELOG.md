@@ -3,7 +3,7 @@
 
 ## Currently Unreleased - TBD
 
-(nothing)
+* New feature: register static member's pointer, (low-level) const pointer, reference, (low-level) const reference. (`register_static_member_ptr`, `register_static_member_cptr`, `register_static_member_ref`, `register_static_member_cref`)
 
 
 ## v1.2.0 - 2024.9.29
