@@ -1104,4 +1104,96 @@ TEST(nested_objects, member_volatile_ref) {
   EXPECT_EQ(l.gettop(), 0);
 }
 
+struct Foo {
+  std::unordered_map<std::string, luaw::luavalueref> m;
+};
+
+luaw::luavalueref foo_dm_getter(const Foo* o, const std::string& k) {
+  auto entry = o->m.find(k);
+  if (entry != o->m.end()) { return entry->second; }
+  return luaw::luavalueref();
+}
+void foo_dm_setter(Foo* o, const std::string& k, const luaw::luavalueref& v) {
+  o->m[k] = v;
+}
+
+TEST(nested_objects, nested_dynamic_class_member) {
+  luaw l;
+  l.register_ctor<A()>("NewA");
+  l.register_member("i", &A::i);
+  l.register_dynamic_member(foo_dm_getter, foo_dm_setter);
+
+  auto o = std::make_shared<Foo>();
+  l.set("o", o);
+
+  EXPECT_EQ(l.dostring("o.a = NewA()"), LUA_OK);
+  EXPECT_EQ(l.eval_int("return o.a.i"), 1);
+  EXPECT_EQ(l.dostring("o.a.i = 2"), LUA_OK);
+  EXPECT_EQ(l.eval_int("return o.a.i"), 2);
+
+  // "b" and "o.b" share a same underlying object
+  EXPECT_EQ(l.dostring("b = NewA(); b.i = 3; o.b = b"), LUA_OK);
+  EXPECT_EQ(l.eval_int("return b.i"), 3);
+  EXPECT_EQ(l.eval_int("return o.b.i"), 3);
+  // modify by o.b.i
+  EXPECT_EQ(l.dostring("o.b.i = 4"), LUA_OK);
+  EXPECT_EQ(l.eval_int("return b.i"), 4);
+  EXPECT_EQ(l.eval_int("return o.b.i"), 4);
+  // modify by b.i
+  EXPECT_EQ(l.dostring("b.i = 5"), LUA_OK);
+  EXPECT_EQ(l.eval_int("return b.i"), 5);
+  EXPECT_EQ(l.eval_int("return o.b.i"), 5);
+
+  {
+    // set a pointer to o by wrapper
+    Foo* p = o.get();
+    l.set_ptr_by_wrapper("p", p);
+    EXPECT_EQ(l.eval_int("return p.a.i"), 2);
+    EXPECT_EQ(l.eval_int("return p.b.i"), 5);
+    EXPECT_EQ(l.dostring("p.b.i = 6"), LUA_OK);
+    EXPECT_EQ(l.eval_int("return p.b.i"), 6);
+
+    // set a raw pointer to o
+    l.set("rp", p);  // Not recommended usage!
+    EXPECT_EQ(l.eval_int("return rp.a.i"), 2);
+    EXPECT_EQ(l.eval_int("return rp.b.i"), 6);
+    EXPECT_EQ(l.dostring("rp.b.i = 7"), LUA_OK);
+    EXPECT_EQ(l.eval_int("return rp.b.i"), 7);
+
+    // set a const pointer to o by wrapper
+    const Foo* cp = o.get();
+    l.set_ptr_by_wrapper("cp", cp);
+    EXPECT_EQ(l.eval_int("return cp.a.i"), 2);
+    EXPECT_EQ(l.eval_int("return cp.b.i"), 7);
+    EXPECT_EQ(l.dostring("cp.b.i = 8"), LUA_OK);
+    EXPECT_EQ(l.eval_int("return cp.b.i"), 8);
+    EXPECT_NE(l.dostring("cp.b = NewA()"), LUA_OK);
+    l.log_error_out();
+    EXPECT_EQ(l.eval_int("return cp.b.i"), 8);
+    EXPECT_NE(l.dostring("cp.c = NewA()"), LUA_OK);
+    l.log_error_out();
+
+    // set a raw const pointer to o
+    l.set("rcp", cp);
+    EXPECT_EQ(l.eval_int("return rcp.a.i"), 2);
+    EXPECT_EQ(l.eval_int("return rcp.b.i"), 8);
+    EXPECT_NE(l.dostring("rcp.b = NewA()"), LUA_OK);
+    l.log_error_out();
+    EXPECT_EQ(l.eval_int("return rcp.b.i"), 8);
+    EXPECT_NE(l.dostring("rcp.c = NewA()"), LUA_OK);
+    l.log_error_out();
+
+    // set low-level const shared_ptr to o
+    std::shared_ptr<const Foo> sco(o);
+    l.set("sco", sco);
+    EXPECT_EQ(l.eval_int("return sco.a.i"), 2);
+    EXPECT_EQ(l.eval_int("return sco.b.i"), 8);
+    EXPECT_NE(l.dostring("sco.b = NewA()"), LUA_OK);
+    l.log_error_out();
+    EXPECT_EQ(l.eval_int("return sco.b.i"), 8);
+    EXPECT_NE(l.dostring("sco.c = NewA()"), LUA_OK);
+    l.log_error_out();
+  }
+}
+
 }  // namespace
