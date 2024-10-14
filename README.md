@@ -1253,10 +1253,12 @@ int main() {
   l.register_static_member_ptr<B>("aptr", &B::a);
   l.register_static_member_cptr<B>("acptr", &B::a);
 
-  // Register pointer, low-level const reference for static member B::a
+  // Register reference, low-level const reference for static member B::a
   // full userdata
   l.register_static_member_ref<B>("aref", &B::a);
   l.register_static_member_cref<B>("acref", &B::a);
+
+  // ...
 }
 ```
   </td>
