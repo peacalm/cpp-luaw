@@ -5257,6 +5257,7 @@ private:
         .setkv(mname, true);
   }
 
+  // Member is const
   template <typename F>
   static void __register_setters(luaw&       l,
                                  const char* mname,
@@ -5307,6 +5308,7 @@ private:
     }
   }
 
+  // Member is not const
   template <typename F>
   static void __register_setters(luaw&       l,
                                  const char* mname,
