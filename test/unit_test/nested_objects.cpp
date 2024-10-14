@@ -1144,11 +1144,33 @@ TEST(nested_objects, nested_dynamic_class_member) {
   EXPECT_EQ(l.eval_int("return b.i"), 5);
   EXPECT_EQ(l.eval_int("return o.b.i"), 5);
 
+  // get dynamic members
+  {
+    A a = l.eval<A>("return o.a");
+    EXPECT_EQ(a.i, 2);
+    A b = l.eval<A>("return o.b");
+    EXPECT_EQ(b.i, 5);
+  }
+  {
+    std::map<std::string, A> m;
+    for (auto& p : o->m) {
+      auto v = l.get<A>({"o", p.first});
+      m.insert({p.first, v});
+    }
+    EXPECT_EQ(m["a"].i, 2);
+    EXPECT_EQ(m["b"].i, 5);
+  }
+
+  // test by pointers
   {
     // set a pointer to o by wrapper
     Foo* p = o.get();
     l.set_ptr_by_wrapper("p", p);
     EXPECT_EQ(l.eval_int("return p.a.i"), 2);
+    EXPECT_EQ(l.get_int({"p", "a", "i"}), 2);
+    EXPECT_EQ(l.eval<A>("return p.a").i, 2);
+    EXPECT_EQ(l.get<A>({"p", "a"}).i, 2);
+
     EXPECT_EQ(l.eval_int("return p.b.i"), 5);
     EXPECT_EQ(l.dostring("p.b.i = 6"), LUA_OK);
     EXPECT_EQ(l.eval_int("return p.b.i"), 6);
@@ -1156,6 +1178,10 @@ TEST(nested_objects, nested_dynamic_class_member) {
     // set a raw pointer to o
     l.set("rp", p);  // Not recommended usage!
     EXPECT_EQ(l.eval_int("return rp.a.i"), 2);
+    EXPECT_EQ(l.get_int({"rp", "a", "i"}), 2);
+    EXPECT_EQ(l.eval<A>("return rp.a").i, 2);
+    EXPECT_EQ(l.get<A>({"rp", "a"}).i, 2);
+
     EXPECT_EQ(l.eval_int("return rp.b.i"), 6);
     EXPECT_EQ(l.dostring("rp.b.i = 7"), LUA_OK);
     EXPECT_EQ(l.eval_int("return rp.b.i"), 7);
@@ -1164,6 +1190,10 @@ TEST(nested_objects, nested_dynamic_class_member) {
     const Foo* cp = o.get();
     l.set_ptr_by_wrapper("cp", cp);
     EXPECT_EQ(l.eval_int("return cp.a.i"), 2);
+    EXPECT_EQ(l.get_int({"cp", "a", "i"}), 2);
+    EXPECT_EQ(l.eval<A>("return cp.a").i, 2);
+    EXPECT_EQ(l.get<A>({"cp", "a"}).i, 2);
+
     EXPECT_EQ(l.eval_int("return cp.b.i"), 7);
     EXPECT_EQ(l.dostring("cp.b.i = 8"), LUA_OK);
     EXPECT_EQ(l.eval_int("return cp.b.i"), 8);
@@ -1176,6 +1206,10 @@ TEST(nested_objects, nested_dynamic_class_member) {
     // set a raw const pointer to o
     l.set("rcp", cp);
     EXPECT_EQ(l.eval_int("return rcp.a.i"), 2);
+    EXPECT_EQ(l.get_int({"rcp", "a", "i"}), 2);
+    EXPECT_EQ(l.eval<A>("return rcp.a").i, 2);
+    EXPECT_EQ(l.get<A>({"rcp", "a"}).i, 2);
+
     EXPECT_EQ(l.eval_int("return rcp.b.i"), 8);
     EXPECT_NE(l.dostring("rcp.b = NewA()"), LUA_OK);
     l.log_error_out();
@@ -1187,6 +1221,10 @@ TEST(nested_objects, nested_dynamic_class_member) {
     std::shared_ptr<const Foo> sco(o);
     l.set("sco", sco);
     EXPECT_EQ(l.eval_int("return sco.a.i"), 2);
+    EXPECT_EQ(l.get_int({"sco", "a", "i"}), 2);
+    EXPECT_EQ(l.eval<A>("return sco.a").i, 2);
+    EXPECT_EQ(l.get<A>({"sco", "a"}).i, 2);
+
     EXPECT_EQ(l.eval_int("return sco.b.i"), 8);
     EXPECT_NE(l.dostring("sco.b = NewA()"), LUA_OK);
     l.log_error_out();
