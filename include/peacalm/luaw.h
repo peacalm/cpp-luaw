@@ -1956,30 +1956,30 @@ public:
    * `register_static_member<Obj>("sf", Obj::sf)`
    *
    * @tparam Class The class whom the static member will belong to.
-   * @tparam T The static member's type.
+   * @tparam Member The static member's type.
    * @param name The static member's name.
    * @param m The static member's pointer.
    * @return void
    */
-  template <typename Class, typename T>
+  template <typename Class, typename Member>
   std::enable_if_t<std::is_class<Class>::value> register_static_member(
-      const char* name, T* m) {
+      const char* name, Member* m) {
     static_assert(std::is_same<Class, std::decay_t<Class>>::value,
                   "Class type should be decayed");
     PEACALM_LUAW_ASSERT(m);
 
     // add const member property for function
     using MemberPointer = std::conditional_t<
-        std::is_member_function_pointer<T Class::*>::value,
-        luaw_detail::c_function_to_const_member_function_t<Class, T>,
-        T Class::*>;
+        std::is_member_function_pointer<Member Class::*>::value,
+        luaw_detail::c_function_to_const_member_function_t<Class, Member>,
+        Member Class::*>;
 
     register_static_member<MemberPointer>(name, m);
   }
-  template <typename Class, typename T>
+  template <typename Class, typename Member>
   std::enable_if_t<std::is_class<Class>::value> register_static_member(
-      const std::string& name, T* m) {
-    register_static_member<Class, T>(name.c_str(), m);
+      const std::string& name, Member* m) {
+    register_static_member<Class, Member>(name.c_str(), m);
   }
 
   /**
@@ -2002,25 +2002,25 @@ public:
    *
    * @tparam MemberPointer What kind of member type to let the static member
    * behaves like in Lua.
-   * @tparam T The static member's type.
+   * @tparam Member The static member's type.
    * @param name The static member's name.
    * @param m The static member's pointer.
    * @return void
    */
-  template <typename MemberPointer, typename T>
+  template <typename MemberPointer, typename Member>
   std::enable_if_t<std::is_member_pointer<MemberPointer>::value>
-  register_static_member(const char* name, T* m) {
+  register_static_member(const char* name, Member* m) {
     PEACALM_LUAW_ASSERT(m);
     static_assert(
         std::is_same<MemberPointer, std::decay_t<MemberPointer>>::value,
         "MemberPointer should be decayed");
     registrar<std::decay_t<MemberPointer>>::register_member(
-        *this, name, static_mem_fn<T*>(m));
+        *this, name, static_mem_fn<Member*>(m));
   }
-  template <typename MemberPointer, typename T>
+  template <typename MemberPointer, typename Member>
   std::enable_if_t<std::is_member_pointer<MemberPointer>::value>
-  register_static_member(const std::string& name, T* m) {
-    register_static_member<MemberPointer, T>(name.c_str(), m);
+  register_static_member(const std::string& name, Member* m) {
+    register_static_member<MemberPointer, Member>(name.c_str(), m);
   }
 
   /**
@@ -2199,6 +2199,7 @@ public:
     static_assert(std::is_same<Class, std::decay_t<Class>>::value,
                   "Class must be decayed");
     PEACALM_LUAW_ASSERT(name);
+    PEACALM_LUAW_ASSERT(mp);
     registrar<Member Class::*, luaw::registrar_tag_for_member_ptr>::
         register_member_ptr(*this, name, [=](auto&) { return mp; });
   }
@@ -2234,6 +2235,7 @@ public:
     static_assert(std::is_same<Class, std::decay_t<Class>>::value,
                   "Class must be decayed");
     PEACALM_LUAW_ASSERT(name);
+    PEACALM_LUAW_ASSERT(mp);
     registrar<Member Class::*, luaw::registrar_tag_for_member_ptr>::
         register_member_ref(*this, name, static_mem_fn<Member*>(mp));
   }

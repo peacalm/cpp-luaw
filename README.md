@@ -2217,14 +2217,14 @@ API:
  * `register_static_member<Obj>("sf", Obj::sf)`
  *
  * @tparam Class The class whom the static member will belong to.
- * @tparam T The static member's type.
+ * @tparam Member The static member's type.
  * @param name The static member's name.
  * @param m The static member's pointer.
  * @return void
  */
-template <typename Class, typename T>
+template <typename Class, typename Member>
 std::enable_if_t<std::is_class<Class>::value> register_static_member(
-    const char* name, T* m);
+    const char* name, Member* m);
 
 
 /**
@@ -2247,14 +2247,14 @@ std::enable_if_t<std::is_class<Class>::value> register_static_member(
  *
  * @tparam MemberPointer What kind of member type to let the static member
  * behaves like in Lua.
- * @tparam T The static member's type.
+ * @tparam Member The static member's type.
  * @param name The static member's name.
  * @param m The static member's pointer.
  * @return void
  */
-template <typename MemberPointer, typename T>
+template <typename MemberPointer, typename Member>
 std::enable_if_t<std::is_member_pointer<MemberPointer>::value>
-register_static_member(const char* name, T* m);
+register_static_member(const char* name, Member* m);
 ```
 
 There are two kind of API:
