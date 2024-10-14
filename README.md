@@ -1243,6 +1243,7 @@ int main() {
 ```C++
 struct A { int i = 1; };
 struct B { static A a; };
+A B::a;
 int main() {
   peacalm::luaw l;
   l.register_member("i", &A::i);
