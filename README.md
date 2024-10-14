@@ -1236,7 +1236,7 @@ int main() {
 
 
 <tr>
-  <td> <ul><ul><li> Register pointer or reference for static member variables (which is a full userdata) </li></ul></ul> </td>
+  <td> <ul><ul><li> Register pointer or reference for static member variables </li></ul></ul> </td>
   <td> ✅  </td>
   <td>
 
@@ -1248,10 +1248,12 @@ int main() {
   l.register_member("i", &A::i);
 
   // Register pointer, low-level const pointer for static member B::a
+  // light userdata
   l.register_static_member_ptr<B>("aptr", &B::a);
   l.register_static_member_cptr<B>("acptr", &B::a);
 
   // Register pointer, low-level const reference for static member B::a
+  // full userdata
   l.register_static_member_ref<B>("aref", &B::a);
   l.register_static_member_cref<B>("acref", &B::a);
 }
