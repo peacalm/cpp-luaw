@@ -2180,54 +2180,80 @@ public:
     register_member_cref<Class, Member>(name.c_str(), mp);
   }
 
-  /* */
-
+  /**
+   * @brief Register a static member's pointer into Lua.
+   *
+   * @sa "register_static_member"
+   * @sa "register_member_ptr"
+   *
+   * @tparam Class The class whom the static member will belong to. Must be a
+   * decayed class type.
+   * @tparam Member Type of the static member.
+   * @param name Name of the member's pointer used in Lua.
+   * @param mp The static member's pointer value.
+   */
   template <typename Class, typename Member>
-  void register_static_member_ptr(const char* name, Member* p) {
+  void register_static_member_ptr(const char* name, Member* mp) {
+    static_assert(std::is_class<Class>::value,
+                  "Static members must belong to a class type");
     static_assert(std::is_same<Class, std::decay_t<Class>>::value,
                   "Class must be decayed");
     PEACALM_LUAW_ASSERT(name);
     registrar<Member Class::*, luaw::registrar_tag_for_member_ptr>::
-        register_member_ptr(*this, name, [=](auto&) { return p; });
+        register_member_ptr(*this, name, [=](auto&) { return mp; });
   }
   template <typename Class, typename Member>
-  void register_static_member_ptr(const std::string& name, Member* p) {
-    register_static_member_ptr<Class, Member>(name.c_str(), p);
-  }
-
-  //
-  template <typename Class, typename Member>
-  void register_static_member_cptr(const char* name, Member* p) {
-    register_static_member_ptr<Class, const Member>(name, p);
-  }
-  template <typename Class, typename Member>
-  void register_static_member_cptr(const std::string& name, Member* p) {
-    register_static_member_cptr<Class, Member>(name.c_str(), p);
+  void register_static_member_ptr(const std::string& name, Member* mp) {
+    register_static_member_ptr<Class, Member>(name.c_str(), mp);
   }
 
-  //
-
+  /**
+   * @brief Register a static member's low-level const pointer into Lua.
+   *
+   * @sa "register_static_member_ptr"
+   */
   template <typename Class, typename Member>
-  void register_static_member_ref(const char* name, Member* p) {
+  void register_static_member_cptr(const char* name, Member* mp) {
+    register_static_member_ptr<Class, const Member>(name, mp);
+  }
+  template <typename Class, typename Member>
+  void register_static_member_cptr(const std::string& name, Member* mp) {
+    register_static_member_cptr<Class, Member>(name.c_str(), mp);
+  }
+
+  /**
+   * @brief Register a static member's reference into Lua.
+   *
+   * @sa "register_static_member"
+   * @sa "register_member_ref"
+   */
+  template <typename Class, typename Member>
+  void register_static_member_ref(const char* name, Member* mp) {
+    static_assert(std::is_class<Class>::value,
+                  "Static members must belong to a class type");
     static_assert(std::is_same<Class, std::decay_t<Class>>::value,
                   "Class must be decayed");
     PEACALM_LUAW_ASSERT(name);
     registrar<Member Class::*, luaw::registrar_tag_for_member_ptr>::
-        register_member_ref(*this, name, static_mem_fn<Member*>(p));
+        register_member_ref(*this, name, static_mem_fn<Member*>(mp));
   }
   template <typename Class, typename Member>
-  void register_static_member_ref(const std::string& name, Member* p) {
-    register_static_member_ref<Class, Member>(name.c_str(), p);
+  void register_static_member_ref(const std::string& name, Member* mp) {
+    register_static_member_ref<Class, Member>(name.c_str(), mp);
   }
 
-  //
+  /**
+   * @brief Register a static member's low-level const reference into Lua.
+   *
+   * @sa "register_static_member_ref"
+   */
   template <typename Class, typename Member>
-  void register_static_member_cref(const char* name, Member* p) {
-    register_static_member_ref<Class, const Member>(name, p);
+  void register_static_member_cref(const char* name, Member* mp) {
+    register_static_member_ref<Class, const Member>(name, mp);
   }
   template <typename Class, typename Member>
-  void register_static_member_cref(const std::string& name, Member* p) {
-    register_static_member_cref<Class, Member>(name.c_str(), p);
+  void register_static_member_cref(const std::string& name, Member* mp) {
+    register_static_member_cref<Class, Member>(name.c_str(), mp);
   }
 
   //////////////////////// evaluate expression /////////////////////////////////
