@@ -1236,6 +1236,31 @@ int main() {
 
 
 <tr>
+  <td> <ul><ul><li> Register pointer or reference for static member variables (which is a full userdata) </li></ul></ul> </td>
+  <td> ✅  </td>
+  <td>
+
+```C++
+struct A { int i = 1; };
+struct B { static A a; };
+int main() {
+  peacalm::luaw l;
+  l.register_member("i", &A::i);
+
+  // Register pointer, low-level const pointer for static member B::a
+  l.register_static_member_ptr<B>("aptr", &B::a);
+  l.register_static_member_cptr<B>("acptr", &B::a);
+
+  // Register pointer, low-level const reference for static member B::a
+  l.register_static_member_ref<B>("aref", &B::a);
+  l.register_static_member_cref<B>("acref", &B::a);
+}
+```
+  </td>
+</tr>
+
+
+<tr>
   <td> <ul><li> Evaluate a Lua script and get results </li></ul> </td>
   <td> ✅ </td>
   <td>
