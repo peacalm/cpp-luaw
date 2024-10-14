@@ -1234,4 +1234,118 @@ TEST(nested_objects, nested_dynamic_class_member) {
   }
 }
 
+TEST(nested_objects, nested_static_class_member) {
+  static A a;  // register it as a static member of B
+  luaw     l;
+  l.register_member("i", &A::i);
+  l.register_static_member<B>("a", &a);
+  l.register_static_member_ptr<B>("aptr", &a);
+  l.register_static_member_cptr<B>("acptr", &a);
+  l.register_static_member_ref<B>("aref", &a);
+  l.register_static_member_cref<B>("acref", &a);
+
+  auto o = std::make_shared<B>();
+  l.set("o", o);
+  a.i        = 1;
+  int ivalue = 1;
+  EXPECT_EQ(l.eval<int>("return o.a.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return o.aptr.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return o.acptr.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return o.aref.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return o.acref.i"), ivalue);
+
+  EXPECT_EQ(l.dostring("o.a.i = 2"), LUA_OK);
+  ivalue = 1;
+  EXPECT_EQ(l.eval<int>("return o.a.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return o.aptr.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return o.acptr.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return o.aref.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return o.acref.i"), ivalue);
+
+  EXPECT_EQ(l.dostring("t = o.a; t.i = 2; o.a = t"), LUA_OK);
+  ivalue = 2;
+  EXPECT_EQ(l.eval<int>("return o.a.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return o.aptr.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return o.acptr.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return o.aref.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return o.acref.i"), ivalue);
+
+  EXPECT_EQ(l.dostring("o.aptr.i = 3"), LUA_OK);
+  ivalue = 3;
+  EXPECT_EQ(l.eval<int>("return o.a.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return o.aptr.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return o.acptr.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return o.aref.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return o.acref.i"), ivalue);
+
+  EXPECT_EQ(l.dostring("o.aref.i = 4"), LUA_OK);
+  ivalue = 4;
+  EXPECT_EQ(l.eval<int>("return o.a.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return o.aptr.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return o.acptr.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return o.aref.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return o.acref.i"), ivalue);
+
+  EXPECT_NE(l.dostring("o.acptr.i = 5"), LUA_OK);
+  l.log_error_out();
+  ivalue = 4;
+  EXPECT_EQ(l.eval<int>("return o.a.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return o.aptr.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return o.acptr.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return o.aref.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return o.acref.i"), ivalue);
+
+  EXPECT_NE(l.dostring("o.acref.i = 6"), LUA_OK);
+  l.log_error_out();
+  ivalue = 4;
+  EXPECT_EQ(l.eval<int>("return o.a.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return o.aptr.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return o.acptr.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return o.aref.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return o.acref.i"), ivalue);
+
+  // const object
+  std::shared_ptr<const B> co(o);
+  // co->a.i = 1; // error
+  l.set("co", co);
+
+  EXPECT_EQ(l.eval<int>("return co.a.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return co.aptr.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return co.acptr.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return co.aref.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return co.acref.i"), ivalue);
+
+  EXPECT_NE(l.dostring("co.aptr.i = 7"), LUA_OK);
+  l.log_error_out();
+  EXPECT_EQ(l.eval<int>("return co.a.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return co.aptr.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return co.acptr.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return co.aref.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return co.acref.i"), ivalue);
+
+  EXPECT_NE(l.dostring("co.aref.i = 8"), LUA_OK);
+  l.log_error_out();
+  EXPECT_EQ(l.eval<int>("return co.a.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return co.aptr.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return co.acptr.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return co.aref.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return co.acref.i"), ivalue);
+
+  EXPECT_NE(l.dostring("co.acptr.i = 9"), LUA_OK);
+  l.log_error_out();
+  EXPECT_EQ(l.eval<int>("return co.a.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return co.aptr.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return co.acptr.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return co.aref.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return co.acref.i"), ivalue);
+
+  EXPECT_NE(l.dostring("co.acref.i = 10"), LUA_OK);
+  l.log_error_out();
+  EXPECT_EQ(l.eval<int>("return co.a.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return co.aptr.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return co.acptr.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return co.aref.i"), ivalue);
+  EXPECT_EQ(l.eval<int>("return co.acref.i"), ivalue);
+}
+
 }  // namespace
