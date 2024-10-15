@@ -1162,7 +1162,7 @@ int main() {
 </tr>
 
 <tr>
-  <td> <ul><ul><li> Register pointer of member variables (Raw pointer, which is a light userdata) </li></ul></ul> </td>
+  <td> <ul><ul><li> Register pointer of member variables (raw pointer, which is a light userdata) </li></ul></ul> </td>
   <td> ✅  </td>
   <td>
 
@@ -1236,7 +1236,7 @@ int main() {
 
 
 <tr>
-  <td> <ul><ul><li> Register pointer or reference for static member variables </li></ul></ul> </td>
+  <td> <ul><ul><li> Register pointer of static member variables (raw pointer, which is a light userdata) </li></ul></ul> </td>
   <td> ✅  </td>
   <td>
 
@@ -1252,6 +1252,25 @@ int main() {
   // light userdata
   l.register_static_member_ptr<B>("aptr", &B::a);
   l.register_static_member_cptr<B>("acptr", &B::a);
+
+  // ...
+}
+```
+  </td>
+</tr>
+
+<tr>
+  <td> <ul><ul><li> Register reference of static member variables (which is a full userdata) </li></ul></ul> </td>
+  <td> ✅  </td>
+  <td>
+
+```C++
+struct A { int i = 1; };
+struct B { static A a; };
+A B::a;
+int main() {
+  peacalm::luaw l;
+  l.register_member("i", &A::i);
 
   // Register reference, low-level const reference for static member B::a
   // full userdata
@@ -3221,7 +3240,7 @@ int main() {
 ```
 
 
-#### 5.13 Register pointer of member variables (Raw pointer, which is a light userdata)
+#### 5.13 Register pointer of member variables (raw pointer, which is a light userdata)
 
 To access and modify member of member efficiently, we can register a member's
 pointer as a fake member in Lua. And if we only want to access member of member,
