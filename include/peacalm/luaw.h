@@ -5006,10 +5006,11 @@ struct luaw::registrar<Member Class::*, luaw::registrar_tag_for_member_ptr> {
   static_assert(std::is_member_object_pointer<Member Class::*>::value,
                 "Only member variables can be registered ptr/ref");
 
-  // Actually this static assertion won't work, the compiler will automatically
-  // decay "Member cv-Class::*" to "Member Class::*"?
+  // Actually this static assertion won't work.
+  // C++ regards "Member cv-Class::*" as a same type as "Member Class::*".
+  // And the compiler will automatically remove cv- property for Class.
   static_assert(std::is_same<Class, std::decay_t<Class>>::value,
-                "Class must be decayed");
+                "Never happen (Class must be decayed)");
 
   static_assert(!std::is_pointer<Member>::value,
                 "No need to register pointer or reference for pointer members");
