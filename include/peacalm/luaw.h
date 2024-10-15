@@ -1866,6 +1866,7 @@ public:
   std::enable_if_t<std::is_member_pointer<MemberPointer>::value>
   register_member(const char* name, MemberPointer mp) {
     PEACALM_LUAW_ASSERT(name);
+    PEACALM_LUAW_ASSERT(mp);
     registrar<std::decay_t<MemberPointer>>::register_member(
         *this, name, std::mem_fn(mp));
   }
@@ -2092,6 +2093,7 @@ public:
     static_assert(std::is_same<Class, std::decay_t<Class>>::value,
                   "Class must be decayed");
     PEACALM_LUAW_ASSERT(name);
+    PEACALM_LUAW_ASSERT(mp);
     registrar<Member Class::*, luaw::registrar_tag_for_member_ptr>::
         register_member_ptr(*this, name, [=](auto& o) { return &(o.*mp); });
   }
@@ -2156,6 +2158,7 @@ public:
     static_assert(std::is_same<Class, std::decay_t<Class>>::value,
                   "Class must be decayed");
     PEACALM_LUAW_ASSERT(name);
+    PEACALM_LUAW_ASSERT(mp);
     registrar<Member Class::*, luaw::registrar_tag_for_member_ptr>::
         register_member_ref(*this, name, std::mem_fn(mp));
   }
