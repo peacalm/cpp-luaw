@@ -3426,6 +3426,143 @@ int main() {
 }
 ```
 
+#### 5.15 Register pointer of static member variables (raw pointer, which is a light userdata)
+
+API:
+
+```C++
+/**
+ * @brief Register a static member's pointer into Lua.
+ *
+ * @sa "register_static_member"
+ * @sa "register_member_ptr"
+ *
+ * @tparam Class The class whom the static member will belong to. Must be a
+ * decayed class type.
+ * @tparam Member Type of the static member.
+ * @param name Name of the member's pointer used in Lua.
+ * @param mp The static member's pointer value.
+ */
+template <typename Class, typename Member>
+void register_static_member_ptr(const char* name, Member* mp);
+template <typename Class, typename Member>
+void register_static_member_ptr(const std::string& name, Member* mp);
+
+
+/**
+ * @brief Register a static member's low-level const pointer into Lua.
+ *
+ * @sa "register_static_member_ptr"
+ */
+template <typename Class, typename Member>
+void register_static_member_cptr(const char* name, Member* mp);
+template <typename Class, typename Member>
+void register_static_member_cptr(const std::string& name, Member* mp);
+```
+
+
+Eample:
+
+```C++
+struct A { int i = 1; };
+struct B { static A a; };
+A B::a;
+int main() {
+  peacalm::luaw l;
+  l.register_member("i", &A::i);
+
+  // Register pointer, low-level const pointer for static member B::a
+  // light userdata
+  l.register_static_member_ptr<B>("aptr", &B::a);
+  l.register_static_member_cptr<B>("acptr", &B::a);
+
+  l.set("o", B{});
+
+  assert(l.eval<int>("return o.aptr.i") == 1);
+  assert(l.eval<int>("return o.acptr.i") == 1);
+  assert(B::a.i == 1);
+
+  assert(l.dostring("o.aptr.i = 2") == LUA_OK);
+
+  assert(l.eval<int>("return o.aptr.i") == 2);
+  assert(l.eval<int>("return o.acptr.i") == 2);
+  assert(B::a.i == 2);
+
+  // Can't modify member by cptr
+  assert(l.dostring("o.acptr.i = 3") != LUA_OK);
+
+  assert(l.eval<int>("return o.aptr.i") == 2);
+  assert(l.eval<int>("return o.acptr.i") == 2);
+  assert(B::a.i == 2);
+}
+```
+
+#### 5.16 Register reference of static member variables (which is a full userdata)
+
+API:
+
+```C++
+/**
+ * @brief Register a static member's reference into Lua.
+ *
+ * @sa "register_static_member"
+ * @sa "register_member_ref"
+ */
+template <typename Class, typename Member>
+void register_static_member_ref(const char* name, Member* mp);
+template <typename Class, typename Member>
+void register_static_member_ref(const std::string& name, Member* mp);
+
+
+/**
+ * @brief Register a static member's low-level const reference into Lua.
+ *
+ * @sa "register_static_member_ref"
+ */
+template <typename Class, typename Member>
+void register_static_member_cref(const char* name, Member* mp);
+template <typename Class, typename Member>
+void register_static_member_cref(const std::string& name, Member* mp);
+```
+
+
+Eample:
+
+```C++
+struct A { int i = 1; };
+struct B { static A a; };
+A B::a;
+int main() {
+  peacalm::luaw l;
+  l.register_member("i", &A::i);
+
+  // Register reference, low-level const reference for static member B::a
+  // full userdata
+  l.register_static_member_ref<B>("aref", &B::a);
+  l.register_static_member_cref<B>("acref", &B::a);
+
+  l.set("o", B{});
+
+  assert(l.eval<int>("return o.aref.i") == 1);
+  assert(l.eval<int>("return o.acref.i") == 1);
+  assert(B::a.i == 1);
+
+  assert(l.dostring("o.aref.i = 2") == LUA_OK);
+
+  assert(l.eval<int>("return o.aref.i") == 2);
+  assert(l.eval<int>("return o.acref.i") == 2);
+  assert(B::a.i == 2);
+
+  // Can't modify member by cref
+  assert(l.dostring("o.acref.i = 3") != LUA_OK);
+
+  assert(l.eval<int>("return o.aref.i") == 2);
+  assert(l.eval<int>("return o.acref.i") == 2);
+  assert(B::a.i == 2);
+}
+
+```
+
 
 ### 6. Evaluate a Lua expression and get the results
 
