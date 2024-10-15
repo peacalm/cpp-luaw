@@ -46,6 +46,9 @@ struct Obj {
 
   void referenced_fl() & {}
   void referenced_fr() && {}
+
+  void noexcept_f1() noexcept {}
+  void noexcept_f2() const noexcept {}
 };
 
 TEST(register_member, register_ctor) {
@@ -127,6 +130,12 @@ TEST(register_member, register_member_functions) {
   // l.register_member("referenced_fr", &Obj::referenced_fr);  // error
 
   EXPECT_EQ(l.gettop(), 0);
+}
+
+TEST(register_member, register_noexcept_member_functions) {
+  luaw l;
+  l.register_member("noexcept_f1", &Obj::noexcept_f1);
+  l.register_member("noexcept_f2", &Obj::noexcept_f2);
 }
 
 TEST(register_member, member_variables) {
