@@ -2660,7 +2660,6 @@ struct get_element_type<T, void_t<typename T::element_type>> {
 };
 
 // Get a C function pointer type by a member function pointer type
-// Also remove noexcept if C++17 supported
 
 template <typename T>
 struct get_cfptr_by_memfptr {
@@ -2708,48 +2707,49 @@ struct get_cfptr_by_memfptr<Return (Object::*)(Args..., ...) const volatile> {
 };
 
 #if PEACALM_LUAW_SUPPORT_CPP17
+// Keep noexcept if C++17 supported
 
 template <typename Object, typename Return, typename... Args>
 struct get_cfptr_by_memfptr<Return (Object::*)(Args...) noexcept> {
-  using type = Return (*)(Args...);
+  using type = Return (*)(Args...) noexcept;
 };
 
 template <typename Object, typename Return, typename... Args>
 struct get_cfptr_by_memfptr<Return (Object::*)(Args...) const noexcept> {
-  using type = Return (*)(Args...);
+  using type = Return (*)(Args...) noexcept;
 };
 
 template <typename Object, typename Return, typename... Args>
 struct get_cfptr_by_memfptr<Return (Object::*)(Args...) volatile noexcept> {
-  using type = Return (*)(Args...);
+  using type = Return (*)(Args...) noexcept;
 };
 
 template <typename Object, typename Return, typename... Args>
 struct get_cfptr_by_memfptr<Return (Object::*)(Args...)
                                 const volatile noexcept> {
-  using type = Return (*)(Args...);
+  using type = Return (*)(Args...) noexcept;
 };
 
 template <typename Object, typename Return, typename... Args>
 struct get_cfptr_by_memfptr<Return (Object::*)(Args..., ...) noexcept> {
-  using type = Return (*)(Args..., ...);
+  using type = Return (*)(Args..., ...) noexcept;
 };
 
 template <typename Object, typename Return, typename... Args>
 struct get_cfptr_by_memfptr<Return (Object::*)(Args..., ...) const noexcept> {
-  using type = Return (*)(Args..., ...);
+  using type = Return (*)(Args..., ...) noexcept;
 };
 
 template <typename Object, typename Return, typename... Args>
 struct get_cfptr_by_memfptr<Return (Object::*)(Args...,
                                                ...) volatile noexcept> {
-  using type = Return (*)(Args..., ...);
+  using type = Return (*)(Args..., ...) noexcept;
 };
 
 template <typename Object, typename Return, typename... Args>
 struct get_cfptr_by_memfptr<Return (Object::*)(Args..., ...)
                                 const volatile noexcept> {
-  using type = Return (*)(Args..., ...);
+  using type = Return (*)(Args..., ...) noexcept;
 };
 
 #endif
@@ -2810,6 +2810,16 @@ struct is_cfunction<Return(Args...)> : std::true_type {};
 
 template <typename Return, typename... Args>
 struct is_cfunction<Return(Args..., ...)> : std::true_type {};
+
+#if PEACALM_LUAW_SUPPORT_CPP17
+
+template <typename Return, typename... Args>
+struct is_cfunction<Return(Args...) noexcept> : std::true_type {};
+
+template <typename Return, typename... Args>
+struct is_cfunction<Return(Args..., ...) noexcept> : std::true_type {};
+
+#endif
 
 // whether T is C function pointer
 
