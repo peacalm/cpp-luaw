@@ -3461,7 +3461,7 @@ void register_static_member_cptr(const std::string& name, Member* mp);
 ```
 
 
-Eample:
+Example:
 
 ```C++
 struct A { int i = 1; };
@@ -3526,7 +3526,7 @@ void register_static_member_cref(const std::string& name, Member* mp);
 ```
 
 
-Eample:
+Example:
 
 ```C++
 struct A { int i = 1; };
