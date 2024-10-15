@@ -4722,10 +4722,9 @@ void luaw::register_dynamic_member_setter(Setter&& setter) {
 // Supported features should be specialized elsewhere.
 template <typename T, typename>
 struct luaw::registrar {
-  // Let compile fail for unsupported member types,
-  // such as ref- qualified member functions,
-  // or C style variadic functions.
-  static_assert(!std::is_member_pointer<T>::value, "Unsupported member type");
+  // Explicitly delete the member functions to let compile fail for unsupported
+  // member types, such as ref- qualified member functions, or C style variadic
+  // functions.
 
   template <typename MemberFunction>
   static void register_member(luaw&          l,
@@ -4737,6 +4736,12 @@ struct luaw::registrar {
 
   template <typename Setter>
   static void register_dynamic_member_setter(luaw& l, Setter&& setter) = delete;
+
+  template <typename F>
+  static void register_member_ptr(luaw& l, const char* name, F&& f) = delete;
+
+  template <typename F>
+  static void register_member_ref(luaw& l, const char* name, F&& f) = delete;
 };
 
 /* -------------------------------------------------------------------------- */
