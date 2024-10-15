@@ -2660,6 +2660,7 @@ struct get_element_type<T, void_t<typename T::element_type>> {
 };
 
 // Get a C function pointer type by a member function pointer type
+// Also remove noexcept if C++17 supported
 
 template <typename T>
 struct get_cfptr_by_memfptr {
@@ -2705,6 +2706,53 @@ template <typename Object, typename Return, typename... Args>
 struct get_cfptr_by_memfptr<Return (Object::*)(Args..., ...) const volatile> {
   using type = Return (*)(Args..., ...);
 };
+
+#if PEACALM_LUAW_SUPPORT_CPP17
+
+template <typename Object, typename Return, typename... Args>
+struct get_cfptr_by_memfptr<Return (Object::*)(Args...) noexcept> {
+  using type = Return (*)(Args...);
+};
+
+template <typename Object, typename Return, typename... Args>
+struct get_cfptr_by_memfptr<Return (Object::*)(Args...) const noexcept> {
+  using type = Return (*)(Args...);
+};
+
+template <typename Object, typename Return, typename... Args>
+struct get_cfptr_by_memfptr<Return (Object::*)(Args...) volatile noexcept> {
+  using type = Return (*)(Args...);
+};
+
+template <typename Object, typename Return, typename... Args>
+struct get_cfptr_by_memfptr<Return (Object::*)(Args...)
+                                const volatile noexcept> {
+  using type = Return (*)(Args...);
+};
+
+template <typename Object, typename Return, typename... Args>
+struct get_cfptr_by_memfptr<Return (Object::*)(Args..., ...) noexcept> {
+  using type = Return (*)(Args..., ...);
+};
+
+template <typename Object, typename Return, typename... Args>
+struct get_cfptr_by_memfptr<Return (Object::*)(Args..., ...) const noexcept> {
+  using type = Return (*)(Args..., ...);
+};
+
+template <typename Object, typename Return, typename... Args>
+struct get_cfptr_by_memfptr<Return (Object::*)(Args...,
+                                               ...) volatile noexcept> {
+  using type = Return (*)(Args..., ...);
+};
+
+template <typename Object, typename Return, typename... Args>
+struct get_cfptr_by_memfptr<Return (Object::*)(Args..., ...)
+                                const volatile noexcept> {
+  using type = Return (*)(Args..., ...);
+};
+
+#endif
 
 template <typename T>
 using get_cfptr_by_memfptr_t = typename get_cfptr_by_memfptr<T>::type;
@@ -3204,14 +3252,41 @@ private:
   }
 };
 
-// variadic function, not supported
+// Variadic function, not support!
 template <typename Return, typename... Args>
 struct luaw::pusher<Return (*)(Args..., ...)> {
-  // to let compile fail
-
+  // Let compile fail
   template <typename F>
   static int push(luaw& l, F&& f) = delete;
 };
+
+#if PEACALM_LUAW_SUPPORT_CPP17
+
+// Function with noexcept-specification after C++17
+template <typename Return, typename... Args>
+struct luaw::pusher<Return (*)(Args...) noexcept> {
+  using Basic = luaw::pusher<Return (*)(Args...)>;
+
+  template <typename F>
+  static int push(luaw& l, F&& f) {
+    return Basic::push(l, std::forward<F>(f));
+  }
+
+  // Explicitly call C function pointer version of push
+  static int push(luaw& l, Return (*f)(Args...) noexcept) {
+    return Basic::push(l, static_cast<Return (*)(Args...)>(f));
+  }
+};
+
+// Variadic function, not support
+template <typename Return, typename... Args>
+struct luaw::pusher<Return (*)(Args..., ...) noexcept> {
+  // Let compile fail
+  template <typename F>
+  static int push(luaw& l, F&& f) = delete;
+};
+
+#endif
 
 // bool
 template <>
