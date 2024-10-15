@@ -2010,6 +2010,7 @@ public:
   template <typename MemberPointer, typename Member>
   std::enable_if_t<std::is_member_pointer<MemberPointer>::value>
   register_static_member(const char* name, Member* m) {
+    PEACALM_LUAW_ASSERT(name);
     PEACALM_LUAW_ASSERT(m);
     static_assert(
         std::is_same<MemberPointer, std::decay_t<MemberPointer>>::value,
