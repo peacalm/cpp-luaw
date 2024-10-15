@@ -1966,6 +1966,7 @@ public:
       const char* name, Member* m) {
     static_assert(std::is_same<Class, std::decay_t<Class>>::value,
                   "Class type should be decayed");
+    PEACALM_LUAW_ASSERT(name);
     PEACALM_LUAW_ASSERT(m);
 
     // add const member property for function
