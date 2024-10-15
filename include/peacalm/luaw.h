@@ -5821,6 +5821,47 @@ struct luaw::registrar<Return (Class::*)(Args...) const volatile> {
   }
 };
 
+#if PEACALM_LUAW_SUPPORT_CPP17
+// for member functions with noexcept-specification
+
+template <typename Class, typename Return, typename... Args>
+struct luaw::registrar<Return (Class::*)(Args...) noexcept> {
+  template <typename MemberFunction>
+  static void register_member(luaw& l, const char* fname, MemberFunction mf) {
+    using Basic = luaw::registrar<Return (Class::*)(Args...)>;
+    Basic::template register_member(l, fname, mf);
+  }
+};
+
+template <typename Class, typename Return, typename... Args>
+struct luaw::registrar<Return (Class::*)(Args...) const noexcept> {
+  template <typename MemberFunction>
+  static void register_member(luaw& l, const char* fname, MemberFunction mf) {
+    using Basic = luaw::registrar<Return (Class::*)(Args...) const>;
+    Basic::template register_member(l, fname, mf);
+  }
+};
+
+template <typename Class, typename Return, typename... Args>
+struct luaw::registrar<Return (Class::*)(Args...) volatile noexcept> {
+  template <typename MemberFunction>
+  static void register_member(luaw& l, const char* fname, MemberFunction mf) {
+    using Basic = luaw::registrar<Return (Class::*)(Args...) volatile>;
+    Basic::template register_member(l, fname, mf);
+  }
+};
+
+template <typename Class, typename Return, typename... Args>
+struct luaw::registrar<Return (Class::*)(Args...) const volatile noexcept> {
+  template <typename MemberFunction>
+  static void register_member(luaw& l, const char* fname, MemberFunction mf) {
+    using Basic = luaw::registrar<Return (Class::*)(Args...) const volatile>;
+    Basic::template register_member(l, fname, mf);
+  }
+};
+
+#endif
+
 // @}
 
 ////////////////////////////////////////////////////////////////////////////////

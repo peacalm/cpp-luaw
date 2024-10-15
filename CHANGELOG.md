@@ -3,7 +3,7 @@
 
 ## Currently Unreleased - TBD
 
-(nothing)
+* Support register member functions with noexcept-specification. (Only after C++17)
 
 ## v1.2.1 - 2024.10.15
 
