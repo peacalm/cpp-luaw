@@ -1912,8 +1912,8 @@ argument into Lua.
 
 Or if you want to share the same argument objects in Lua with C++, 
 so you can modify them in Lua, you can use raw pointer type if there is 
-only one raw pointer type in all arguments, or use smart pointer type 
-or `luaw::ptrw` type, and these are safer and more reassuring.
+only one kind of raw pointer type in all arguments, or use smart 
+pointer type or `luaw::ptrw` type, and these are safer and more reassuring.
 
 Since we cannot make C++ reference type of reference to values in Lua,
 so using C++ reference type as return type is also forbidden.

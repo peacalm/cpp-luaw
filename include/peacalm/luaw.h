@@ -3786,8 +3786,9 @@ class luaw::function<Return(Args...)> {
       "argument into Lua. "
       "Or if you want to share the same argument objects in Lua with C++, "
       "so you can modify them in Lua, you can use raw pointer type if there is "
-      "only one raw pointer type in all arguments, or use smart pointer type "
-      "or peacalm::luaw::ptrw type, and these are safer and more reassuring.");
+      "only one kind of raw pointer type in all arguments, or use smart "
+      "pointer type or peacalm::luaw::ptrw type, and these are safer and more "
+      "reassuring.");
   static_assert(!std::is_reference<Return>::value,
                 "Do not support reference type as luaw::function's result. "
                 "Cannot make a C++ reference to a value in Lua");
