@@ -3683,6 +3683,9 @@ struct luaw::convertor<luaw::placeholder_tag> {
 
 template <typename Return, typename... Args>
 class luaw::function<Return(Args...)> {
+  static_assert(!std::is_reference<Return>::value,
+                "Cannot return a reference to a value in Lua");
+
   // component
   lua_State*                 L_ = nullptr;
   std::shared_ptr<const int> ref_sptr_;
