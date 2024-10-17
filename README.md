@@ -1897,6 +1897,67 @@ if (f.failed()) {
 }
 ```
 
+#### 3.3 Type of argument and return
+
+Do not support using C++ reference type as function's argument or return type.
+      
+If using reference as argument, it will make a copy of the referenced 
+argument into Lua, won't implicitly take its address, meaning that it 
+will not share the same object in Lua with that in C++, and this 
+behaves differently with that in C++. This may confuse users, so 
+explicitly forbid it. 
+
+Directly using the underlying type if you want to make a copy of the 
+argument into Lua. 
+
+Or if you want to share the same argument objects in Lua with C++, 
+so you can modify them in Lua, you can use raw pointer type if there is 
+only one raw pointer type in all arguments, or use smart pointer type 
+or `luaw::ptrw` type, and these are safer and more reassuring.
+
+Since we cannot make C++ reference type of reference to values in Lua,
+so using C++ reference type as return type is also forbidden.
+To get a reference of a Lua value, can use type `luaw::luavalueref`.
+
+
+Example:
+
+```C++
+struct Foo {
+  int i = 0;
+};
+
+struct Bar {
+  double i = 0;
+};
+
+int main() {
+  peacalm::luaw l;
+  l.register_member("i", &Foo::i);
+  l.register_member("i", &Bar::i);
+
+  l.dostring(R"(
+  f = function(a, b) 
+    a.i = a.i + 1
+    b.i = b.i + 100
+  end
+  )");
+
+  Foo a;
+  Bar b;
+  l.callf<void>("f", &a, l.make_ptrw(&b));
+  assert(a.i == 1);
+  assert(b.i == 100);
+
+  auto c = l.make_ptrw(&a); // refer to a
+  auto d = std::make_shared<Bar>();
+  l.callf<void>("f", c, d);
+  assert(c->i == 2);
+  assert(d->i == 100);
+}
+```
+
+
 ### 4. Bind C++ functions to Lua (also lambda, std::function or callable objects)
 
 Uses same API as method "set". 

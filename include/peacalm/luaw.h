@@ -3780,7 +3780,7 @@ class luaw::function<Return(Args...)> {
       "argument into Lua, won't implicitly take its address, meaning that it "
       "will not share the same object in Lua with that in C++, and this "
       "behaves differently with that in C++. This may confuse users, so "
-      "explicitly forbit it. "
+      "explicitly forbid it. "
       ""
       "Directly using the underlying type if you want to make a copy of the "
       "argument into Lua. "
