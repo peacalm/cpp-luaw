@@ -357,12 +357,9 @@ public:
 
     lua_State* L() const { return L_; }
 
-    void pop(int n = 1) { lua_pop(L_, n); }
-    int  gettop() const { return lua_gettop(L_); }
-    void settop(int idx) { lua_settop(L_, idx); }
-    void cleartop() { settop(0); }
+    int ref_id() const { return ref_sptr_ ? *ref_sptr_ : LUA_NOREF; }
 
-    int ref_id() const { return *ref_sptr_; }
+    void unref() { ref_sptr_.reset(); }
 
     bool isnil() const {
       return !L_ || !ref_sptr_ || (ref_id() == LUA_NOREF) ||
@@ -388,6 +385,11 @@ public:
       pushvalue();
       lua_setglobal(L_, name);
     }
+
+    void pop(int n = 1) { lua_pop(L_, n); }
+    int  gettop() const { return lua_gettop(L_); }
+    void settop(int idx) { lua_settop(L_, idx); }
+    void cleartop() { settop(0); }
   };
 
   /// Stack balance guarder.
