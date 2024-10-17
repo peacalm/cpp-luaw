@@ -8,11 +8,13 @@ or argument type in luaw::function.
 * Add luavalueref::to\<T\>.
 * Add luavalueref::setglobal.
 
+
 ## v1.3.0 - 2024.10.17
 
 * Support registering member functions with noexcept-specification for C++17 or 
 later.
 * Support binding C++ functions with noexcept-specification for C++17 or later.
+
 
 ## v1.2.1 - 2024.10.15
 
