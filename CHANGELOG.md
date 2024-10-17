@@ -3,6 +3,11 @@
 
 ## Currently Unreleased - TBD
 
+(nothing)
+
+
+## v1.3.0 - 2024.10.17
+
 * Support registering member functions with noexcept-specification for C++17 or later.
 * Support binding C++ functions with noexcept-specification for C++17 or later.
 
