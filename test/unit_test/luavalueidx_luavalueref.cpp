@@ -41,7 +41,7 @@ TEST(luavalueref, luavalueref) {
   {
     auto lr = l.to<luaw::luavalueref>(1);
     watch("ref of 1", lr.ref_id());
-    lr.getvalue();
+    lr.pushvalue();
     EXPECT_TRUE(l.isinteger());
     EXPECT_EQ(l.to_int(), 1);
     l.pop();
@@ -50,7 +50,7 @@ TEST(luavalueref, luavalueref) {
   {
     auto lr = l.to<luaw::luavalueref>(2);
     watch("ref of nil", lr.ref_id());
-    lr.getvalue();
+    lr.pushvalue();
     EXPECT_TRUE(l.isnil());
     l.pop();
   }
@@ -59,7 +59,7 @@ TEST(luavalueref, luavalueref) {
     // ref on none got nil
     auto lr = l.to<luaw::luavalueref>(3);
     watch("ref of none", lr.ref_id());
-    lr.getvalue();
+    lr.pushvalue();
     // ref on none got nil
     EXPECT_FALSE(lua_isnone(lr.L(), -1));
     EXPECT_TRUE(lua_isnil(lr.L(), -1));

@@ -360,13 +360,13 @@ public:
     }
 
     /// Push the value referenced on top of stack.
-    void getvalue() const {
+    void pushvalue() const {
       PEACALM_LUAW_ASSERT(L_);
       lua_rawgeti(L_, LUA_REGISTRYINDEX, ref_id());
     }
 
     /// Push the value referenced on top of other stack.
-    void getvalue(lua_State* L) const {
+    void pushvalue(lua_State* L) const {
       PEACALM_LUAW_ASSERT(L);
       lua_rawgeti(L, LUA_REGISTRYINDEX, ref_id());
     }
@@ -385,7 +385,7 @@ public:
       }
       luaw l(L_);
       auto _g = l.make_guarder();
-      getvalue();
+      pushvalue();
       auto ret = l.to<T>(-1, disable_log, failed, exists);
       l.clearL();
       return ret;
@@ -394,7 +394,7 @@ public:
     /// Set the referenced value to a global variable with given name.
     void setglobal(const char* name) const {
       PEACALM_LUAW_ASSERT(name);
-      getvalue();
+      pushvalue();
       lua_setglobal(L_, name);
     }
   };
@@ -3590,7 +3590,7 @@ struct luaw::pusher<luaw::luavalueref> {
     if (r.isnil()) {
       l.pushnil();
     } else {
-      r.getvalue(l.L());
+      r.pushvalue(l.L());
     }
     return 1;
   }
