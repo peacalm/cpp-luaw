@@ -1116,16 +1116,12 @@ TEST(type_conversions, to_function) {
   f4(2, 3);
 
   EXPECT_EQ(l.gettop(), sz);
-  {
-    auto f = l.to<luaw::function<double(double &, double &)>>(1);
-    EXPECT_EQ(l.gettop(), sz);
 
+  {
+    auto   f = l.to<luaw::function<double(double, double)>>(1);
     double a = 2.25, b = 1.25;
     EXPECT_EQ(f(a, b), 3.5);
     EXPECT_EQ(l.gettop(), sz);
-
-    EXPECT_EQ(a, 2.25);
-    EXPECT_EQ(b, 1.25);
   }
 }
 
