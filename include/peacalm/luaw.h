@@ -367,6 +367,26 @@ public:
       PEACALM_LUAW_ASSERT(L);
       lua_rawgeti(L, LUA_REGISTRYINDEX, ref_id());
     }
+
+    /// Convert the referenced Lua value to type T.
+    /// @sa luaw::to
+    template <typename T>
+    T to(bool  disable_log = false,
+         bool* failed      = nullptr,
+         bool* exists      = nullptr) const {
+      if (!L_) {
+        if (!disable_log) luaw::log_error("invalid luavalueref: no lua_State");
+        if (failed) *failed = true;
+        if (exists) *exists = false;
+        return T{};
+      }
+      luaw l(L_);
+      auto _g = l.make_guarder();
+      getvalue();
+      auto ret = l.to<T>(-1, disable_log, failed, exists);
+      l.clearL();
+      return ret;
+    }
   };
 
   /// Stack balance guarder.
