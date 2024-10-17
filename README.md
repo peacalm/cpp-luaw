@@ -3947,7 +3947,7 @@ int main() {
 
 We can make a reference of some Lua value by type `luaw::luavalueref` in C++.
 
-It can be used in `get`, `eval`, `push`, `set` etc.
+It can be used in `get`, `eval`, `push`, `set`, `luaw::function` etc.
 
 Example:
 
@@ -3966,7 +3966,24 @@ assert(l.gettop() == 0);
 // Set "ref" to a global variable
 l.set("ref", ref);
 assert(l.callf<int>({"ref", "f"}, 1, 2) == 3);
+assert(l.gettop() == 0);
 
+l.dostring(")
+```
+
+```C++
+peacalm::luaw l;
+assert(l.dostring("function f(a) return a * a end") == LUA_OK);
+
+// x refers to result of 2 * 2, which is 4
+auto x = l.callf<peacalm::luaw::luavalueref>("f", 2);
+
+l.push(x);
+assert(l.to_int() == 4);
+l.pop();
+
+// use x as parameter of function
+assert(l.callf<int>("f", x) == 16);
 assert(l.gettop() == 0);
 ```
 
