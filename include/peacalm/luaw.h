@@ -3920,7 +3920,7 @@ public:
         if (!L_) {
           luaw::log_error("luaw::function has no lua_State");
         } else if (!ref_sptr_) {
-          luaw::log_error("luaw::function references to nothing");
+          luaw::log_error("luaw::function refers to nothing");
         } else {
           PEACALM_LUAW_ASSERT(false);
         }
