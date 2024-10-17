@@ -1921,6 +1921,16 @@ To get a reference of a Lua value, can use type
 [`luaw::luavalueref`](https://github.com/peacalm/cpp-luaw?tab=readme-ov-file#9-reference-of-lua-values-in-c).
 
 
+##### make_ptrw
+
+```C++
+// Make a wrapper for a raw pointer.
+// Thus the wrapped pointer will be a full userdata in Lua, not light userdata.
+template <typename T>
+luaw::ptrw<T> luaw::make_ptrw(T* p);
+```
+
+
 Example:
 
 ```C++
