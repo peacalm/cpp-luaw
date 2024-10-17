@@ -1917,7 +1917,8 @@ pointer type or `luaw::ptrw` type, and these are safer and more reassuring.
 
 Since we cannot make C++ reference type of reference to values in Lua,
 so using C++ reference type as return type is also forbidden.
-To get a reference of a Lua value, can use type `luaw::luavalueref`.
+To get a reference of a Lua value, can use type 
+[`luaw::luavalueref`](https://github.com/peacalm/cpp-luaw?tab=readme-ov-file#9-reference-of-lua-values-in-c).
 
 
 Example:
