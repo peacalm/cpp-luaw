@@ -5,6 +5,7 @@
 
 * Add static assertion to explicitly forbit using reference type as return type 
 or argument type in `luaw::function`.
+* add method `luaw::function::unref`, `luaw::function::ref_id` etc.
 * Add new class `subluaw`, and add method `make_subluaw` for `luaw`. 
 * Rename method `getvalue` of `luavalueref` to `pushvalue`.
 * Add method `setglobal` for `luavalueref`.

@@ -3812,10 +3812,10 @@ public:
     // it is states before call the function.
     function_exists_ = !lua_isnoneornil(L_, idx);
     if (exists) *exists = !lua_isnoneornil(L_, idx);
-    // noneornil is not callable, so we regard not-exists as failed for
-    // function, which is not as same as usual.
     if (failed) {
       if (lua_isnoneornil(L_, idx)) {
+        // noneornil is not callable, so we regard this (not-exists) as failed
+        // for function, which is not same as getting variabls.
         *failed = true;
       } else {
         // check more whether it's callable
@@ -3831,6 +3831,15 @@ public:
       delete p;
     });
   }
+
+  /// Unref the referenced Lua function value.
+  void unref() { ref_sptr_.reset(); }
+
+  /// Get the ref id for the referenced Lua function value.
+  const int ref_id() const { return ref_sptr_ ? *ref_sptr_ : LUA_NOREF; }
+
+  /// Get internal lua_State.
+  lua_State* L() const { return L_; }
 
   /// Set log on-off.
   void disable_log(bool v) { disable_log_ = v; }
@@ -3897,10 +3906,18 @@ public:
     result_exists_    = false;
     real_result_size_ = 0;
 
-    if (!L_) {
+    if (!L_ || !ref_sptr_) {
       function_failed_ = false;
       function_exists_ = false;
-      if (!disable_log_) { luaw::log_error("null State"); }
+      if (!disable_log_) {
+        if (!L_) {
+          luaw::log_error("luaw::function has no lua_State");
+        } else if (!ref_sptr_) {
+          luaw::log_error("luaw::function references to nothing");
+        } else {
+          PEACALM_LUAW_ASSERT(false);
+        }
+      }
       return Return();
     }
 
