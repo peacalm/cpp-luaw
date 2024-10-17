@@ -576,6 +576,7 @@ public:
   // Get and set lua_State.
   lua_State* L() const { return L_; }
   void       L(lua_State* L) { L_ = L; }
+  void       clearL() { L_ = nullptr; }
 
   /// Convert given index to absolute index of stack. It won't change idx's
   /// value if abs(idx) > topsize, this is different with lua_absindex.
