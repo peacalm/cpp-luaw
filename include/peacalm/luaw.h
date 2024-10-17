@@ -3161,7 +3161,7 @@ struct luaw::pusher<Return (*)(Args...)> {
       PEACALM_LUAW_ASSERT(callee);
       luaw l(L);
       int  ret_num = callback(l, *callee, 2, std::is_void<Return>{});
-      l.release();
+      l.clearL();
       return ret_num;
     };
 
@@ -3207,7 +3207,7 @@ struct luaw::pusher<Return (*)(Args...)> {
       PEACALM_LUAW_ASSERT(callee);
       luaw l(L);
       int  ret_num = callback(l, *callee, 1, std::is_void<Return>{});
-      l.release();
+      l.clearL();
       return ret_num;
     };
 
@@ -3227,7 +3227,7 @@ struct luaw::pusher<Return (*)(Args...)> {
       PEACALM_LUAW_ASSERT(callee);
       luaw l(L);
       int  ret_num = callback(l, callee, 1, std::is_void<Return>{});
-      l.release();
+      l.clearL();
       return ret_num;
     };
     l.pushlightuserdata(reinterpret_cast<void*>(f));
