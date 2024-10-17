@@ -360,7 +360,10 @@ public:
     }
 
     /// Push the value referenced on top of stack.
-    void getvalue() const { lua_rawgeti(L_, LUA_REGISTRYINDEX, ref_id()); }
+    void getvalue() const {
+      PEACALM_LUAW_ASSERT(L_);
+      lua_rawgeti(L_, LUA_REGISTRYINDEX, ref_id());
+    }
 
     /// Push the value referenced on top of other stack.
     void getvalue(lua_State* L) const {
@@ -386,6 +389,13 @@ public:
       auto ret = l.to<T>(-1, disable_log, failed, exists);
       l.clearL();
       return ret;
+    }
+
+    /// Set the referenced value to a global variable with given name.
+    void setglobal(const char* name) const {
+      PEACALM_LUAW_ASSERT(name);
+      getvalue();
+      lua_setglobal(L_, name);
     }
   };
 

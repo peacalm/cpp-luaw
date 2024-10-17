@@ -6,6 +6,7 @@
 * Add static assertion to explicitly forbit using reference type as return type 
 or argument type in luaw::function.
 * Add luavalueref::to\<T\>.
+* Add luavalueref::setglobal.
 
 ## v1.3.0 - 2024.10.17
 
