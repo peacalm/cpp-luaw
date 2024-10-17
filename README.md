@@ -3945,7 +3945,7 @@ int main() {
 
 ### 9. Reference of Lua values in C++
 
-We can make a reference of some Lua value by type `luaw::luavalueref`.
+We can make a reference of some Lua value by type `luaw::luavalueref` in C++.
 
 It can be used in `get`, `eval`, `push`, `set` etc.
 
