@@ -2643,8 +2643,6 @@ public:
   subluaw(subluaw&& r) : base_t(r.release()), ref_id_(r.ref_id_) {}
   subluaw(const subluaw&) = delete;
 
-  const int ref_id() const { return ref_id_; }
-
   void init()  = delete;
   void close() = delete;
   void reset() = delete;
@@ -2656,6 +2654,15 @@ public:
       // Then clearL
       base_t::clearL();
     }
+  }
+
+  /// Get ref id for this sub thread.
+  const int ref_id() const { return ref_id_; }
+
+  /// Push the referenced sub thread onto top of given stack.
+  void pushthread(lua_State* L) const {
+    PEACALM_LUAW_ASSERT(L);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, ref_id_);
   }
 };
 
