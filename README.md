@@ -3943,7 +3943,34 @@ int main() {
 }
 ```
 
-### 9. Initialization options
+### 9. Reference of Lua values in C++
+
+We can make a reference of some Lua value by type `luaw::luavalueref`.
+
+It can be used in `get`, `eval`, `push`, `set` etc.
+
+Example:
+
+```C++
+peacalm::luaw l;
+auto ref = l.eval<peacalm::luaw::luavalueref>(
+    "return {v=1, f = function(a, b) return a + b end }");
+
+// Push "ref" onto stack
+l.push(ref);
+l.seek("v");
+assert(l.to_int() == 1);
+l.pop(2);
+assert(l.gettop() == 0);
+
+// Set "ref" to a global variable
+l.set("ref", ref);
+assert(l.callf<int>({"ref", "f"}, 1, 2) == 3);
+
+assert(l.gettop() == 0);
+```
+
+### 10. Initialization options
 
 On default, the `luaw` instance will load all standard Lua libs, but it is costly,
 and not all libs are always needed.
