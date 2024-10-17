@@ -1921,9 +1921,20 @@ To get a reference of a Lua value, can use type
 [`luaw::luavalueref`](https://github.com/peacalm/cpp-luaw?tab=readme-ov-file#9-reference-of-lua-values-in-c).
 
 
-##### make_ptrw
+##### luaw::ptrw and luaw::make_ptrw
+
+`luaw::ptrw` is a wrapper of raw pointer.
+Use `luaw::make_ptrw` to make the wrapper.
+
+(Currently, `luaw::ptrw` is implemented by `std::shared_ptr` without deleter.)
+
+API:
 
 ```C++
+/// Pointer wrapper type
+template <typename T>
+using ptrw = const std::shared_ptr<T>;
+
 // Make a wrapper for a raw pointer.
 // Thus the wrapped pointer will be a full userdata in Lua, not light userdata.
 template <typename T>
