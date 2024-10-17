@@ -4,9 +4,10 @@
 ## Currently Unreleased - TBD
 
 * Add static assertion to explicitly forbit using reference type as return type 
-or argument type in luaw::function.
-* Add luavalueref::setglobal.
-* Rename luavalueref::getvalue to pushvalue.
+or argument type in `luaw::function`.
+* Add new class `subluaw`, and add method `make_subluaw` for `luaw`. 
+* Rename method `getvalue` of `luavalueref` to `pushvalue`.
+* Add method `setglobal` for `luavalueref`.
 
 
 ## v1.3.0 - 2024.10.17
