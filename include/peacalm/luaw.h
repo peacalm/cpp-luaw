@@ -2620,7 +2620,7 @@ class fakeluaw : public luaw {
 public:
   fakeluaw(lua_State* L) : base_t(L) {}
 
-  ~fakeluaw() { base_t::release(); }
+  ~fakeluaw() { base_t::clearL(); }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
