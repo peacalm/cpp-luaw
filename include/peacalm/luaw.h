@@ -2651,9 +2651,10 @@ public:
 
   ~subluaw() {
     if (L()) {
-      // Must unref first
+      cleartop();
+      // Must unref the sub thread before "clearL".
       luaL_unref(L(), LUA_REGISTRYINDEX, ref_id_);
-      // Then clearL
+      // "clearL" must be called at the end.
       base_t::clearL();
     }
   }
