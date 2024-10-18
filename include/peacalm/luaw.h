@@ -3753,7 +3753,7 @@ namespace luaw_detail {
 
 // Has any reference type in a std::tuple
 template <typename T>
-struct tuple_has_ref;
+struct tuple_has_ref : std::false_type {};
 
 template <typename T, typename... Ts>
 struct tuple_has_ref<std::tuple<T, Ts...>>
@@ -3790,7 +3790,8 @@ class luaw::function<Return(Args...)> {
       "only one kind of raw pointer type in all arguments, or use smart "
       "pointer type or peacalm::luaw::ptrw type, and these are safer and more "
       "reassuring.");
-  static_assert(!std::is_reference<Return>::value,
+  static_assert(!std::is_reference<Return>::value &&
+                    !luaw_detail::tuple_has_ref<Return>::value,
                 "Do not support reference type as luaw::function's result. "
                 "Cannot make a C++ reference to a value in Lua");
 
