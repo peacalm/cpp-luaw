@@ -1764,6 +1764,8 @@ We can get a callable object of type `std::function` or `luaw::function`
 to represent the Lua function, then we can call it to implement the calling to 
 the Lua function. But using `luaw::function` is recommended.
 
+##### `std::function` is not recommended
+
 Using `std::function` is simple, but it provide nothing information about whether the function works correctly:
 
 ```C++
@@ -1800,6 +1802,8 @@ if (retcode != LUA_OK) { /* error handlers*/ }
 ```
 
 So, using `std::function` is not recommended.
+
+##### `luaw::function` is recommended
 
 Instance of `luaw::function` can be called like `std::function` 
 (actually the latter is a simple wrapper of the former), 
