@@ -3,10 +3,10 @@
 
 ## Currently Unreleased - TBD
 
-* Add static assertion to explicitly forbit using reference type as return type 
+* Add static assertion to explicitly forbid using reference type as return type 
 or argument type in `luaw::function`.
-* add method `luaw::function::unref`, `luaw::function::ref_id` etc.
 * Add new class `subluaw`, and add method `luaw::make_subluaw`.
+* add method `luaw::function::unref`, `luaw::function::ref_id` etc.
 * Add method `luavalueref::setglobal`, `luavalueref::unref` etc. 
 * Rename method `getvalue` of `luavalueref` to `pushvalue`.
 
