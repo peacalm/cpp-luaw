@@ -885,6 +885,7 @@ public:
   DEFINE_TYPE_CONVERSION(ldouble, double, 0)
 #undef DEFINE_TYPE_CONVERSION
 
+  // Unsafe version.
   // NOTICE: Lua will implicitly convert number to string
   // boolean can't convert to string
   const char* to_c_str(int         idx         = -1,
@@ -906,11 +907,19 @@ public:
     return def;
   }
 
+  // Safe version.
+  // Make a copy before convert to string when it is a number.
   std::string to_string(int                idx         = -1,
                         const std::string& def         = "",
                         bool               disable_log = false,
                         bool*              failed      = nullptr,
                         bool*              exists      = nullptr) {
+    if (is_type_number(idx)) {
+      pushvalue(idx);  // make a copy
+      std::string ret = to_c_str(-1, def.c_str(), disable_log, failed, exists);
+      pop();
+      return ret;
+    }
     return std::string{to_c_str(idx, def.c_str(), disable_log, failed, exists)};
   }
 
