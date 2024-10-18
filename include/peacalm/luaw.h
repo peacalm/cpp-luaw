@@ -644,6 +644,22 @@ public:
   bool isthread(int idx = -1)        const { return lua_isthread(L_, idx); }
   // clang-format on
 
+  // clang-format off
+  bool is_type_none(int idx = -1)          const { return lua_type(L_, idx) == LUA_TNONE; }
+  bool is_type_nil(int idx = -1)           const { return lua_type(L_, idx) == LUA_TNIL; }
+  bool is_type_boolean(int idx = -1)       const { return lua_type(L_, idx) == LUA_TBOOLEAN; }
+  bool is_type_lightuserdata(int idx = -1) const { return lua_type(L_, idx) == LUA_TLIGHTUSERDATA; }
+  bool is_type_number(int idx = -1)        const { return lua_type(L_, idx) == LUA_TNUMBER; }
+  bool is_type_string(int idx = -1)        const { return lua_type(L_, idx) == LUA_TSTRING; }
+  bool is_type_table(int idx = -1)         const { return lua_type(L_, idx) == LUA_TTABLE; }
+  bool is_type_function(int idx = -1)      const { return lua_type(L_, idx) == LUA_TFUNCTION; }
+  bool is_type_userdata(int idx = -1)      const { return lua_type(L_, idx) == LUA_TUSERDATA; }
+  bool is_type_thread(int idx = -1)        const { return lua_type(L_, idx) == LUA_TTHREAD; }
+  // clang-format on
+
+  int         type(int idx) const { return lua_type(L_, idx); }
+  const char* type_name(int idx) const { return lua_typename(L_, type(idx)); }
+
   // getxxx: return the type of the value pushed.
   int gettable(int idx) { return lua_gettable(L_, idx); }
   int geti(int idx, lua_integer_t n) { return lua_geti(L_, idx, n); }
@@ -718,9 +734,6 @@ public:
   }
 
   int pcall(int narg, int nret, int f) { return lua_pcall(L_, narg, nret, f); }
-
-  int         type(int idx) const { return lua_type(L_, idx); }
-  const char* type_name(int idx) const { return lua_typename(L_, type(idx)); }
 
   /// Whether the value at idx is indexable.
   bool indexable(int idx = -1) const {
