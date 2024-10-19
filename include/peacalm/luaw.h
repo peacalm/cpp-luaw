@@ -2633,15 +2633,11 @@ public:
   /// Output error: Can't convert value at given index to target type.
   void log_type_convert_error(int idx, const char* to) {
     std::cerr << "Lua: Can't convert to " << to << " by ";
-    if (isnumber(idx) || isstring(idx) || isboolean(idx) || isinteger(idx)) {
+    if (isstring(idx) || isnumber(idx) || isboolean(idx) || isinteger(idx)) {
       std::cerr << type_name(idx) << ": ";
     }
-    if (isstring(idx)) {
-      std::cerr << lua_tostring(L_, idx) << std::endl;
-    } else {
-      std::cerr << luaL_tolstring(L_, idx, NULL) << std::endl;
-      pop();
-    }
+    std::cerr << luaL_tolstring(L_, idx, NULL) << std::endl;
+    pop();
   }
 };
 
