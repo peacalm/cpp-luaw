@@ -9,6 +9,8 @@ or argument type in `luaw::function`.
 * add method `luaw::function::unref`, `luaw::function::ref_id` etc.
 * Add method `luavalueref::setglobal`, `luavalueref::unref` etc. 
 * Rename method `getvalue` of `luavalueref` to `pushvalue`.
+* Add type check functions `is_type_number`, `is_type_boolean`, etc.
+* Refactor `luaw::to_string`, won't change number to string anymore.
 
 
 ## v1.3.0 - 2024.10.17
