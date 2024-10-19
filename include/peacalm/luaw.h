@@ -657,8 +657,10 @@ public:
   bool is_type_thread(int idx = -1)        const { return lua_type(L_, idx) == LUA_TTHREAD; }
   // clang-format on
 
-  int         type(int idx) const { return lua_type(L_, idx); }
-  const char* type_name(int idx) const { return lua_typename(L_, type(idx)); }
+  int         type(int idx = -1) const { return lua_type(L_, idx); }
+  const char* type_name(int idx = -1) const {
+    return lua_typename(L_, type(idx));
+  }
 
   // getxxx: return the type of the value pushed.
   int gettable(int idx) { return lua_gettable(L_, idx); }
