@@ -333,6 +333,8 @@ public:
     int idx() const { return idx_; }
   };
 
+  luavalueidx make_luavalueidx(int idx) const { return luavalueidx(L_, idx); }
+
   /// A reference of some Lua value in LUA_REGISTRYINDEX.
   class luavalueref {
     lua_State*                 L_;  // if L_ == nullptr, as ref to nil
@@ -391,6 +393,8 @@ public:
     void settop(int idx) { lua_settop(L_, idx); }
     void cleartop() { settop(0); }
   };
+
+  luavalueref make_luavalueref(int idx) const { return luavalueref(L_, idx); }
 
   /// Stack balance guarder.
   /// Automatically set stack to a specific size when destruct.
