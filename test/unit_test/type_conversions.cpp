@@ -1383,3 +1383,39 @@ TEST(type_conversions, to_pointer) {
   EXPECT_EQ(failed, false);
   EXPECT_EQ(exists, false);
 }
+
+TEST(type_conversions, to_c_str_unsafe) {
+  luaw l;
+
+  l.push(123);
+  l.push(1.23);
+
+  EXPECT_TRUE(l.is_type_number(1));
+  EXPECT_TRUE(l.is_type_number(2));
+
+  EXPECT_EQ(strcmp(l.to_c_str(1), "123"), 0);
+  EXPECT_EQ(strcmp(l.to_c_str(2), "1.23"), 0);
+
+  // Type changed from number to string
+  EXPECT_FALSE(l.is_type_number(1));
+  EXPECT_FALSE(l.is_type_number(2));
+  EXPECT_TRUE(l.is_type_string(1));
+  EXPECT_TRUE(l.is_type_string(2));
+}
+
+TEST(type_conversions, to_string_safe) {
+  luaw l;
+
+  l.push(123);
+  l.push(1.23);
+
+  EXPECT_TRUE(l.is_type_number(1));
+  EXPECT_TRUE(l.is_type_number(2));
+
+  EXPECT_EQ(l.to_string(1), "123");
+  EXPECT_EQ(l.to_string(2), "1.23");
+
+  // type no change
+  EXPECT_TRUE(l.is_type_number(1));
+  EXPECT_TRUE(l.is_type_number(2));
+}

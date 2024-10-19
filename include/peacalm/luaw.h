@@ -887,7 +887,6 @@ public:
 
   // Unsafe version.
   // NOTICE: Lua will implicitly convert number to string
-  // boolean can't convert to string
   const char* to_c_str(int         idx         = -1,
                        const char* def         = "",
                        bool        disable_log = false,
@@ -908,7 +907,7 @@ public:
   }
 
   // Safe version.
-  // Make a copy before convert to string when it is a number.
+  // Make a copy of the value before converts it to string when it is a number.
   std::string to_string(int                idx         = -1,
                         const std::string& def         = "",
                         bool               disable_log = false,
