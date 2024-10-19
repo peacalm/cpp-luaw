@@ -2694,6 +2694,36 @@ inline subluaw luaw::make_subluaw() {
   return subluaw(subL, ref_id);
 }
 
+// Support output luaw::luavalueref by std::basic_ostream
+template <class Char, class Traits>
+std::basic_ostream<Char, Traits>& operator<<(
+    std::basic_ostream<Char, Traits>& o, const luaw::luavalueidx& r) {
+  fakeluaw l(r.L());
+  auto     _g = l.make_guarder();
+  o << "{";
+  if (l.is_type_string(r.idx()) || l.is_type_number(r.idx()) ||
+      l.is_type_boolean(r.idx())) {
+    o << l.type_name(r.idx()) << ": ";
+  }
+  o << luaL_tolstring(l.L(), r.idx(), NULL) << ", idx: " << r.idx() << "}";
+  return o;
+}
+
+// Support output luaw::luavalueref by std::basic_ostream
+template <class Char, class Traits>
+std::basic_ostream<Char, Traits>& operator<<(
+    std::basic_ostream<Char, Traits>& o, const luaw::luavalueref& r) {
+  fakeluaw l(r.L());
+  auto     _g = l.make_guarder();
+  r.pushvalue();
+  o << "{";
+  if (l.is_type_string() || l.is_type_number() || l.is_type_boolean()) {
+    o << l.type_name() << ": ";
+  }
+  o << luaL_tolstring(l.L(), -1, NULL) << ", ref_id: " << r.ref_id() << "}";
+  return o;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace luaw_detail {
