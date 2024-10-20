@@ -2645,6 +2645,17 @@ public:
     std::cerr << luaL_tolstring(L_, idx, NULL) << std::endl;
     pop();
   }
+
+  /// Output every value in stack in order.
+  void print_stack() const {
+    std::cout << "Stack:\n";
+    for (int i = 1, n = gettop(); i <= n; ++i) {
+      std::cout << "[" << i << "] " << type_name(i) << "(" << type(i) << "): ";
+      std::cout << luaL_tolstring(L_, i, NULL);
+      lua_pop(L_, 1);
+      std::cout << std::endl;
+    }
+  }
 };
 
 /// Wrapper for a given lua_State. Only to use methods of luaw,
