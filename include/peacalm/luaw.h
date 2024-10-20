@@ -331,9 +331,11 @@ public:
 
     lua_State* L() const { return L_; }
 
-    lua_State* main_thread() const { return luaw::get_main_thread_of(L_); }
-
     int idx() const { return idx_; }
+
+    bool valid() const { return L_ && idx_ >= 1 && idx_ <= lua_gettop(L_); }
+
+    lua_State* main_thread() const { return luaw::get_main_thread_of(L_); }
   };
 
   luavalueidx make_luavalueidx(int idx) const { return luavalueidx(L_, idx); }
@@ -362,9 +364,9 @@ public:
 
     lua_State* L() const { return L_; }
 
-    lua_State* main_thread() const { return luaw::get_main_thread_of(L_); }
-
     int ref_id() const { return ref_sptr_ ? *ref_sptr_ : LUA_NOREF; }
+
+    lua_State* main_thread() const { return luaw::get_main_thread_of(L_); }
 
     void unref() { ref_sptr_.reset(); }
 
