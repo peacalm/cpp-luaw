@@ -2665,6 +2665,10 @@ public:
 
   /// Output every value in stack in order.
   void print_stack() const {
+    if (gettop() <= 0) {
+      std::cout << "Stack empty." << std::endl;
+      return;
+    }
     std::cout << "Stack:\n";
     for (int i = 1, n = gettop(); i <= n; ++i) {
       std::cout << "[" << std::setw(2) << i << "] " << std::setw(8)
