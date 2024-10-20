@@ -333,7 +333,9 @@ public:
 
     int idx() const { return idx_; }
 
-    bool valid() const { return L_ && idx_ >= 1 && idx_ <= lua_gettop(L_); }
+    bool valid() const {
+      return L_ && std::abs(idx_) >= 1 && std::abs(idx_) <= lua_gettop(L_);
+    }
 
     lua_State* main_thread() const { return luaw::get_main_thread_of(L_); }
   };
@@ -342,13 +344,13 @@ public:
 
   /// A reference of some Lua value in LUA_REGISTRYINDEX.
   class luavalueref {
-    lua_State*                 L_;  // if L_ == nullptr, as ref to nil
-    std::shared_ptr<const int> ref_sptr_;
+    lua_State*                 L_;
+    std::shared_ptr<const int> ref_sptr_;  // LUA_NOREF if invalid
 
   public:
     /// Make a reference of the value at index "idx" in the stack "L".
     luavalueref(lua_State* L = nullptr, int idx = -1) : L_(L) {
-      if (L) {
+      if (L && std::abs(idx) >= 1 && std::abs(idx) <= lua_gettop(L)) {
         lua_pushvalue(L, idx);  // make a copy
         // pops the value on top and returns its ref_id.
         const int ref_id = luaL_ref(L, LUA_REGISTRYINDEX);
@@ -357,7 +359,7 @@ public:
           delete p;
         });
       } else {
-        // ref to nil
+        // noref
         ref_sptr_ = std::make_shared<const int>(LUA_NOREF);
       }
     }
@@ -366,11 +368,9 @@ public:
 
     int ref_id() const { return ref_sptr_ ? *ref_sptr_ : LUA_NOREF; }
 
-    bool valid() const { return L_ && ref_sptr_; }
+    bool valid() const { return L_ && ref_id() != LUA_NOREF; }
 
-    bool as_nil() const {
-      return !valid() || (ref_id() == LUA_NOREF) || (ref_id() == LUA_REFNIL);
-    }
+    bool as_nil() const { return !valid() || (ref_id() == LUA_REFNIL); }
 
     lua_State* main_thread() const { return luaw::get_main_thread_of(L_); }
 
