@@ -345,7 +345,7 @@ public:
   /// A reference of some Lua value in LUA_REGISTRYINDEX.
   class luavalueref {
     lua_State*                 L_;
-    std::shared_ptr<const int> ref_sptr_;  // LUA_NOREF if invalid
+    std::shared_ptr<const int> ref_sptr_;
 
   public:
     /// Make a reference of the value at index "idx" in the stack "L".
@@ -358,9 +358,6 @@ public:
           luaL_unref(L, LUA_REGISTRYINDEX, *p);  // release the ref_id
           delete p;
         });
-      } else {
-        // noref
-        ref_sptr_ = std::make_shared<const int>(LUA_NOREF);
       }
     }
 
@@ -368,7 +365,7 @@ public:
 
     int ref_id() const { return ref_sptr_ ? *ref_sptr_ : LUA_NOREF; }
 
-    bool valid() const { return L_ && ref_id() != LUA_NOREF; }
+    bool valid() const { return L_ && ref_sptr_ && *ref_sptr_ != LUA_NOREF; }
 
     bool as_nil() const { return !valid() || (ref_id() == LUA_REFNIL); }
 
@@ -376,23 +373,17 @@ public:
 
     void unref() { ref_sptr_.reset(); }
 
-    /// Push the value referenced on top of stack.
+    /// Push the value referenced on top of this stack.
     void pushvalue() const {
       PEACALM_LUAW_ASSERT(L_);
       lua_rawgeti(L_, LUA_REGISTRYINDEX, ref_id());
-    }
-
-    /// Push the value referenced on top of other stack.
-    void pushvalue(lua_State* L) const {
-      PEACALM_LUAW_ASSERT(L);
-      lua_rawgeti(L, LUA_REGISTRYINDEX, ref_id());
     }
 
     /// Set the referenced value to a global variable with given name.
     /// Equivalent to luaw::set(name, this luavalueref).
     void setglobal(const char* name) const {
       PEACALM_LUAW_ASSERT(name);
-      pushvalue();
+      lua_rawgeti(L_, LUA_REGISTRYINDEX, ref_id());
       lua_setglobal(L_, name);
     }
 
@@ -402,7 +393,9 @@ public:
     void cleartop() { settop(0); }
   };
 
-  luavalueref make_luavalueref(int idx) const { return luavalueref(L_, idx); }
+  luavalueref make_luavalueref(int idx = -1) const {
+    return luavalueref(L_, idx);
+  }
 
   /// Stack balance guarder.
   /// Automatically set stack to a specific size when destruct.
@@ -3702,8 +3695,17 @@ struct luaw::pusher<luaw::luavalueidx> {
   static const size_t size = 1;
 
   static int push(luaw& l, const luaw::luavalueidx& r) {
-    PEACALM_LUAW_ASSERT(l.L() == r.L());
-    l.pushvalue(r.idx());
+    if (!r.valid()) {
+      l.pushnil();
+    } else if (l.L() == r.L()) {
+      l.pushvalue(r.idx());
+    } else if (l.main_thread() == r.main_thread()) {
+      lua_pushvalue(r.L(), r.idx());
+      lua_xmove(r.L(), l.L(), 1);
+    } else {
+      // Can't push value from other lua_State.
+      l.pushnil();
+    }
     return 1;
   }
 };
@@ -3715,8 +3717,11 @@ struct luaw::pusher<luaw::luavalueref> {
   static int push(luaw& l, const luaw::luavalueref& r) {
     if (r.as_nil()) {
       l.pushnil();
+    } else if (l.L() == r.L() || l.main_thread() == r.main_thread()) {
+      lua_rawgeti(l.L(), LUA_REGISTRYINDEX, r.ref_id());
     } else {
-      r.pushvalue(l.L());
+      // Can't push value from other lua_State.
+      l.pushnil();
     }
     return 1;
   }
