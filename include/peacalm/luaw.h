@@ -2662,12 +2662,14 @@ public:
   }
 
   /// Output every value in stack in order.
-  void print_stack() const {
+  void print_stack(const char* name = nullptr) const {
+    std::cout << "Stack";
+    if (name) std::cout << " " << name;
     if (gettop() <= 0) {
-      std::cout << "Stack empty." << std::endl;
+      std::cout << " empty." << std::endl;
       return;
     }
-    std::cout << "Stack:\n";
+    std::cout << ":\n";
     for (int i = 1, n = gettop(); i <= n; ++i) {
       std::cout << "[" << std::setw(2) << i << "] " << std::setw(8)
                 << type_name(i) << "(" << type(i)
