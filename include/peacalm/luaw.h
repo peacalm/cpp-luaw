@@ -1091,6 +1091,10 @@ public:
   /// Push with an user given hint type.
   template <typename Hint, typename T>
   std::enable_if_t<!std::is_same<Hint, T>::value, int> push(T&& value) {
+    static_assert(
+        std::is_same<Hint,
+                     std::remove_cv_t<std::remove_reference_t<Hint>>>::value,
+        "Hint should not be const/volatile/reference");
     return pusher<std::decay_t<Hint>>::push(*this, std::forward<T>(value));
   }
 

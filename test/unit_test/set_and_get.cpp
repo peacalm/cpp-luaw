@@ -498,7 +498,7 @@ TEST(set_and_get, template_set) {
   }
   {
     auto x = std::vector<int>{1, 2, 3};
-    l.set<decltype(x)>("x", x);
+    l.set("x", x);
     EXPECT_EQ(l.get<decltype(x)>("x"), x);
   }
   {
@@ -508,12 +508,12 @@ TEST(set_and_get, template_set) {
   }
   {
     const auto x = std::vector<int>{1, 2, 3};
-    l.set<decltype(x)>("x", x);
+    l.set<std::decay_t<decltype(x)>>("x", x);
     EXPECT_EQ(l.get<decltype(x)>("x"), x);
   }
   {
     const auto &&x = std::vector<int>{1, 2, 3};
-    l.set<decltype(x)>("x", x);
+    l.set<std::decay_t<decltype(x)>>("x", x);
     EXPECT_EQ(l.get<const std::vector<int>>("x"), x);
   }
 }
