@@ -2652,10 +2652,9 @@ public:
     std::cout << "Stack:\n";
     for (int i = 1, n = gettop(); i <= n; ++i) {
       std::cout << "[" << std::setw(2) << i << "] " << std::setw(8)
-                << type_name(i) << "(" << type(i) << "): ";
-      std::cout << luaL_tolstring(L_, i, NULL);
+                << type_name(i) << "(" << type(i)
+                << "): " << luaL_tolstring(L_, i, NULL) << std::endl;
       lua_pop(L_, 1);
-      std::cout << std::endl;
     }
   }
 };
