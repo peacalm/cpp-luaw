@@ -366,14 +366,15 @@ public:
 
     int ref_id() const { return ref_sptr_ ? *ref_sptr_ : LUA_NOREF; }
 
+    bool valid() const { return L_ && ref_sptr_; }
+
+    bool as_nil() const {
+      return !valid() || (ref_id() == LUA_NOREF) || (ref_id() == LUA_REFNIL);
+    }
+
     lua_State* main_thread() const { return luaw::get_main_thread_of(L_); }
 
     void unref() { ref_sptr_.reset(); }
-
-    bool isnil() const {
-      return !L_ || !ref_sptr_ || (ref_id() == LUA_NOREF) ||
-             (ref_id() == LUA_REFNIL);
-    }
 
     /// Push the value referenced on top of stack.
     void pushvalue() const {
@@ -3712,7 +3713,7 @@ struct luaw::pusher<luaw::luavalueref> {
   static const size_t size = 1;
 
   static int push(luaw& l, const luaw::luavalueref& r) {
-    if (r.isnil()) {
+    if (r.as_nil()) {
       l.pushnil();
     } else {
       r.pushvalue(l.L());
