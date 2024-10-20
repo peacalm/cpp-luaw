@@ -22,6 +22,7 @@
 #include <forward_list>
 #include <functional>
 #include <initializer_list>
+#include <iomanip>
 #include <iostream>
 #include <list>
 #include <map>
@@ -2650,7 +2651,8 @@ public:
   void print_stack() const {
     std::cout << "Stack:\n";
     for (int i = 1, n = gettop(); i <= n; ++i) {
-      std::cout << "[" << i << "] " << type_name(i) << "(" << type(i) << "): ";
+      std::cout << "[" << std::setw(2) << i << "] " << std::setw(8)
+                << type_name(i) << "(" << type(i) << "): ";
       std::cout << luaL_tolstring(L_, i, NULL);
       lua_pop(L_, 1);
       std::cout << std::endl;
