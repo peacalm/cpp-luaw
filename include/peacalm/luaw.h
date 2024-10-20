@@ -3027,29 +3027,72 @@ using remove_ptr_or_smart_ptr_t =
 
 //////////////////// pusher impl ///////////////////////////////////////////////
 
+// function_tag: push as a function
+template <>
+struct luaw::pusher<luaw::function_tag> {
+  static const size_t size = 1;
+
+  template <typename F>
+  static int push(luaw& l, F&& f) {
+    using DecayF = std::decay_t<F>;
+    static_assert(luaw_detail::is_callable<DecayF>::value,
+                  "Should push a callable value");
+
+    // C function pointer type
+    using CFunctionPtr =
+        std::conditional_t<luaw_detail::is_callable_class<DecayF>::value,
+                           luaw_detail::detect_c_callee_t<DecayF>,
+                           DecayF>;
+    static_assert(luaw_detail::is_cfunction_pointer<CFunctionPtr>::value,
+                  "Should get a C function pointer type");
+    return luaw::pusher<CFunctionPtr>::push(l, std::forward<F>(f));
+  }
+};
+
 // primary pusher. guess whether it may be a lambda, push as function if true,
 // otherwise push as an user defined custom object.
 template <typename T, typename>
 struct luaw::pusher {
+  static_assert(!std::is_pointer<T>::value,
+                "Never happen (Pointers should be specialized elsewhere)");
   static_assert(std::is_same<T, std::decay_t<T>>::value, "T should be decayed");
-
-  // Pointers should be specialized elsewhere.
-  static_assert(!std::is_pointer<T>::value, "Cannot be pointer");
+  static_assert(std::is_class<T>::value, "T should be a class type");
 
   static const size_t size = 1;
 
   template <typename Y>
   static int push(luaw& l, Y&& v) {
-    static_assert(std::is_same<T, std::decay_t<Y>>::value,
-                  "Decayed Y should be same type as T");
+    static_assert(std::is_convertible<std::decay_t<Y>, T>::value,
+                  "Y should convertible to T");
 
     // Guess whether it may be a lambda object, if it is, then push as a
     // function, otherwise push as custom class.
-    using Tag = std::conditional_t<luaw_detail::decay_maybe_lambda<Y>::value,
-                                   luaw::function_tag,
-                                   luaw::class_tag>;
+    return __push(l, std::forward<Y>(v), luaw_detail::decay_maybe_lambda<Y>{});
+  }
 
-    return luaw::pusher<Tag>::push(l, std::forward<Y>(v));
+private:
+  // Push as a function.
+  template <typename Y>
+  static int __push(luaw& l, Y&& v, std::true_type) {
+    return luaw::pusher<luaw::function_tag>::push(l, std::forward<Y>(v));
+  }
+
+  // Push as a full userdata.
+  template <typename Y>
+  static int __push(luaw& l, Y&& v, std::false_type) {
+    using SolidY = std::remove_reference_t<Y>;
+    using T0     = T;
+    using T1     = std::
+        conditional_t<std::is_const<SolidY>::value, std::add_const_t<T0>, T0>;
+    using T2 = std::conditional_t<std::is_volatile<SolidY>::value,
+                                  std::add_volatile_t<T1>,
+                                  T1>;
+
+    void* p = l.newuserdata(sizeof(T2));
+    new (p) T2(std::forward<Y>(v));  // construct T by Y
+    luaw::metatable_factory<T2>::push_shared_metatable(l);
+    l.setmetatable(-2);
+    return 1;
   }
 };
 
@@ -3217,28 +3260,6 @@ struct luaw::pusher<luaw::newtable_tag> {
   static int push(luaw& l, newtable_tag) {
     l.newtable();
     return 1;
-  }
-};
-
-// function_tag: push as a function
-template <>
-struct luaw::pusher<luaw::function_tag> {
-  static const size_t size = 1;
-
-  template <typename F>
-  static int push(luaw& l, F&& f) {
-    using DecayF = std::decay_t<F>;
-    static_assert(luaw_detail::is_callable<DecayF>::value,
-                  "Should push a callable value");
-
-    // C function pointer type
-    using CFunctionPtr =
-        std::conditional_t<luaw_detail::is_callable_class<DecayF>::value,
-                           luaw_detail::detect_c_callee_t<DecayF>,
-                           DecayF>;
-    static_assert(luaw_detail::is_cfunction_pointer<CFunctionPtr>::value,
-                  "Should get a C function pointer type");
-    return luaw::pusher<CFunctionPtr>::push(l, std::forward<F>(f));
   }
 };
 
