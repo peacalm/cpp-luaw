@@ -4164,7 +4164,7 @@ luaw l4(luaw::opt()
 
 There are some very confusing behaviors in Lua.
 Here are some explanations for these. 
-(Testing on Lua 5.4)
+(Tested on Lua 5.4)
 
 ### 1. Type of number, integer, string
 
