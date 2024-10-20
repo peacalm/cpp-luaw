@@ -3087,6 +3087,10 @@ private:
     using T2 = std::conditional_t<std::is_volatile<SolidY>::value,
                                   std::add_volatile_t<T1>,
                                   T1>;
+    static_assert(std::is_same<T, std::decay_t<Y>>::value
+                      ? std::is_same<T2, SolidY>::value
+                      : true,
+                  "Never happen");
 
     void* p = l.newuserdata(sizeof(T2));
     new (p) T2(std::forward<Y>(v));  // construct T by Y
