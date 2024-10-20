@@ -340,6 +340,7 @@ public:
     lua_State* main_thread() const { return luaw::get_main_thread_of(L_); }
   };
 
+  /// Make a luavalueidx to represent the value at given index.
   luavalueidx make_luavalueidx(int idx) const { return luavalueidx(L_, idx); }
 
   /// A reference of some Lua value in LUA_REGISTRYINDEX.
@@ -373,12 +374,6 @@ public:
 
     void unref() { ref_sptr_.reset(); }
 
-    /// Push the value referenced on top of this stack.
-    void pushvalue() const {
-      PEACALM_LUAW_ASSERT(L_);
-      lua_rawgeti(L_, LUA_REGISTRYINDEX, ref_id());
-    }
-
     /// Set the referenced value to a global variable with given name.
     /// Equivalent to luaw::set(name, this luavalueref).
     void setglobal(const char* name) const {
@@ -387,12 +382,19 @@ public:
       lua_setglobal(L_, name);
     }
 
+    /// Push the value referenced on top of this stack.
+    void pushvalue() const {
+      PEACALM_LUAW_ASSERT(L_);
+      lua_rawgeti(L_, LUA_REGISTRYINDEX, ref_id());
+    }
+
     void pop(int n = 1) { lua_pop(L_, n); }
     int  gettop() const { return lua_gettop(L_); }
     void settop(int idx) { lua_settop(L_, idx); }
     void cleartop() { settop(0); }
   };
 
+  /// Make a reference for the value at given index.
   luavalueref make_luavalueref(int idx = -1) const {
     return luavalueref(L_, idx);
   }
