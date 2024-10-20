@@ -11,7 +11,7 @@ or argument type in `luaw::function`.
 * Rename method `getvalue` of `luavalueref` to `pushvalue`.
 * Add type check functions `is_type_number`, `is_type_boolean`, etc.
 * Refactor `luaw::to_string` to safe version, won't change number to string anymore.
-
+* Add method to get main thread.
 
 ## v1.3.0 - 2024.10.17
 

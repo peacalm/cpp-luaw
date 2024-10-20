@@ -331,6 +331,8 @@ public:
 
     lua_State* L() const { return L_; }
 
+    lua_State* main_thread() const { return luaw::get_main_thread_of(L_); }
+
     int idx() const { return idx_; }
   };
 
@@ -359,6 +361,8 @@ public:
     }
 
     lua_State* L() const { return L_; }
+
+    lua_State* main_thread() const { return luaw::get_main_thread_of(L_); }
 
     int ref_id() const { return ref_sptr_ ? *ref_sptr_ : LUA_NOREF; }
 
@@ -726,6 +730,18 @@ public:
   void       newtable() { lua_newtable(L_); }
   void*      newuserdata(size_t size) { return lua_newuserdata(L_, size); }
   lua_State* newthread() { return lua_newthread(L_); }
+
+  /// Get main thread of a given thread.
+  static lua_State* get_main_thread_of(lua_State* L) {
+    if (!L) return nullptr;
+    lua_geti(L, LUA_REGISTRYINDEX, LUA_RIDX_MAINTHREAD);
+    lua_State* ret = lua_tothread(L, -1);
+    lua_pop(L, 1);
+    return ret;
+  }
+
+  /// Get main thread.
+  lua_State* main_thread() const { return get_main_thread_of(L_); }
 
   /// Push onto the stack the global value with given name.
   /// Return the type of that value.
