@@ -2674,8 +2674,8 @@ public:
       return;
     }
     std::cout << ":\n";
-    for (int i = 1, n = gettop(); i <= n; ++i) {
-      std::cout << "[" << std::setw(2) << i << "] " << std::setw(8)
+    for (int i = 1, n = gettop(), wn = n < 10 ? 1 : 2; i <= n; ++i) {
+      std::cout << "[" << std::setw(wn) << i << "] " << std::setw(8)
                 << type_name(i) << "(" << type(i)
                 << "): " << luaL_tolstring(L_, i, NULL) << std::endl;
       lua_pop(L_, 1);
