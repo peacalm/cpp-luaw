@@ -3931,7 +3931,8 @@ struct luaw::convertor<luaw::placeholder_tag> {
 
 namespace luaw_detail {
 
-// Has any reference type in a std::tuple
+// Whether the type T is a std::tuple and has element of reference type.
+
 template <typename T>
 struct tuple_has_ref : std::false_type {};
 
@@ -3945,31 +3946,47 @@ struct tuple_has_ref<std::tuple<T, Ts...>>
 template <>
 struct tuple_has_ref<std::tuple<>> : std::false_type {};
 
-// Has any reference type in Ts
+// Whether the type T is a std::tuple and has element of non-const lvalue
+// reference type.
+
+template <typename T>
+struct tuple_has_non_const_lvalue_ref : std::false_type {};
+
+template <typename T, typename... Ts>
+struct tuple_has_non_const_lvalue_ref<std::tuple<T, Ts...>>
+    : public std::integral_constant<
+          bool,
+          (std::is_lvalue_reference<T>::value &&
+           !std::is_const<std::remove_reference_t<T>>::value) ||
+              tuple_has_non_const_lvalue_ref<std::tuple<Ts...>>::value> {};
+
+template <>
+struct tuple_has_non_const_lvalue_ref<std::tuple<>> : std::false_type {};
+
+// Whether have any non-const lvalue reference type in Ts
 template <typename... Ts>
-struct has_ref : public tuple_has_ref<std::tuple<Ts...>> {};
+struct has_non_const_lvalue_ref
+    : public tuple_has_non_const_lvalue_ref<std::tuple<Ts...>> {};
 
 }  // namespace luaw_detail
 
 template <typename Return, typename... Args>
 class luaw::function<Return(Args...)> {
   static_assert(
-      !luaw_detail::has_ref<Args...>::value,
-      "Do not support reference type as luaw::function's argument. "
+      !luaw_detail::has_non_const_lvalue_ref<Args...>::value,
+      "Do not support non-const lvalue reference as luaw::function's argument. "
       ""
-      "If using reference as argument, it will make a copy of the referenced "
+      "If using this kind of reference, it will make a copy of the referenced "
       "argument into Lua, won't implicitly take its address, meaning that it "
-      "will not share the same object in Lua with that in C++, and this "
-      "behaves differently with that in C++. This may confuse users, so "
-      "explicitly forbid it. "
+      "will not share the same object in Lua with C++. "
+      "And this behaves differently with that in C++. This may confuse users, "
+      "so explicitly forbid it. "
       ""
-      "Directly using the underlying type if you want to make a copy of the "
-      "argument into Lua. "
-      "Or if you want to share the same argument objects in Lua with C++, "
+      "If you want to share the same argument objects in Lua with C++, "
       "so you can modify them in Lua, you can use raw pointer type if there is "
       "only one kind of raw pointer type in all arguments, or use smart "
-      "pointer type or peacalm::luaw::ptrw type, and these are safer and more "
-      "reassuring.");
+      "pointer type or peacalm::luaw::ptrw type, and these two are safer and "
+      "more reassuring.");
   static_assert(!std::is_reference<Return>::value &&
                     !luaw_detail::tuple_has_ref<Return>::value,
                 "Do not support reference type as luaw::function's result. "
@@ -4090,7 +4107,7 @@ public:
     return luaw::pusher_for_return<std::decay_t<Return>>::size;
   }
 
-  Return operator()(const Args&... args) const {
+  Return operator()(Args... args) const {
     // reset all states first
     function_failed_  = false;
     function_exists_  = false;
@@ -4127,7 +4144,9 @@ public:
       function_exists_ = true;
     }
 
-    int narg      = push_args(l, args...);
+    // push args by copy or move
+    int narg = push_args(l, std::forward<Args>(args)...);
+
     int pcall_ret = l.pcall(narg, LUA_MULTRET, 0);
     PEACALM_LUAW_ASSERT(l.gettop() >= sz);
 
