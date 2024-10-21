@@ -411,6 +411,17 @@ TEST(push, class_conversion) {
 
   l.push<B>(cd);
   EXPECT_EQ(l.get_metatable_name(-1), mb);
+
+  {
+    l.set<const B>("cb", b);
+    EXPECT_EQ(l.get_metatable_name("cb"), mcb);
+
+    l.set<const B>("cb2", d);
+    EXPECT_EQ(l.get_metatable_name("cb2"), mcb);
+
+    l.set<const B>("cb3", cd);
+    EXPECT_EQ(l.get_metatable_name("cb3"), mcb);
+  }
 }
 
 }  // namespace
