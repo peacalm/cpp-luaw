@@ -4206,7 +4206,7 @@ luaw l4(luaw::opt()
 
 ## Lua Confusions
 
-There are some very confusing behaviors in Lua.
+There are some very confusing behaviors in Lua C API.
 Here are some explanations for these. 
 (Tested on Lua 5.4)
 
