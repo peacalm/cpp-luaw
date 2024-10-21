@@ -3053,6 +3053,56 @@ struct luaw::pusher<luaw::function_tag> {
   }
 };
 
+// class_tag: push as an user defined custom class type.
+// Only works on class type or it's pointer.
+// Push class as full userdata, push pointer to class as light userdata.
+template <>
+struct luaw::pusher<luaw::class_tag> {
+  static const size_t size = 1;
+
+  template <typename Y>
+  static int push(luaw& l, Y&& v) {
+    using SolidY = std::remove_reference_t<Y>;
+    static_assert(std::is_class<std::remove_pointer_t<SolidY>>::value,
+                  "Only class or it's pointer");
+    __push<SolidY>(l, std::forward<Y>(v), std::is_pointer<SolidY>{});
+    return 1;
+  }
+
+  // Construct TargetT by Y at the moment of creating userdata.
+  template <typename TargetT, typename Y>
+  static std::enable_if_t<!std::is_same<TargetT, Y>::value &&
+                              !std::is_reference<TargetT>::value,
+                          int>
+  push(luaw& l, Y&& v) {
+    static_assert(std::is_class<std::remove_pointer_t<TargetT>>::value,
+                  "Only class or it's pointer");
+    static_assert(std::is_convertible<Y, TargetT>::value,
+                  "Y should convertible to TargetT");
+    __push<TargetT>(l, std::forward<Y>(v), std::is_pointer<TargetT>{});
+    return 1;
+  }
+
+private:
+  // TargetT is pointer type
+  template <typename TargetT, typename Y>
+  static void __push(luaw& l, Y&& v, std::true_type) {
+    l.pushlightuserdata(reinterpret_cast<void*>(
+        const_cast<std::remove_cv_t<std::remove_pointer_t<TargetT>>*>(v)));
+    luaw::metatable_factory<TargetT>::push_shared_metatable(l);
+    l.setmetatable(-2);
+  }
+
+  // TargetT is not pointer type
+  template <typename TargetT, typename Y>
+  static void __push(luaw& l, Y&& v, std::false_type) {
+    void* p = l.newuserdata(sizeof(TargetT));
+    new (p) TargetT(std::forward<Y>(v));  // construct TargetT by Y
+    luaw::metatable_factory<TargetT>::push_shared_metatable(l);
+    l.setmetatable(-2);
+  }
+};
+
 // primary pusher. guess whether it may be a lambda, push as function if true,
 // otherwise push as an user defined custom object.
 template <typename T, typename>
@@ -3066,41 +3116,44 @@ struct luaw::pusher {
 
   template <typename Y>
   static int push(luaw& l, Y&& v) {
-    static_assert(std::is_convertible<std::decay_t<Y>, T>::value,
-                  "Y should convertible to T");
+    static_assert(std::is_same<std::decay_t<Y>, T>::value,
+                  "DecayY should same to T");
+    using SolidY = std::remove_reference_t<Y>;
 
     // Guess whether it may be a lambda object, if it is, then push as a
     // function, otherwise push as custom class.
-    return __push(l, std::forward<Y>(v), luaw_detail::decay_maybe_lambda<Y>{});
+    return __push<SolidY>(
+        l, std::forward<Y>(v), luaw_detail::decay_maybe_lambda<Y>{});
+  }
+
+  // Construct TargetT by Y at the moment of creating userdata.
+  template <typename TargetT, typename Y>
+  static std::enable_if_t<!std::is_same<TargetT, Y>::value &&
+                              !std::is_reference<TargetT>::value,
+                          int>
+  push(luaw& l, Y&& v) {
+    static_assert(std::is_class<TargetT>::value &&
+                      std::is_same<std::remove_cv_t<TargetT>, T>::value,
+                  "TargetT should be class T or cv- qualified T");
+    static_assert(std::is_convertible<Y, TargetT>::value,
+                  "Y should convertible to TargetT");
+    __push<TargetT>(
+        l, std::forward<Y>(v), luaw_detail::decay_maybe_lambda<Y>{});
+    return 1;
   }
 
 private:
   // Push as a function.
-  template <typename Y>
+  template <typename _Nouse, typename Y>
   static int __push(luaw& l, Y&& v, std::true_type) {
     return luaw::pusher<luaw::function_tag>::push(l, std::forward<Y>(v));
   }
 
   // Push as a full userdata.
-  template <typename Y>
+  template <typename TargetT, typename Y>
   static int __push(luaw& l, Y&& v, std::false_type) {
-    using SolidY = std::remove_reference_t<Y>;
-    using T0     = T;
-    using T1     = std::
-        conditional_t<std::is_const<SolidY>::value, std::add_const_t<T0>, T0>;
-    using T2 = std::conditional_t<std::is_volatile<SolidY>::value,
-                                  std::add_volatile_t<T1>,
-                                  T1>;
-    static_assert(std::is_same<T, std::decay_t<Y>>::value
-                      ? std::is_same<T2, SolidY>::value
-                      : true,
-                  "Never happen");
-
-    void* p = l.newuserdata(sizeof(T2));
-    new (p) T2(std::forward<Y>(v));  // construct T by Y
-    luaw::metatable_factory<T2>::push_shared_metatable(l);
-    l.setmetatable(-2);
-    return 1;
+    return luaw::pusher<luaw::class_tag>::template push<TargetT>(
+        l, std::forward<Y>(v));
   }
 };
 
@@ -3220,43 +3273,6 @@ struct luaw::pusher<
     l.setmetatable(-2);
 
     return 1;
-  }
-};
-
-// class_tag: push as an user defined custom class type.
-// only work on type class or pointer to class.
-template <>
-struct luaw::pusher<luaw::class_tag> {
-  static const size_t size = 1;
-
-  template <typename Y>
-  static int push(luaw& l, Y&& v) {
-    using SolidY = std::remove_reference_t<Y>;
-    static_assert(std::is_class<std::remove_pointer_t<SolidY>>::value,
-                  "Only class or it's pointer");
-
-    __push<SolidY, Y>(l, std::forward<Y>(v), std::is_pointer<SolidY>{});
-
-    return 1;
-  }
-
-private:
-  // SolidY is pointer type
-  template <typename SolidY, typename Y>
-  static void __push(luaw& l, Y&& v, std::true_type) {
-    l.pushlightuserdata(reinterpret_cast<void*>(
-        const_cast<std::remove_cv_t<std::remove_pointer_t<SolidY>>*>(v)));
-    luaw::metatable_factory<SolidY>::push_shared_metatable(l);
-    l.setmetatable(-2);
-  }
-
-  // SolidY is not pointer type
-  template <typename SolidY, typename Y>
-  static void __push(luaw& l, Y&& v, std::false_type) {
-    void* p = l.newuserdata(sizeof(SolidY));
-    new (p) SolidY(std::forward<Y>(v));
-    luaw::metatable_factory<SolidY>::push_shared_metatable(l);
-    l.setmetatable(-2);
   }
 };
 
