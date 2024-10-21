@@ -624,6 +624,9 @@ public:
   void settop(int idx) { lua_settop(L_, idx); }
   void cleartop() { settop(0); }
 
+  /// Whether enough for at least n extra elements.
+  bool checkstack(int n) { return lua_checkstack(L_, n); }
+
   // clang-format off
   int loadstring(const char*        s)   { return luaL_loadstring(L_, s); }
   int loadstring(const std::string& s)   { return loadstring(s.c_str()); }
