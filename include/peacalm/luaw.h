@@ -3605,6 +3605,13 @@ struct luaw::pusher<std::nullptr_t> {
   }
 };
 
+// void
+template <>
+struct luaw::pusher<void> {
+  static const size_t size = 0;
+  // nothing to push
+};
+
 // std::pair
 template <typename T, typename U>
 struct luaw::pusher<std::pair<T, U>> {
