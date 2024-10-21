@@ -3071,9 +3071,10 @@ struct luaw::pusher<luaw::class_tag> {
 
   // Construct TargetT by Y at the moment of creating userdata.
   template <typename TargetT, typename Y>
-  static std::enable_if_t<!std::is_same<TargetT, Y>::value &&
-                              !std::is_reference<TargetT>::value,
-                          int>
+  static std::enable_if_t<
+      !std::is_same<TargetT, Y>::value &&
+          !std::is_same<std::decay_t<TargetT>, luaw::class_tag>::value,
+      int>
   push(luaw& l, Y&& v) {
     static_assert(std::is_class<std::remove_pointer_t<TargetT>>::value,
                   "Only class or it's pointer");
@@ -3114,10 +3115,11 @@ struct luaw::pusher {
 
   static const size_t size = 1;
 
+  // DecayY must be same as T
   template <typename Y>
   static int push(luaw& l, Y&& v) {
     static_assert(std::is_same<std::decay_t<Y>, T>::value,
-                  "DecayY should same to T");
+                  "Decayed Y should be same type as T");
     using SolidY = std::remove_reference_t<Y>;
 
     // Guess whether it may be a lambda object, if it is, then push as a
@@ -3128,10 +3130,8 @@ struct luaw::pusher {
 
   // Construct TargetT by Y at the moment of creating userdata.
   template <typename TargetT, typename Y>
-  static std::enable_if_t<!std::is_same<TargetT, Y>::value &&
-                              !std::is_reference<TargetT>::value,
-                          int>
-  push(luaw& l, Y&& v) {
+  static std::enable_if_t<!std::is_same<TargetT, Y>::value, int> push(luaw& l,
+                                                                      Y&&   v) {
     static_assert(std::is_class<TargetT>::value &&
                       std::is_same<std::remove_cv_t<TargetT>, T>::value,
                   "TargetT should be class T or cv- qualified T");
