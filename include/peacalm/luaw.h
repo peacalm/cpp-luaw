@@ -1088,16 +1088,50 @@ public:
     return pusher<std::decay_t<T>>::push(*this, std::forward<T>(value));
   }
 
-  /// Push with an user given hint type.
+  /**
+   * @brief Push with an user given hint type.
+   *
+   * Hint specifies what type of value we want to push into Lua.
+   *
+   * If Hint is luaw::function_tag, push the value as a funcion.
+   *
+   * If Hint is luaw::class_tag, push the value as an userdata. And the value
+   * must be a class or a raw/smart pointer to class.
+   *
+   * The origin value must be convertible to Hint.
+   * So, Hint Can't be reference.
+   *
+   * Hint could have cv- property.
+   *
+   * @tparam Hint Expected type to be pushed as.
+   * @tparam T    Origin type of value.
+   * @param value The value to be pushed.
+   * @return int
+   */
   template <typename Hint, typename T>
   std::enable_if_t<!std::is_same<Hint, T>::value, int> push(T&& value) {
-    static_assert(
-        std::is_same<Hint,
-                     std::remove_cv_t<std::remove_reference_t<Hint>>>::value,
-        "Hint should not be const/volatile/reference");
+    static_assert(!std::is_reference<Hint>::value,
+                  "Hint should not be reference");
+    return __push<Hint, T>(std::forward<T>(value), 0);
+  }
+
+private:
+  // Firstly, try pusher<DecayHint>::template push<TargetT, Y>.
+  template <typename Hint, typename T>
+  auto __push(T&& value, int)
+      -> decltype(pusher<std::decay_t<Hint>>::template push<Hint, T>(
+          *this, std::forward<T>(value))) {
+    return pusher<std::decay_t<Hint>>::template push<Hint, T>(
+        *this, std::forward<T>(value));
+  }
+
+  // Secondly, try pusher<DecayHint>::push.
+  template <typename Hint, typename T>
+  auto __push(T&& value, ...) -> decltype(auto) {
     return pusher<std::decay_t<Hint>>::push(*this, std::forward<T>(value));
   }
 
+public:
   /// Copy and push a value already in the stack.
   void pushvalue(int idx = -1) { lua_pushvalue(L_, idx); }
 
