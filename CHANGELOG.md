@@ -3,8 +3,8 @@
 
 ## Currently Unreleased - TBD
 
-* Add static assertion to explicitly forbid using reference type as return type 
-or argument type in `luaw::function`.
+* Add static assertion to explicitly forbid using non-const lvalue reference 
+as argument or using any reference as return for `luaw::function`.
 * Add new class `subluaw`, and add method `luaw::make_subluaw`.
 * add method `luaw::function::unref`, `luaw::function::ref_id` etc.
 * Add method `luavalueref::setglobal`, `luavalueref::unref` etc. 

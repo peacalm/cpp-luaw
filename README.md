@@ -1906,24 +1906,27 @@ if (f.failed()) {
 
 #### 3.3 Type of argument and return
 
-Do not support using C++ reference type as function's argument or return type.
-      
-If using reference as argument, it will make a copy of the referenced 
+##### Argument
+
+Do not support non-const lvalue reference as luaw::function's argument.
+
+If using this kind of reference, it will make a copy of the referenced 
 argument into Lua, won't implicitly take its address, meaning that it 
-will not share the same object in Lua with that in C++, and this 
-behaves differently with that in C++. This may confuse users, so 
-explicitly forbid it. 
+will not share the same object in Lua with C++. 
+And this behaves differently with that in C++. This may confuse users, 
+so explicitly forbid it. 
 
-Directly using the underlying type if you want to make a copy of the 
-argument into Lua. 
-
-Or if you want to share the same argument objects in Lua with C++, 
+If you want to share the same argument objects in Lua with C++, 
 so you can modify them in Lua, you can use raw pointer type if there is 
 only one kind of raw pointer type in all arguments, or use smart 
-pointer type or `luaw::ptrw` type, and these are safer and more reassuring.
+pointer type or `peacalm::luaw::ptrw` type, and these two are safer and 
+more reassuring.
+
+##### Return
 
 Since we cannot make C++ reference type of reference to values in Lua,
-so using C++ reference type as return type is also forbidden.
+so using any C++ reference type as return type is forbidden.
+
 To get a reference of a Lua value, can use type 
 [`luaw::luavalueref`](https://github.com/peacalm/cpp-luaw?tab=readme-ov-file#9-reference-of-lua-values-in-c).
 
