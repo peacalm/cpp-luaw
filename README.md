@@ -1985,7 +1985,17 @@ int main() {
   auto d = std::make_shared<Bar>();
   l.callf<void>("f", c, d);
   assert(c->i == 2);
+  assert(a.i == 2);
   assert(d->i == 100);
+
+  // Get the function
+  auto f = l.get<peacalm::luaw::function<
+      void(peacalm::luaw::ptrw<Foo>, std::shared_ptr<Bar>)>>("f");
+  f(c, d);
+  assert(!f.failed());
+  assert(c->i == 3);
+  assert(a.i == 3);
+  assert(d->i == 200);
 }
 ```
 
