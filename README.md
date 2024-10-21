@@ -4315,3 +4315,5 @@ cmake .. -DBUILD_TEST=TRUE
 make
 ctest
 ```
+Or use the test script, run `./run_test.sh -h` to see usage.
+
