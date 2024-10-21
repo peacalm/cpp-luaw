@@ -954,6 +954,9 @@ l.set("co", co); // set const instance by copy
 l.set("co", std::move(co)); // set const instance by move
 // or
 l.set("co", std::add_const_t<Obj>{}); // set const instance by move
+// or
+l.set<const Obj>("co", o); // copy non-const "o" to a const instance
+
 // The variable "co" is const, it can access all registered members variables 
 // and registered const member functins of Obj.
 ```
@@ -3173,11 +3176,17 @@ int main() {
 ##### Set const instances to Lua
 
 Const property of an instance in C++ will be perfectly transfered to Lua using
-"set" method.
+`set` method (if `Hint` was not provided).
+
+Or explicitly provide a const type as `Hint` then `set` will construct a const 
+instance by a given value, which must be convertible to type `Hint`.
+
 
 Example:
 
 ```C++
+
+// ==== Set const instance:
 const Obj co;
 l.set("co", co); // set const instance by copy
 // or
@@ -3185,25 +3194,31 @@ l.set("co", std::move(co)); // set const instance by move
 // or
 l.set("co", std::add_const_t<Obj>{}); // set const instance by move
 // or
+l.set<const Obj>("co", Obj{}); // copy non-const instance to be a const instance
+
+// ==== Set raw pointer of const instance:
 const Obj co2;
 // set low-level const pointer to be a lightuserdata which is also const
-l.set("co", &co2); 
-// The variable "co" (set by any method above) is const in Lua, 
-// it can access all registered member variables (but can't modify) and 
-// registered const member functins of Obj.
+l.set("cop", &co2); 
 
-
-// Set underlying const instance using smart pointer.
+// ==== Set underlying const instance using smart pointer:
 // "sco" is not const, by it's underlying object is const,
 // so it behaves same as "co":
 auto sco = std::make_shared<const Obj>();
 l.set("sco", sco); // by copy
 l.set("sco", std::move(sco)); // by move
 l.set("sco", std::make_shared<const Obj>()); // by move
-// or
+
+// ==== Set raw pointer of smart pointer:
 auto sco2 = std::make_shared<const Obj>();
-l.set("sco", &sco2); // set as lightuserdata, also underlying const
+l.set("scop", &sco2); // set as lightuserdata, also underlying const
+
 ```
+
+The variables set by methods above can read all registered member variables 
+and call registered const member functins of `Obj`.
+But can't modify member variables and can't call non-const member functions.
+
 
 #### 5.10 Get instances from Lua
 
