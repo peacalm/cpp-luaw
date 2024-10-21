@@ -1,4 +1,4 @@
-// Copyright (c) 2023 Li Shuangquan. All Rights Reserved.
+// Copyright (c) 2023-2024 Li Shuangquan. All Rights Reserved.
 //
 // Licensed under the MIT License (the "License"); you may not use this file
 // except in compliance with the License. You may obtain a copy of the License
@@ -13,6 +13,8 @@
 // under the License.
 
 #include "main.h"
+
+namespace {
 
 TEST(push, push) {
   luaw l;
@@ -373,3 +375,42 @@ TEST(push, nullptr) {
   l.push(n);
   EXPECT_TRUE(l.isnil());
 }
+
+struct B {};
+struct D : public B {};
+
+TEST(push, class_conversion) {
+  luaw l;
+
+  B       b;
+  const B cb;
+
+  l.push(b);
+  auto mb = l.get_metatable_name(-1);
+
+  l.push(cb);
+  auto mcb = l.get_metatable_name(-1);
+
+  l.push<const B>(b);
+  EXPECT_EQ(l.get_metatable_name(-1), mcb);
+
+  l.push<B>(cb);
+  EXPECT_EQ(l.get_metatable_name(-1), mb);
+
+  D       d;
+  const D cd;
+
+  l.push<const B>(d);
+  EXPECT_EQ(l.get_metatable_name(-1), mcb);
+
+  l.push<const B>(cd);
+  EXPECT_EQ(l.get_metatable_name(-1), mcb);
+
+  l.push<B>(d);
+  EXPECT_EQ(l.get_metatable_name(-1), mb);
+
+  l.push<B>(cd);
+  EXPECT_EQ(l.get_metatable_name(-1), mb);
+}
+
+}  // namespace
