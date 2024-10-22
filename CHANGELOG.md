@@ -3,15 +3,21 @@
 
 ## Currently Unreleased - TBD
 
+(nothing)
+
+
+## v1.3.1 - 2024.10.23
+
 * Add static assertion to explicitly forbid using non-const lvalue reference 
 as argument or using any reference as return for `luaw::function`.
+* Add method `luaw::function::unref`, `luaw::function::ref_id`, etc.
 * Add new class `subluaw` to represent a sub thread, and add method `luaw::make_subluaw`.
 * Add method to get main thread.
-* add method `luaw::function::unref`, `luaw::function::ref_id`, etc.
 * Add method `luavalueref::unref`, `luavalueref::setglobal`, etc. 
 * Rename method `getvalue` of `luavalueref` to `pushvalue`.
 * Add type check functions `is_type_number`, `is_type_boolean`, etc.
 * Refactor `luaw::to_string` to safe version, won't change number to string anymore.
+
 
 ## v1.3.0 - 2024.10.17
 
