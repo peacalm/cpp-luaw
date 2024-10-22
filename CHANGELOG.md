@@ -17,6 +17,8 @@ as argument or using any reference as return for `luaw::function`.
 * Rename method `getvalue` of `luavalueref` to `pushvalue`.
 * Add type check functions `is_type_number`, `is_type_boolean`, etc.
 * Refactor `luaw::to_string` to safe version, won't change number to string anymore.
+* Refactor push by hint type. Hint could be cv- qualified, and support push
+class instance by a convertible value.
 
 
 ## v1.3.0 - 2024.10.17
