@@ -5,3 +5,4 @@ CTestTestfile.cmake
 Makefile
 build
 a.out
+.vscode
