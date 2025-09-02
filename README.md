@@ -1429,7 +1429,7 @@ Examples:
 * integer 3 -> string "3" (By Lua)
 * string "2.5" -> double 2.5 (By Lua)
 * number 2.5 -> int 2 (By C++)
-* string "2.5" -> int 2 (Firstly "2.5"->2.5 by lua, then 2.5->2 by C++)
+* string "2.5" -> int 2 (Firstly "2.5"->2.5 by Lua, then 2.5->2 by C++)
 * boolean true -> int 1 (By C++)
 * boolean false -> int 0 (By C++)
 * integer 0 -> bool false (By C++)
