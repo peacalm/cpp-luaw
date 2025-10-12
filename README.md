@@ -319,8 +319,8 @@ int s = f(1,2);
         <li> Tell whether the function failed while running in Lua </li>
         <li> Tell whether the Lua function exists </li>
         <li> Tell whether converting the Lua function's result to C++ failed </li>
-        <li> Tell whether the Lua function returns result (whether result exists) </li>
-        <li> Tell whether got enough results (Lua could return more, couldn't less) </li>
+        <li> Tell whether the Lua function returns a result (whether result exists) </li>
+        <li> Tell whether got enough results (Lua could return more, but should not less) </li>
         <li> Tell how many results the Lua function returned </li>
       </ul>
     </ul></ul> 
