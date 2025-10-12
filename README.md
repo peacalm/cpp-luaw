@@ -1827,10 +1827,10 @@ Detailed states for each step:
 - whether the function failed while running in Lua
 - whether the Lua function exists
 - whether converting the Lua function's result to C++ failed
-- whether the Lua function returns result (whether result exists)
-- whether got enough results (Lua could return more, couldn't less)
+- whether the Lua function returns a result (whether result exists)
+- whether got enough results (Lua could return more, but should not less)
 - how many results the Lua function returned
-- how many results we expect the Lua function should at least return
+- how many results we expect the Lua function to return at least
 
 Part of `luaw::function`'s implementation looks like:
 ```C++
