@@ -19,7 +19,7 @@ Features:
 * If a variable provider is provided, it can automatically seek variables from 
 provider while evaluating expressions in C++.
 
-This lib depends only on Lua:
+This lib depends only on Lua. Version requirement:
 * Lua version >= 5.4
 * C++ version >= C++14
 
